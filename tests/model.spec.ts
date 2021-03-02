@@ -6,9 +6,8 @@ import Collection from '@/Collection';
 import {forEach, includes, uniq} from 'lodash';
 import {Container, injectable} from "inversify";
 import mozelContainer from "@/inversify";
-import {reference, required, alphanumeric} from "@/Mozel";
+import {required, alphanumeric} from "@/Mozel";
 import MozelFactory from "@/MozelFactory";
-import GenericMozel from "../src/GenericMozel";
 
 describe('Mozel', () => {
 	describe(".export", () => {

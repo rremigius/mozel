@@ -9,9 +9,12 @@ import { inject, injectable, optional } from "inversify";
 import { injectableMozel } from "@/inversify";
 import { MozelFactoryType } from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
+import { LogLevel } from "log-control";
+import log from "./log";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
 export { injectableMozel };
+export { LogLevel };
 // TYPE GUARDS
 export function isData(value) {
     return isPlainObject(value);
@@ -63,7 +66,7 @@ let Mozel = Mozel_1 = class Mozel {
         this.define();
         // Check if subclass properly overrode defineData method.
         if (!('id' in this.properties)) {
-            console.warn(`Modl property 'id' was not defined in mozel ${this.getMozelName()}. Perhaps defineData did not call super?`);
+            log.warn(`Modl property 'id' was not defined in mozel ${this.getMozelName()}. Perhaps defineData did not call super?`);
         }
         this.applyDefaults();
         this.init();
@@ -72,6 +75,12 @@ let Mozel = Mozel_1 = class Mozel {
         return this.name; // Try using class name (will not work ben uglified).
     }
     ;
+    /**
+     * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
+     */
+    static get log() {
+        return log;
+    }
     static injectable(container) {
         // Non-typescript alternative for decorator
         injectableMozel(container)(this);

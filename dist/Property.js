@@ -5,6 +5,8 @@ import { find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject
 import { isClass, isPrimitive, isAlphanumeric, isSubClass } from "validation-kit";
 import Mozel from "@/Mozel";
 import { injectable } from "inversify";
+import logRoot from "./log";
+const log = logRoot.instance("property");
 /**
  * Placeholder class for runtime Property type definition
  */
@@ -41,7 +43,7 @@ let Property = Property_1 = class Property {
         this._required = false;
         this._isDefault = false;
         if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
-            console.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
+            log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
             type = undefined;
         }
         this.parent = parent;
@@ -98,7 +100,7 @@ let Property = Property_1 = class Property {
     }
     set default(value) {
         if (!this.checkType(value)) {
-            console.error(`Default for ${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`, value);
+            log.error(`Default for ${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`, value);
             return;
         }
         this._default = value;
@@ -115,7 +117,7 @@ let Property = Property_1 = class Property {
      */
     resolveReference() {
         if (!this.isReference) {
-            console.error("Property is not a reference. Cannot resolve.");
+            log.error("Property is not a reference. Cannot resolve.");
             return;
         }
         if (this.value === undefined) {
@@ -125,16 +127,16 @@ let Property = Property_1 = class Property {
             // Replace placeholder mozel with the resolved reference
             let mozel = this.value.resolveReference();
             if (!mozel) {
-                console.error(`No Mozel found with GID ${this.value.gid}`);
+                log.error(`No Mozel found with GID ${this.value.gid}`);
             }
             else if (!this.checkType(mozel)) {
-                console.error(`Referenced Mozel with GID ${this.value.gid} was not a ${this.type.name}.`);
+                log.error(`Referenced Mozel with GID ${this.value.gid} was not a ${this.type.name}.`);
                 mozel = undefined;
             }
             this.set(mozel);
             return;
         }
-        console.error("Property is not of Mozel type. Cannot resolve reference.");
+        log.error("Property is not of Mozel type. Cannot resolve reference.");
         return;
     }
     /**
@@ -205,7 +207,7 @@ let Property = Property_1 = class Property {
     setErrorValue(value) {
         let err = new Error(`${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`);
         this.error = err;
-        console.error(err.message, "Received: ", value);
+        log.error(err.message, "Received: ", value);
     }
     applyDefault() {
         // If value was already defined, don't apply default

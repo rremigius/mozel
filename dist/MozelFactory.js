@@ -5,6 +5,8 @@ import Registry from "@/Registry";
 import Mozel from "@/Mozel";
 import mozelContainer from "@/inversify";
 import { MozelFactoryType } from "@/MozelFactoryInterface";
+import logRoot from "./log";
+const log = logRoot.instance("factory");
 let MozelFactory = MozelFactory_1 = class MozelFactory {
     constructor(diContainer, mozelRegistry) {
         this.registry = mozelRegistry || new Registry();
@@ -59,19 +61,19 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
                 mozel = this.diContainer.resolve(ExpectedClass);
             }
             if (!mozel && ExpectedClass) {
-                console.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);
+                log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);
                 // DI failed; call exact class constructor
                 mozel = new ExpectedClass();
             }
         }
         catch (e) {
             const message = `Mozel creation failed for ${ExpectedClass.type}: ${e.message}`;
-            console.error(message, data);
+            log.error(message, data);
             throw new Error(message);
         }
         if (!isT(mozel)) {
             const message = "Created Mozel was not a(n) " + ExpectedClass.name;
-            console.error(message, data);
+            log.error(message, data);
             throw new Error(message);
         }
         if (!mozel) {

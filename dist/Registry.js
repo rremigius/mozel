@@ -1,3 +1,5 @@
+import logRoot from "./log";
+const log = logRoot.instance("registry");
 export default class Registry {
     constructor() {
         this.indexById = {};
@@ -6,7 +8,7 @@ export default class Registry {
     register(item) {
         if (item.id) {
             if (item.id in this.indexById) {
-                console.error(`Duplicate registration for ID: ${item.id}.`);
+                log.error(`Duplicate registration for ID: ${item.id}.`);
             }
             else {
                 this.indexById[item.id] = item;
@@ -14,7 +16,7 @@ export default class Registry {
         }
         if (item.gid) {
             if (item.gid in this.indexByGid) {
-                console.error(`Duplicate registration for GID: ${item.gid}.`);
+                log.error(`Duplicate registration for GID: ${item.gid}.`);
             }
             else {
                 this.indexByGid[item.gid] = item;
@@ -45,7 +47,7 @@ export default class Registry {
     byId(id, ExpectedClass) {
         const found = this.indexById[id];
         if (ExpectedClass && !(found instanceof ExpectedClass)) {
-            console.error(`Object with ID ${id} was found, but was not a ${ExpectedClass.name}.`);
+            log.error(`Object with ID ${id} was found, but was not a ${ExpectedClass.name}.`);
             return undefined;
         }
         return found;
@@ -53,7 +55,7 @@ export default class Registry {
     byGid(gid, ExpectedClass) {
         const found = this.indexByGid[gid];
         if (ExpectedClass && !(found instanceof ExpectedClass)) {
-            console.error(`Object with GID ${gid} was found, but was not a ${ExpectedClass.name}.`);
+            log.error(`Object with GID ${gid} was found, but was not a ${ExpectedClass.name}.`);
             return undefined;
         }
         return found;

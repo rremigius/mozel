@@ -2,6 +2,8 @@ import Mozel, { isData } from './Mozel';
 import Property, { isComplexValue, isMozelClass } from './Property';
 import { forEach, isPlainObject, isString, map, isMatch } from 'lodash';
 import Templater from "./Templater";
+import Log from 'log-control';
+const log = Log.instance("mozel/collection");
 export default class Collection {
     constructor(parent, relation, type, list = []) {
         this.isReference = false;
@@ -63,10 +65,10 @@ export default class Collection {
             if (item instanceof Mozel) {
                 let resolved = this.parent.resolveReference(item);
                 if (!resolved) {
-                    console.error(`No Mozel found with GID ${item.gid}.`);
+                    log.error(`No Mozel found with GID ${item.gid}.`);
                 }
                 else if (!this.checkType(resolved)) {
-                    console.error(`Mozel with GID ${item.gid} was not a ${this.type}.`);
+                    log.error(`Mozel with GID ${item.gid} was not a ${this.type}.`);
                     resolved = undefined;
                 }
                 if (!resolved) {
@@ -87,7 +89,7 @@ export default class Collection {
     add(item, init = false) {
         let final = this.revise(item, init);
         if (!final) {
-            console.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
+            log.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
             return this;
         }
         if (isComplexValue(final)) {

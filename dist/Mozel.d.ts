@@ -7,6 +7,7 @@ import { injectableMozel } from "@/inversify";
 import MozelFactoryInterface from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
 import { alphanumeric, primitive } from 'validation-kit';
+import Log, { LogLevel } from "log-control";
 export declare type Data = {
     [key: string]: any;
 };
@@ -44,6 +45,7 @@ declare type CollectionDefinition = {
 };
 export { Alphanumeric, alphanumeric, MozelClass };
 export { injectableMozel };
+export { LogLevel };
 export declare function isData(value: any): value is Data;
 /**
  * PROPERTY decorator factory
@@ -71,6 +73,10 @@ export declare const reference = true;
 export default class Mozel {
     _type?: string;
     static get type(): string;
+    /**
+     * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
+     */
+    static get log(): Log;
     static injectable(container: Container): void;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;

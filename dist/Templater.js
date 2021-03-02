@@ -1,5 +1,7 @@
 import { isString, isPlainObject, isArray, forEach, extend } from 'lodash';
 import format from 'string-format';
+import logRoot from "./log";
+const log = logRoot.instance("templater");
 export default class Templater {
     constructor(data) {
         this.data = {};
@@ -9,7 +11,7 @@ export default class Templater {
     }
     setData(data) {
         if (!isPlainObject(data)) {
-            console.warn("Cannot set Templater data, expected plain object.", data);
+            log.warn("Cannot set Templater data, expected plain object.", data);
             return;
         }
         extend(this.data, data);

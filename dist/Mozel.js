@@ -72,6 +72,10 @@ let Mozel = Mozel_1 = class Mozel {
         return this.name; // Try using class name (will not work ben uglified).
     }
     ;
+    static injectable(container) {
+        // Non-typescript alternative for decorator
+        injectableMozel(container)(this);
+    }
     /**
      * Define a property for the mozel.
      * @param {string} name					Name of the property

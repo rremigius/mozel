@@ -1,17 +1,21 @@
+var MozelFactory_1;
 import { __decorate, __param } from "tslib";
 import { Container, inject, injectable, optional } from "inversify";
 import Registry from "@/Registry";
 import Mozel from "@/Mozel";
 import mozelContainer from "@/inversify";
 import { MozelFactoryType } from "@/MozelFactoryInterface";
-let MozelFactory = class MozelFactory {
+let MozelFactory = MozelFactory_1 = class MozelFactory {
     constructor(diContainer, mozelRegistry) {
         this.registry = mozelRegistry || new Registry();
-        this.diContainer = new Container({ autoBindInjectable: true });
+        this.diContainer = MozelFactory_1.createDependencyContainer();
         this.diContainer.parent = diContainer ? diContainer : mozelContainer;
         // Set scoped globals
         this.diContainer.bind(MozelFactoryType).toConstantValue(this);
         this.diContainer.bind(Registry).toConstantValue(this.registry);
+    }
+    static createDependencyContainer() {
+        return new Container({ autoBindInjectable: true });
     }
     ensureUniqueGID(gid) {
         if (!gid || this.registry.byGid(gid)) {
@@ -90,7 +94,7 @@ let MozelFactory = class MozelFactory {
         return mozel;
     }
 };
-MozelFactory = __decorate([
+MozelFactory = MozelFactory_1 = __decorate([
     injectable(),
     __param(0, inject('container')), __param(0, optional()),
     __param(1, inject(Registry)), __param(1, optional())

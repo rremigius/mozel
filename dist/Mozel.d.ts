@@ -2,6 +2,7 @@ import "reflect-metadata";
 import Property, { Alphanumeric, ComplexValue, MozelClass, PropertyInput, PropertyOptions, PropertyType, PropertyValue } from './Property';
 import Collection, { CollectionOptions, CollectionType } from './Collection';
 import Templater from '@/Templater';
+import { Container } from "inversify";
 import { injectableMozel } from "@/inversify";
 import MozelFactoryInterface from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
@@ -70,6 +71,7 @@ export declare const reference = true;
 export default class Mozel {
     _type?: string;
     static get type(): string;
+    static injectable(container: Container): void;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
     private readonly mozelFactory?;

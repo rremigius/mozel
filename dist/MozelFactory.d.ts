@@ -4,6 +4,7 @@ import Mozel, { MozelConstructor, MozelData } from "@/Mozel";
 import { alphanumeric } from "validation-kit";
 import MozelFactoryInterface from "@/MozelFactoryInterface";
 export default class MozelFactory implements MozelFactoryInterface {
+    static createDependencyContainer(): Container;
     readonly diContainer: Container;
     readonly registry: Registry<Mozel>;
     constructor(diContainer?: Container, mozelRegistry?: Registry<Mozel>);

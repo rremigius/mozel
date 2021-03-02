@@ -27,11 +27,11 @@ Typescript:
 import Mozel, {required} from "mozel";
 
 class Person extends Mozel {
-    @property(String, {required})
-    name!:string;
+    @property(String, {required}) // runtime typing
+    name!:string; // compile-time (Typescript) typing
     
-    @collection(String)
-    nicknames!:Collection<String>;
+    @collection(String) // runtime typing
+    nicknames!:Collection<String>; // compile-time (Typescript) typing
 }
 ```
 
@@ -73,7 +73,7 @@ existing Mozels for the nested data.
 
 class Dog extends Mozel {
     @property(String, {required})
-	name!:string;
+    name!:string;
 }
 class Person extends Mozel {
     @property(String, {required})

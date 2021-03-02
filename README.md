@@ -277,10 +277,10 @@ console.log(people[0].likes.get(2) === people[1].likes.get(2)); // true (both fr
 ### Mozel dependency injection
 
 ```typescript
-let rome = new Container({autoBindInjectable:true});
+let rome = MozelFactory.createDependencyContainer();
 let romeFactory = new MozelFactory(rome);
 
-let egypt = new Container({autoBindInjectable:true});
+let egypt = MozelFactory.createDependencyContainer();
 let egyptFactory = new MozelFactory(egypt);
 
 @injectableModel(rome)

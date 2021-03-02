@@ -1,18 +1,18 @@
 import {assert} from 'chai';
 import {describe,it} from 'mocha';
-import Mozel, {Alphanumeric, collection, Data, injectableModel, ModelData, property,} from '@/Model';
+import Mozel, {Alphanumeric, collection, Data, injectableMozel, MozelData, property,} from '@/Mozel';
 import Collection from '@/Collection';
 
 import {forEach, includes, uniq} from 'lodash';
 import {Container, injectable} from "inversify";
-import modelContainer from "@/inversify";
-import {reference, required, alphanumeric} from "@/Model";
-import MozelFactory from "@/ModelFactory";
-import GenericMozel from "../src/GenericModel";
+import mozelContainer from "@/inversify";
+import {reference, required, alphanumeric} from "@/Mozel";
+import MozelFactory from "@/MozelFactory";
+import GenericMozel from "../src/GenericMozel";
 
-describe('Model', () => {
+describe('Mozel', () => {
 	it('.export() only returns properties defined with .defineProperty()', () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			foo?:number;
 			bar?:number;
 			define() {
@@ -20,90 +20,90 @@ describe('Model', () => {
 				this.defineProperty('foo');
 			}
 		}
-		let model = new FooModel();
+		let mozel = new FooMozel();
 
-		model.foo = 123;
-		model.bar = 456;
+		mozel.foo = 123;
+		mozel.bar = 456;
 
-		let exported = model.export();
+		let exported = mozel.export();
 		assert.deepInclude(exported, {foo: 123}, "Defined property 'foo' was exported with correct value");
 		assert.notProperty(exported, 'bar', "Undefined property 'bar' was not exported");
 	});
 
 	it('.defineProperty() with type argument creates setter that only accepts type-checked values or undefined and throws an error otherwise.', () => {
-		// TS: Ignore model[property] access
-		let model = <Mozel&{[key:string]:any}>new Mozel();
-		model.defineProperty('foo', String);
-		model.defineProperty('bar', Number);
-		model.defineProperty('qux', Boolean);
-		model.defineProperty('baz', Mozel);
+		// TS: Ignore mozel[property] access
+		let mozel = <Mozel&{[key:string]:any}>new Mozel();
+		mozel.defineProperty('foo', String);
+		mozel.defineProperty('bar', Number);
+		mozel.defineProperty('qux', Boolean);
+		mozel.defineProperty('baz', Mozel);
 
-		let obj = {}, arr:any[] = [], func = ()=>{}, otherModel = new Mozel(), collection = new Collection(model, 'xyz', Mozel);
+		let obj = {}, arr:any[] = [], func = ()=>{}, otherMozel = new Mozel(), collection = new Collection(mozel, 'xyz', Mozel);
 		const acceptable:{[key:string]:any[]} = {
 			foo: ['abc', undefined],
 			bar: [123, undefined],
 			qux: [true, undefined],
-			baz: [otherModel, undefined]
+			baz: [otherMozel, undefined]
 		};
-		const values = ['abc', 123, true, obj, arr, func, otherModel, collection];
+		const values = ['abc', 123, true, obj, arr, func, otherMozel, collection];
 		const properties = ['foo', 'bar', 'qux'];
 
 		// Try all values on all properties
 		forEach(properties, property => {
 			forEach(values, value => {
-				let oldValue = model[property];
+				let oldValue = mozel[property];
 				try {
-					model[property] = value;
+					mozel[property] = value;
 				} catch (e) {
 				}
 				if (includes(acceptable[property], value)) {
 					// For acceptable values, check if the new value was actually set.
-					assert.equal(model[property], value, `${typeof (acceptable[property])} property ${property} accepted ${typeof (value)} input`);
+					assert.equal(mozel[property], value, `${typeof (acceptable[property])} property ${property} accepted ${typeof (value)} input`);
 				} else {
 					// For unacceptable values, check if the new value was rejected.
-					assert.notEqual(model[property], value, `${typeof (acceptable[property])} property ${property} did not accept ${typeof (value)} input`);
-					assert.equal(model[property], oldValue, `${typeof (acceptable[property])} property value was maintained after rejection of ${typeof (value)} input rejection`);
+					assert.notEqual(mozel[property], value, `${typeof (acceptable[property])} property ${property} did not accept ${typeof (value)} input`);
+					assert.equal(mozel[property], oldValue, `${typeof (acceptable[property])} property value was maintained after rejection of ${typeof (value)} input rejection`);
 				}
 			});
 		});
 	});
 
 	it('.defineProperty with without type argument creates setter that accepts only plain values or undefined.', () => {
-		// TS: Ignore model[property] access
-		let model = <Mozel&{[key:string]:any}>new Mozel();
-		model.defineProperty('foo');
+		// TS: Ignore mozel[property] access
+		let mozel = <Mozel&{[key:string]:any}>new Mozel();
+		mozel.defineProperty('foo');
 
-		let obj = {}, arr:any[] = [], func = ()=>{}, otherModel = new Mozel(), collection = new Collection(model, 'xyz', Mozel);
+		let obj = {}, arr:any[] = [], func = ()=>{}, otherMozel = new Mozel(), collection = new Collection(mozel, 'xyz', Mozel);
 		const acceptable:any[] = ['abc', 123, true, undefined];
 
-		const values = ['abc', 123, true, obj, arr, func, otherModel, collection];
+		const values = ['abc', 123, true, obj, arr, func, otherMozel, collection];
 		forEach(values, value => {
-			let oldValue = model.foo;
+			let oldValue = mozel.foo;
 			try {
-				model.foo = value;
+				mozel.foo = value;
 			} catch (e) {
 			}
 			if (includes(acceptable, value)) {
 				// For acceptable values, check if the new value was actually set.
-				assert.equal(model.foo, value, `${typeof(value)} value was accepted`);
+				assert.equal(mozel.foo, value, `${typeof(value)} value was accepted`);
 			} else {
 				// For unacceptable values, check if the new value was rejected.
-				assert.notEqual(model.foo, value, `${typeof(value)} value was rejected`);
-				assert.equal(model.foo, oldValue, `${typeof(value)} old value remained after rejection of new value`);
+				assert.notEqual(mozel.foo, value, `${typeof(value)} value was rejected`);
+				assert.equal(mozel.foo, oldValue, `${typeof(value)} old value remained after rejection of new value`);
 			}
 		});
 	});
 
-	it('.create() initializes Model with properties from argument, based on properties defined in .defineData with .defineProperty().', () => {
-		class FooModel extends Mozel {
+	it('.create() initializes Mozel with properties from argument, based on properties defined in .defineData with .defineProperty().', () => {
+		class FooMozel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('foo');
 			}
 		}
 
-		// TS: Ignore model[property] access, use GenericModel type to allow any data
-		let foo = <{[key:string]:any}>FooModel.create<any>({
+		// TS: Ignore mozel[property] access, use GenericMozel type to allow any data
+		let foo = <{[key:string]:any}>FooMozel.create<any>({
 			foo: 123,
 			bar: 456
 		});
@@ -112,24 +112,24 @@ describe('Model', () => {
 		assert.notProperty(foo, 'bar', "Undefined property 'bar' not set");
 	});
 
-	it('.create() data initialization recursively initializes sub-models.', ()=>{
-		class BarModel extends Mozel {
+	it('.create() data initialization recursively initializes sub-mozels.', ()=>{
+		class BarMozel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('bar');
 			}
 		}
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			define() {
 				super.define();
-				this.defineProperty('foo', FooModel);
+				this.defineProperty('foo', FooMozel);
 				this.defineProperty('qux');
-				this.defineCollection('bars', BarModel);
+				this.defineCollection('bars', BarMozel);
 			}
 		}
 
-		// TS: Ignore model[property] access, use GenericModel to allow any input data
-		let foo = <{[key:string]:any}>FooModel.create<any>({
+		// TS: Ignore mozel[property] access, use GenericMozel to allow any input data
+		let foo = <{[key:string]:any}>FooMozel.create<any>({
 			foo: {
 				qux: 123
 			},
@@ -139,48 +139,48 @@ describe('Model', () => {
 			]
 		});
 
-		assert.instanceOf(foo.foo, FooModel, "Nested FooModel was instantiated");
-		assert.equal(foo.foo.qux, 123, "Nested FooModel was initialized with 'qux' property value");
+		assert.instanceOf(foo.foo, FooMozel, "Nested FooMozel was instantiated");
+		assert.equal(foo.foo.qux, 123, "Nested FooMozel was initialized with 'qux' property value");
 		assert.instanceOf(foo.bars, Collection, "'bars' collection was instantiated");
 		assert.equal(foo.bars.toArray().length, 2, "'bars' collection has 2 items");
-		assert.instanceOf(foo.bars.get(0), BarModel, "First item in 'bars' collection is BarModel");
-		assert.instanceOf(foo.bars.get(1), BarModel, "Second item in 'bar's");
+		assert.instanceOf(foo.bars.get(0), BarMozel, "First item in 'bars' collection is BarMozel");
+		assert.instanceOf(foo.bars.get(1), BarMozel, "Second item in 'bar's");
 		assert.equal(foo.bars.get(0).bar, 111, "First item in 'bars' collection was initialized with correct 'bar' property value");
 		assert.equal(foo.bars.get(1).bar, 222, "Second item in 'bars' collection was initialized with correct 'bar' property value");
 	});
 
-	it("model properties and collections can be statically defined", () => {
-		class FooModel extends Mozel {}
-		FooModel.property('foo', String);
-		FooModel.collection('bar', Number);
+	it("mozel properties and collections can be statically defined", () => {
+		class FooMozel extends Mozel {}
+		FooMozel.property('foo', String);
+		FooMozel.collection('bar', Number);
 
-		const model:any = FooModel.create({foo: 'bar', bar: [1,2,3], qux: 123} as any);
-		model.foo = 123;
-		assert.equal(model.foo, 'bar', "Property set to correct value");
-		assert.deepEqual(model.bar.list, [1,2,3], "Collection set");
-		assert.notProperty(model, 'qux', "Non-existing property not set");
+		const mozel:any = FooMozel.create({foo: 'bar', bar: [1,2,3], qux: 123} as any);
+		mozel.foo = 123;
+		assert.equal(mozel.foo, 'bar', "Property set to correct value");
+		assert.deepEqual(mozel.bar.list, [1,2,3], "Collection set");
+		assert.notProperty(mozel, 'qux', "Non-existing property not set");
 	});
 
 	it('constructor using exported data from another object clones the exported object recursively.', () => {
 		@injectable()
-		class BarModel extends Mozel {
+		class BarMozel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('qux');
 			}
 		}
 		@injectable()
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			define() {
 				super.define();
-				this.defineCollection('bars', BarModel);
+				this.defineCollection('bars', BarMozel);
 			}
 		}
 
-		// TS: Ignore model[property] access
-		let foo = <{[key:string]:any}>new FooModel();
-		let bar1 = <{[key:string]:any}>new BarModel();
-		let bar2 = <{[key:string]:any}>new BarModel();
+		// TS: Ignore mozel[property] access
+		let foo = <{[key:string]:any}>new FooMozel();
+		let bar1 = <{[key:string]:any}>new BarMozel();
+		let bar2 = <{[key:string]:any}>new BarMozel();
 
 		bar1.qux = 123;
 		bar2.qux = 456;
@@ -188,48 +188,48 @@ describe('Model', () => {
 		foo.bars.add(bar1);
 		foo.bars.add(bar2);
 
-		let clone = <{[key:string]:any}>FooModel.create(foo.export());
+		let clone = <{[key:string]:any}>FooMozel.create(foo.export());
 
 		assert.instanceOf(clone.bars, Collection, "Cloned instance has initialized 'bars' collection");
 		assert.equal(clone.bars.length, 2, "'bars' collection of cloned instance has 2 items");
-		assert.instanceOf(clone.bars.get(0), BarModel, "First item in 'bars' collection is BarModel");
-		assert.instanceOf(clone.bars.get(1), BarModel, "Second item in 'bar's");
+		assert.instanceOf(clone.bars.get(0), BarMozel, "First item in 'bars' collection is BarMozel");
+		assert.instanceOf(clone.bars.get(1), BarMozel, "Second item in 'bar's");
 		assert.equal(clone.bars.get(0).qux, 123, "First item in 'bars' collection was initialized with correct 'qux' property value");
 		assert.equal(clone.bars.get(1).qux, 456, "Second item in 'bars' collection was initialized with correct 'qux' property value");
 	});
 
 	it('@property decorator defines Property based on the decorated property.', () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(String)
 			foo?:String;
 			@property(String)
 			bar?:String;
-			@property(FooModel)
-			qux?:FooModel;
+			@property(FooMozel)
+			qux?:FooMozel;
 		}
 
-		let model = <FooModel>FooModel.create<any>({
+		let mozel = <FooMozel>FooMozel.create<any>({
 			foo: 'bar'
 		});
-		model.bar = 'foo';
-		model.set('qux', {foo: 'abc'}, true);
+		mozel.bar = 'foo';
+		mozel.set('qux', {foo: 'abc'}, true);
 
-		assert.equal(model.get('foo'),'bar', "Value for 'foo' correctly set correctly in create()");
-		assert.equal(model.foo, 'bar', "Getter for 'foo' set correctly");
-		assert.equal(model.get('bar'), 'foo', "Value for 'bar' set correctly using setter");
-		assert.equal(model.qux && model.qux.foo, 'abc', "Model property initialized correctly using set()");
+		assert.equal(mozel.get('foo'),'bar', "Value for 'foo' correctly set correctly in create()");
+		assert.equal(mozel.foo, 'bar', "Getter for 'foo' set correctly");
+		assert.equal(mozel.get('bar'), 'foo', "Value for 'bar' set correctly using setter");
+		assert.equal(mozel.qux && mozel.qux.foo, 'abc', "Mozel property initialized correctly using set()");
 	});
 
 	it('@collection decorator defines Property based on the decorated property.', () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(String)
 			foo?:String;
 
-			@collection(FooModel)
-			bar?:Collection<FooModel>;
+			@collection(FooMozel)
+			bar?:Collection<FooMozel>;
 		}
 
-		let foo = <FooModel>FooModel.create<any>({
+		let foo = <FooMozel>FooMozel.create<any>({
 			bar: [{foo:'abc'}]
 		});
 
@@ -238,13 +238,13 @@ describe('Model', () => {
 	});
 
 	it("constructor applies defaults for Properties recursively.", () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(String, {default: 'abc'})
 			qux?:String;
 		}
-		class BarModel extends Mozel {
-			@property(FooModel, {default: new FooModel()})
-			foo?:FooModel;
+		class BarMozel extends Mozel {
+			@property(FooMozel, {default: new FooMozel()})
+			foo?:FooMozel;
 			@property(Number, {default:123})
 			xyz?:Number;
 			@property(Number, {default: 789})
@@ -252,34 +252,34 @@ describe('Model', () => {
 			@collection(Number)
 			abc!:Collection<number>
 		}
-		let bar = new BarModel();
+		let bar = new BarMozel();
 		bar.baz = 456;
 
 		assert.equal(bar.xyz, 123, "Primitive default set correctly");
 		assert.ok(bar.getProperty('xyz').isDefault(), "Primitive default is marked as default");
-		assert.equal(bar.foo && bar.foo.qux, 'abc', "Nested model default set correctly");
-		assert.ok(bar.foo && bar.foo.getProperty('qux').isDefault(), "Nested model marked as default");
+		assert.equal(bar.foo && bar.foo.qux, 'abc', "Nested mozel default set correctly");
+		assert.ok(bar.foo && bar.foo.getProperty('qux').isDefault(), "Nested mozel marked as default");
 		assert.equal(bar.baz, 456, "Preset value not overwritten by default.");
 		assert.notOk(bar.getProperty('baz').isDefault(), "Overridden value not marked as default");
 		assert.instanceOf(bar.abc, Collection, "Collections are instantiated by default");
 	});
 
 	it('cannot set required properties to null or undefined.', () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(String, {default:'abc', required:true})
 			foo?:string|null; // setting incorrect type for test's sake
 		}
-		let model = new FooModel();
-		model.foo = 'xyz';
-		assert.equal(model.foo, 'xyz', "String input accepted");
-		model.foo = undefined;
-		assert.equal(model.foo, 'xyz', "Undefined input not accepted");
-		model.foo = null;
-		assert.equal(model.foo, 'xyz', "Null input not accepted");
+		let mozel = new FooMozel();
+		mozel.foo = 'xyz';
+		assert.equal(mozel.foo, 'xyz', "String input accepted");
+		mozel.foo = undefined;
+		assert.equal(mozel.foo, 'xyz', "Undefined input not accepted");
+		mozel.foo = null;
+		assert.equal(mozel.foo, 'xyz', "Null input not accepted");
 	});
 
 	it('required Properties without defaults get generated default values', () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(String, {required:true})
 			fooString!:string;
 			@property(Number, {required:true})
@@ -289,103 +289,103 @@ describe('Model', () => {
 			@property(Alphanumeric, {required:true})
 			fooAlphanumeric!:alphanumeric;
 			@property(Mozel, {required:true})
-			fooModel!:Mozel;
+			fooMozel!:Mozel;
 		}
-		let model = new FooModel();
-		assert.equal(model.fooString, '', "String standard default set correctly");
-		assert.equal(model.fooNumber, 0, "Numberic standard default set correctly");
-		assert.equal(model.fooBoolean, false, "Boolean standard default set correctly");
-		assert.equal(model.fooAlphanumeric, '', "Alphanumeric standard default set correctly");
-		assert.instanceOf(model.fooModel, Mozel, "Model standard default set correctly");
+		let mozel = new FooMozel();
+		assert.equal(mozel.fooString, '', "String standard default set correctly");
+		assert.equal(mozel.fooNumber, 0, "Numberic standard default set correctly");
+		assert.equal(mozel.fooBoolean, false, "Boolean standard default set correctly");
+		assert.equal(mozel.fooAlphanumeric, '', "Alphanumeric standard default set correctly");
+		assert.instanceOf(mozel.fooMozel, Mozel, "Mozel standard default set correctly");
 	});
 
-	it('created with ModelFactory generates submodels based on _type property.', () => {
+	it('created with MozelFactory generates submozels based on _type property.', () => {
 		let container = new Container({autoBindInjectable:true});
-		container.parent = modelContainer;
+		container.parent = mozelContainer;
 
 		const factory = new MozelFactory(container);
 
-		@injectableModel(container)
-		class FooModel extends Mozel {}
+		@injectableMozel(container)
+		class FooMozel extends Mozel {}
 
-		@injectableModel(container)
-		class SubFooModel extends FooModel {}
+		@injectableMozel(container)
+		class SubFooMozel extends FooMozel {}
 
-		@injectableModel(container)
-		class BarModel extends Mozel {
+		@injectableMozel(container)
+		class BarMozel extends Mozel {
 			@property(Mozel)
 			foo?:Mozel;
 			@collection(Mozel)
 			foos!:Collection<Mozel>;
 		}
 
-		// Instantiate model
-		const bar = factory.create(BarModel, {
-			foo: {_type:'FooModel'},
-			foos: [{_type:'FooModel'}, {_type: 'SubFooModel'}]
+		// Instantiate mozel
+		const bar = factory.create(BarMozel, {
+			foo: {_type:'FooMozel'},
+			foos: [{_type:'FooMozel'}, {_type: 'SubFooMozel'}]
 		});
 
-		assert.instanceOf(bar.foo, FooModel, "Created property submodel is of correct class");
-		assert.instanceOf(bar.foos.get(0), FooModel, "Created collection submodel is of correct class");
-		assert.instanceOf(bar.foos.get(1), SubFooModel, "Subclass was instantiated correctly")
+		assert.instanceOf(bar.foo, FooMozel, "Created property submozel is of correct class");
+		assert.instanceOf(bar.foos.get(0), FooMozel, "Created collection submozel is of correct class");
+		assert.instanceOf(bar.foos.get(1), SubFooMozel, "Subclass was instantiated correctly")
 	});
 	it('function as default Property value is called to compute default.', () => {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(Number, {required, default: ()=>1+1})
 			foo!:number;
 		}
 
-		const model = new FooModel();
-		assert.equal(model.foo, 2, "Default applied correctly");
+		const mozel = new FooMozel();
+		assert.equal(mozel.foo, 2, "Default applied correctly");
 	});
 
-	it('created with ModelFactory gets assigned a unique GID if it does not already have one.', () => {
+	it('created with MozelFactory gets assigned a unique GID if it does not already have one.', () => {
 		const container = new Container({autoBindInjectable:true});
 
-		@injectableModel(container)
-		class FooModel extends Mozel {
-			@property(FooModel)
-			foo?:FooModel;
+		@injectableMozel(container)
+		class FooMozel extends Mozel {
+			@property(FooMozel)
+			foo?:FooMozel;
 		}
 		const factory = new MozelFactory(container);
-		const model1 = factory.create<FooModel>(FooModel);
-		const model2 = factory.create<FooModel>(FooModel, {
+		const mozel1 = factory.create<FooMozel>(FooMozel);
+		const mozel2 = factory.create<FooMozel>(FooMozel, {
 			foo: {}
 		});
-		const model3 = factory.create<FooModel>(FooModel, {
+		const mozel3 = factory.create<FooMozel>(FooMozel, {
 			gid: 'bar'
 		});
 
-		const fooGid = model2.foo && model2.foo.gid;
-		const gids = [model1.gid, model2.gid, model3.gid, fooGid];
+		const fooGid = mozel2.foo && mozel2.foo.gid;
+		const gids = [mozel1.gid, mozel2.gid, mozel3.gid, fooGid];
 
 		assert.deepEqual(gids, uniq(gids), "All GIDs are unique");
-		assert.equal(model3.gid, 'bar');
+		assert.equal(mozel3.gid, 'bar');
 	});
 	it('property can be a function.', ()=> {
-		class FooModel extends Mozel {
+		class FooMozel extends Mozel {
 			@property(Function)
 			foo?:()=>void;
 		}
-		let foo = new FooModel();
+		let foo = new FooMozel();
 		foo.foo = ()=>{};
 
 		let expected = ()=>{};
-		foo = FooModel.create({
+		foo = FooMozel.create({
 			foo:expected
 		});
 		assert.equal(foo.foo, expected);
 	});
 	it('notifies changes to watchers and deep watchers.', ()=>{
-		class FooModel extends Mozel {
-			@property(FooModel)
-			foo?:FooModel;
+		class FooMozel extends Mozel {
+			@property(FooMozel)
+			foo?:FooMozel;
 
 			@property(String)
 			bar?:string;
 		}
 
-		const model = FooModel.create<FooModel>({
+		const mozel = FooMozel.create<FooMozel>({
 			foo: {
 				foo: {
 					bar: 'foobar'
@@ -394,7 +394,7 @@ describe('Model', () => {
 		});
 
 		let count = 0;
-		model.watch({
+		mozel.watch({
 			path: 'foo.foo.bar',
 			handler: (newValue, oldValue) => {
 				assert.equal(oldValue, 'foobar', "Old value was correct");
@@ -402,22 +402,22 @@ describe('Model', () => {
 				count++;
 			}
 		});
-		model.watch({
+		mozel.watch({
 			path: 'foo.foo',
 			handler: (newValue, oldValue) => {
-				assert.equal((<FooModel>oldValue).bar, 'foobar', "Old nested value was correct");
-				assert.equal((<FooModel>newValue).bar, 'barfoo', "New nested value was correct");
+				assert.equal((<FooMozel>oldValue).bar, 'foobar', "Old nested value was correct");
+				assert.equal((<FooMozel>newValue).bar, 'barfoo', "New nested value was correct");
 				count++;
 			}
 		})
-		model.watch({
+		mozel.watch({
 			path: 'bar',
 		 	handler: ()=> {
 				assert.ok(false, "Incorrect watched notified");
 				count++;
 			}
 		});
-		model.watch({
+		mozel.watch({
 			path: 'foo',
 			deep: true,
 			handler: ()=> {
@@ -425,7 +425,7 @@ describe('Model', () => {
 				count++;
 			}
 		});
-		model.watch({
+		mozel.watch({
 			path: 'bar',
 			deep: true,
 			handler: ()=>{
@@ -434,8 +434,8 @@ describe('Model', () => {
 			}
 		});
 
-		if(!model.foo) return;
-		model.foo.setData({foo: {bar: 'barfoo'}}, true);
+		if(!mozel.foo) return;
+		mozel.foo.setData({foo: {bar: 'barfoo'}}, true);
 
 		assert.equal(count, 3, "Correct number of handlers called");
 	});

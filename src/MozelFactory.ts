@@ -9,6 +9,10 @@ import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
 @injectable()
 export default class MozelFactory implements MozelFactoryInterface {
 
+	static createDependencyContainer() {
+		return new Container({autoBindInjectable:true});
+	}
+
 	// If not set in constructor params, will be set in constructor. And readonly, so will always have value.
 	readonly diContainer:Container;
 	readonly registry:Registry<Mozel>;
@@ -19,7 +23,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 	) {
 		this.registry = mozelRegistry || new Registry<Mozel>();
 
-		this.diContainer = new Container({autoBindInjectable:true});
+		this.diContainer = MozelFactory.createDependencyContainer();
 		this.diContainer.parent = diContainer ? diContainer : mozelContainer;
 
 		// Set scoped globals

@@ -1,7 +1,7 @@
 import { assert } from 'chai';
 import GenericMozel from "@/GenericMozel";
 
-describe('GenericModel', () => {
+describe('GenericMozel', () => {
 	it('.create defines properties based on the given data.', () => {
 		let obj = GenericMozel.create({
 			foo: 'bar'

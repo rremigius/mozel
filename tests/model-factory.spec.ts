@@ -1,17 +1,17 @@
 import Collection from "@/Collection";
-import Mozel, {collection, injectableModel, property, reference} from "@/Model";
-import MozelFactory from "@/ModelFactory";
+import Mozel, {collection, injectableMozel, property, reference} from "@/Mozel";
+import MozelFactory from "@/MozelFactory";
 import {it} from "mocha";
 import {Container} from "inversify";
 import {assert} from "chai";
 
-describe("ModelFactory", () => {
+describe("MozelFactory", () => {
 	describe(".createSet", () => {
 		it("resolves references within the set based on gid", () => {
 			const container = new Container({autoBindInjectable:true});
 			let factory = new MozelFactory(container);
 
-			@injectableModel(container)
+			@injectableMozel(container)
 			class Person extends Mozel {
 				@collection(Person, {reference})
 				likes!:Collection<Person>;
@@ -34,17 +34,17 @@ describe("ModelFactory", () => {
 		it('resolves reference Properties from Registry.', ()=> {
 			const container = new Container({autoBindInjectable:true});
 
-			@injectableModel(container)
-			class FooModel extends Mozel {
-				@collection(FooModel)
-				fooChildren!:Collection<FooModel>;
-				@property(FooModel, {reference})
-				fooReference?:FooModel;
-				@collection(FooModel, {reference})
-				fooReferences!:Collection<FooModel>;
+			@injectableMozel(container)
+			class FooMozel extends Mozel {
+				@collection(FooMozel)
+				fooChildren!:Collection<FooMozel>;
+				@property(FooMozel, {reference})
+				fooReference?:FooMozel;
+				@collection(FooMozel, {reference})
+				fooReferences!:Collection<FooMozel>;
 			}
 			const factory = new MozelFactory(container);
-			const foo = factory.create<FooModel>(FooModel, {
+			const foo = factory.create<FooMozel>(FooMozel, {
 				gid: 1,
 				fooChildren: [
 					{ gid: 11 },
@@ -63,8 +63,8 @@ describe("ModelFactory", () => {
 			const child3 = foo.fooChildren.get(2);
 			const lastChild = foo.fooChildren.get(3);
 
-			assert.instanceOf(child1, FooModel, "First child in Collection instantiated properly.");
-			assert.instanceOf(lastChild, FooModel, "Last child in Collection instantiated properly.");
+			assert.instanceOf(child1, FooMozel, "First child in Collection instantiated properly.");
+			assert.instanceOf(lastChild, FooMozel, "Last child in Collection instantiated properly.");
 
 			const ref1 = lastChild!.fooReference;
 			const ref2 = lastChild!.fooReferences.get(0);
@@ -74,21 +74,21 @@ describe("ModelFactory", () => {
 			assert.equal(ref2, child2, "First Collection reference resolved correctly");
 			assert.equal(ref3, child3, "Second Collection reference resolved correctly");
 		});
-		it('resolves Model types based on its container', () => {
-			let rome = new Container({autoBindInjectable:true});
+		it('resolves Mozel types based on its container', () => {
+			let rome = MozelFactory.createDependencyContainer();
 			let romeFactory = new MozelFactory(rome);
 
-			let egypt = new Container({autoBindInjectable:true});
+			let egypt = MozelFactory.createDependencyContainer();
 			let egyptFactory = new MozelFactory(egypt);
 
-			@injectableModel(rome)
+			@injectableMozel(rome)
 			class Roman extends Mozel {
 				static get type() {
 					return 'Person';
 				}
 			}
 
-			@injectableModel(egypt)
+			@injectableMozel(egypt)
 			class Egyptian extends Mozel {
 				static get type() {
 					return 'Person'
@@ -99,8 +99,8 @@ describe("ModelFactory", () => {
 			let roman = romeFactory.create(Mozel, data);
 			let egyptian = egyptFactory.create(Mozel, data);
 
-			assert.instanceOf(roman, Roman, "Roman model instantiated correctly");
-			assert.instanceOf(egyptian, Egyptian, "Egyptian model instantiated correctly");
+			assert.instanceOf(roman, Roman, "Roman mozel instantiated correctly");
+			assert.instanceOf(egyptian, Egyptian, "Egyptian mozel instantiated correctly");
 		});
 	})
 })

@@ -1,12 +1,12 @@
 import Collection from '@/Collection';
 import { Class, primitive } from "validation-kit";
 import Mozel from "@/Mozel";
-export declare type ModelClass = typeof Mozel;
+export declare type MozelClass = typeof Mozel;
 export declare type ComplexValue = Mozel | Collection<any>;
-export declare type ComplexType = ModelClass | Collection<any>;
+export declare type ComplexType = MozelClass | Collection<any>;
 export declare type PropertyValue = primitive | Function | ComplexValue | undefined;
 export declare type PropertyInput = PropertyValue | object | any[];
-export declare type PropertyType = ModelClass | Class | Function | Collection<any> | undefined;
+export declare type PropertyType = MozelClass | Class | Function | Collection<any> | undefined;
 export declare type PrimitiveObject = Record<string, primitive | undefined | null>;
 export declare type PropertyValueFactory = () => PropertyValue;
 export declare type PropertyOptions = {
@@ -22,7 +22,7 @@ export declare class Alphanumeric {
 export declare function isComplexValue(value: any): value is ComplexValue;
 export declare function isComplexType(value: any): value is ComplexType;
 export declare function isPropertyValue(value: any): value is PropertyValue;
-export declare function isModelClass(value: any): value is ModelClass;
+export declare function isMozelClass(value: any): value is MozelClass;
 export declare function isPrimitiveObject(object: any): object is PrimitiveObject;
 /**
  * Runtime type-safe property.
@@ -71,7 +71,7 @@ export default class Property {
     /**
      * Set value with type checking
      * @param {PropertyInput} value
-     * @param {boolean} init					If set to true, Models and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
     set(value: PropertyInput, init?: boolean): boolean;
     notifyChange(newValue: PropertyValue, oldValue: PropertyValue): void;
@@ -80,7 +80,7 @@ export default class Property {
     generateDefaultValue(): false | "" | 0 | Mozel | (() => void);
     getTypeName(): string;
     /**
-     * Try to initialize the value for this property using initialization data. Will only work for Models and Collections
+     * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections
      * with objects or arrays, respectively.
      * @param value
      */

@@ -1,7 +1,7 @@
 import Mozel from '@/Mozel';
 import { forEach, mapValues } from 'lodash';
 /**
- * GenericModel can take any number of Primitive Properties, which can be defined on the fly.
+ * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
  * will be validated as undefined Primitive types, and will be exported in the `export()` method.
  *
@@ -9,7 +9,7 @@ import { forEach, mapValues } from 'lodash';
 export default class GenericMozel extends Mozel {
     constructor() {
         super();
-        this.ModelDataType = {};
+        this.MozelDataType = {};
         this.genericProperties = {};
         this.initialized = false;
         // All inherited properties and methods have been set; for all future properties, define Properties.
@@ -36,23 +36,23 @@ export default class GenericMozel extends Mozel {
     }
     static create(data) {
         // Cannot use `K` in static method unfortunately
-        let model = super.create(data);
+        let mozel = super.create(data);
         if (!data) {
-            // TS ignore: 'GenericModel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Model'.
-            return model;
+            // TS ignore: 'GenericMozel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Mozel'.
+            return mozel;
         }
         for (let key in data) {
-            model.initProperty(key);
+            mozel.initProperty(key);
         }
         // Try again, with defined properties
-        model.setData(data);
-        return model;
+        mozel.setData(data);
+        return mozel;
     }
     /**
-     * Sets a Property value on the GenericModel. If the Property did not exist, it will be initialized first.
+     * Sets a Property value on the GenericMozel. If the Property did not exist, it will be initialized first.
      * @param {string} property
      * @param value
-     * @param {boolean} [init]			Allow intialization of Models and Collections.
+     * @param {boolean} [init]			Allow intialization of Mozels and Collections.
      */
     set(property, value, init) {
         this.initProperty(property);

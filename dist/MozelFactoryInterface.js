@@ -1,5 +1,5 @@
 /*
-Simple definition file to prevent circular dependencies between ModelFactory and Model
+Simple definition file to prevent circular dependencies between MozelFactory and Mozel
  */
-export const ModelFactoryType = Symbol.for("ModelFactory");
+export const MozelFactoryType = Symbol.for("MozelFactory");
 //# sourceMappingURL=MozelFactoryInterface.js.map

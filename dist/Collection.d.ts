@@ -1,9 +1,9 @@
 import Mozel, { Data } from './Mozel';
-import { ModelClass } from './Property';
+import { MozelClass } from './Property';
 import { Class, primitive } from 'validation-kit';
 import Templater from "./Templater";
 import EventInterface, { Event } from "event-interface-mixin";
-export declare type CollectionType = ModelClass | Class;
+export declare type CollectionType = MozelClass | Class;
 export declare type CollectionOptions = {
     reference?: boolean;
 };
@@ -32,7 +32,7 @@ export default class Collection<T extends Mozel | primitive> {
     /**
      * Checks if the given item is a valid item for the Collection.
      * @param item							The item to check for the list.
-     * @param {boolean} [init]	If set to `true`, Model Collections may try to initialize a Model based on the provided data.
+     * @param {boolean} [init]	If set to `true`, Mozel Collections may try to initialize a Mozel based on the provided data.
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
     revise(item: any, init?: boolean): T | false;
@@ -40,13 +40,13 @@ export default class Collection<T extends Mozel | primitive> {
     /**
      * Add an item to the Collection.
      * @param item							The item to add.
-     * @param {boolean} init		If set to `true`, Model Collections may create and initialize a Model based on the given data.
+     * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize a Mozel based on the given data.
      */
     add(item: T | object, init?: boolean): this;
     /**
      * Add an item to the Collection.
      * @param items							The items to add.
-     * @param {boolean} init		If set to `true`, Model Collections may create and initialize Models based on the given data.
+     * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize Mozels based on the given data.
      */
     addItems(items: Array<object | T>, init?: boolean): this;
     /**

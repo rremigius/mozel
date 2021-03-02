@@ -1,14 +1,14 @@
 import "reflect-metadata";
 
 import {Container, injectable, interfaces} from "inversify";
-import Mozel, {ModelClass} from "@/Mozel";
+import Mozel, {MozelClass} from "@/Mozel";
 
 /**
- * Registers the class to the default model DI Container, under the class name or static `type`.
- * @param {ModelClass} Target
+ * Registers the class to the default mozel DI Container, under the class name or static `type`.
+ * @param {MozelClass} Target
  * @param {interfaces.Container} container
  */
-function bindModelType(Target:ModelClass, container:interfaces.Container) {
+function bindMozelType(Target:MozelClass, container:interfaces.Container) {
 	let type;
 	if(Target.hasOwnProperty('type')) {
 		type = Target.type;
@@ -21,16 +21,16 @@ function bindModelType(Target:ModelClass, container:interfaces.Container) {
 
 /**
  * CLASS decorator factory
- * Registers the class to the default model DI Container, under the class name or static `type`.
+ * Registers the class to the default mozel DI Container, under the class name or static `type`.
  */
-export function injectableModel(container?:Container) {
-	return function(Target:ModelClass) {
-		if(!container) container = modelContainer;
+export function injectableMozel(container?:Container) {
+	return function(Target:MozelClass) {
+		if(!container) container = mozelContainer;
 		injectable()(Target);
-		bindModelType(Target, container);
+		bindMozelType(Target, container);
 	};
 }
 
-let modelContainer = new Container({autoBindInjectable:true});
+let mozelContainer = new Container({autoBindInjectable:true});
 
-export default modelContainer;
+export default mozelContainer;

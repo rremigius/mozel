@@ -2,12 +2,12 @@ import {Container, inject, injectable, optional} from "inversify";
 import {Class} from "validation-kit";
 import Registry from "@/Registry";
 import Mozel, {MozelConstructor, MozelData} from "@/Mozel";
-import modelContainer from "@/inversify";
+import mozelContainer from "@/inversify";
 import {alphanumeric} from "validation-kit";
-import ModelFactoryInterface, {ModelFactoryType} from "@/MozelFactoryInterface";
+import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
 
 @injectable()
-export default class MozelFactory implements ModelFactoryInterface {
+export default class MozelFactory implements MozelFactoryInterface {
 
 	// If not set in constructor params, will be set in constructor. And readonly, so will always have value.
 	readonly diContainer:Container;
@@ -15,15 +15,15 @@ export default class MozelFactory implements ModelFactoryInterface {
 
 	constructor(
 		@inject('container') @optional() diContainer?:Container,
-		@inject(Registry) @optional() modelRegistry?:Registry<Mozel>
+		@inject(Registry) @optional() mozelRegistry?:Registry<Mozel>
 	) {
-		this.registry = modelRegistry || new Registry<Mozel>();
+		this.registry = mozelRegistry || new Registry<Mozel>();
 
 		this.diContainer = new Container({autoBindInjectable:true});
-		this.diContainer.parent = diContainer ? diContainer : modelContainer;
+		this.diContainer.parent = diContainer ? diContainer : mozelContainer;
 
 		// Set scoped globals
-		this.diContainer.bind(ModelFactoryType).toConstantValue(this);
+		this.diContainer.bind(MozelFactoryType).toConstantValue(this);
 		this.diContainer.bind(Registry).toConstantValue(this.registry);
 	}
 
@@ -38,79 +38,79 @@ export default class MozelFactory implements ModelFactoryInterface {
 		return this.registry.findMaxGid() + 1;
 	}
 
-	destroy(model:Mozel) {
-		this.registry.remove(model);
+	destroy(mozel:Mozel) {
+		this.registry.remove(mozel);
 	}
 
 	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
-		const models = data.map(item => this.create<T>(ExpectedClass, item));
-		models.forEach(item => item.resolveReferences());
-		return models;
+		const mozels = data.map(item => this.create<T>(ExpectedClass, item));
+		mozels.forEach(item => item.resolveReferences());
+		return mozels;
 	}
 
 	/**
-	 * Creates a Model
+	 * Creates a Mozel
 	 * If <T> matches ExpectedClass, is guaranteed to provide the correct class (or throw).
 	 *
-	 * Note: Factory has no knowledge of subclasses of Model (among other reasons to prevent circular dependencies).
+	 * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
 	 * @param {Class} ExpectedClass
-	 * @param {model} data
-	 * @param {boolean} root			Set to true if Model is root of its hierarchy and references should be resolved recursively after its creation.
-	 * @param {boolean} asReference		Set to true if the Model will only be a reference to another Model. It will not be registered.
+	 * @param {mozel} data
+	 * @param {boolean} root			Set to true if Mozel is root of its hierarchy and references should be resolved recursively after its creation.
+	 * @param {boolean} asReference		Set to true if the Mozel will only be a reference to another Mozel. It will not be registered.
 	 */
 	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root:boolean = false, asReference:boolean = false) {
-		function isT(model:any) : model is T {
-			return model instanceof ExpectedClass;
+		function isT(mozel:any) : mozel is T {
+			return mozel instanceof ExpectedClass;
 		}
 
-		let model;
+		let mozel;
 		try {
 			if (data && data._type && this.diContainer.isBoundNamed(Mozel, data._type)) {
 				// Try to get most specific class
-				model = this.diContainer.getNamed<Mozel>(Mozel, data._type);
+				mozel = this.diContainer.getNamed<Mozel>(Mozel, data._type);
 			} else if (ExpectedClass) {
 				// Try to resolve exact class
-				model = this.diContainer.resolve<Mozel>(ExpectedClass);
+				mozel = this.diContainer.resolve<Mozel>(ExpectedClass);
 			}
-			if(!model && ExpectedClass) {
+			if(!mozel && ExpectedClass) {
 				console.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);
 				// DI failed; call exact class constructor
-				model = new ExpectedClass();
+				mozel = new ExpectedClass();
 			}
 		} catch(e) {
-			const message = `Model creation failed for ${ExpectedClass.type}: ${e.message}`;
+			const message = `Mozel creation failed for ${ExpectedClass.type}: ${e.message}`;
 			console.error(message, data);
 			throw new Error(message);
 		}
 
-		if(!isT(model)) {
-			const message = "Created Model was not a(n) " + ExpectedClass.name;
+		if(!isT(mozel)) {
+			const message = "Created Mozel was not a(n) " + ExpectedClass.name;
 			console.error(message, data);
 			throw new Error(message);
 		}
 
-		if(!model) {
-			throw new Error("Could not instantiate Model. Unknown class or data _type.");
+		if(!mozel) {
+			throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
 		}
 
-		model.isReference = asReference;
+		mozel.isReference = asReference;
 
 		if(data) {
-			model.setData(data, true);
+			mozel.setData(data, true);
 		}
 
 		// Register
-		if(!model.gid) {
-			model.gid = this.nextGID();
+		if(!mozel.gid) {
+			mozel.gid = this.nextGID();
 		}
-		if(!model.isReference) {
-			this.registry.register(model);
-		}
-
-		if(root && !model.isReference) {
-			model.resolveReferences();
+		if(!mozel.isReference) {
+			this.registry.register(mozel);
 		}
 
-		return model;
+		if(root && !mozel.isReference) {
+			mozel.resolveReferences();
+		}
+
+		return mozel;
 	}
 }

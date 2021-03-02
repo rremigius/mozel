@@ -1,9 +1,9 @@
 import "reflect-metadata";
-import Property, { Alphanumeric, ComplexValue, ModelClass, PropertyInput, PropertyOptions, PropertyType, PropertyValue } from './Property';
+import Property, { Alphanumeric, ComplexValue, MozelClass, PropertyInput, PropertyOptions, PropertyType, PropertyValue } from './Property';
 import Collection, { CollectionOptions, CollectionType } from './Collection';
 import Templater from '@/Templater';
-import { injectableModel } from "@/inversify";
-import ModelFactoryInterface from "@/MozelFactoryInterface";
+import { injectableMozel } from "@/inversify";
+import MozelFactoryInterface from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
 import { alphanumeric, primitive } from 'validation-kit';
 export declare type Data = {
@@ -27,8 +27,8 @@ export declare type PropertyKeys<T extends Mozel> = {
 export declare type CollectionData<T> = T extends Mozel ? MozelData<T>[] : T extends primitive ? T[] | Collection<T> : never;
 export declare type PropertyData<T> = T extends PropertyValue ? T extends Mozel ? MozelData<T> : T extends Collection<infer C> ? CollectionData<C> : T : false;
 export declare type MozelData<T extends Mozel> = T extends {
-    ModelDataType: any;
-} ? T['ModelDataType'] : {
+    MozelDataType: any;
+} ? T['MozelDataType'] : {
     [K in PropertyKeys<T>]?: PropertyData<T[K]>;
 };
 declare type PropertyDefinition = {
@@ -41,8 +41,8 @@ declare type CollectionDefinition = {
     type?: CollectionType;
     options?: CollectionOptions;
 };
-export { Alphanumeric, alphanumeric, ModelClass };
-export { injectableModel };
+export { Alphanumeric, alphanumeric, MozelClass };
+export { injectableMozel };
 export declare function isData(value: any): value is Data;
 /**
  * PROPERTY decorator factory
@@ -65,14 +65,14 @@ export declare const immediate = true;
 export declare const deep = true;
 export declare const reference = true;
 /**
- * Model class providing runtime type checking and can be exported and imported to and from plain objects.
+ * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */
 export default class Mozel {
     _type?: string;
     static get type(): string;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
-    private readonly modelFactory?;
+    private readonly mozelFactory?;
     private readonly registry?;
     private properties;
     private parent;
@@ -83,7 +83,7 @@ export default class Mozel {
     gid: alphanumeric;
     isReference: boolean;
     /**
-     * Define a property for the model.
+     * Define a property for the mozel.
      * @param {string} name					Name of the property
      * @param {PropertyType} [runtimeType]	Type to check at runtime
      * @param {PropertyOptions} [options]
@@ -91,7 +91,7 @@ export default class Mozel {
     static property(name: string, runtimeType?: PropertyType, options?: PropertyOptions): void;
     static defineClassProperty(name: string, runtimeType?: PropertyType, options?: PropertyOptions): void;
     /**
-     * Define a collection for the model.
+     * Define a collection for the mozel.
      * @param {string} name					Name of the collection
      * @param {CollectionType} runtimeType	Type to check on the items in the collection
      * @param {CollectionOptions} options
@@ -99,7 +99,7 @@ export default class Mozel {
     static collection(name: string, runtimeType?: CollectionType, options?: CollectionOptions): void;
     static defineClassCollection(name: string, runtimeType?: CollectionType, options?: CollectionOptions): void;
     /**
-     * Instantiate a Model based on raw data.
+     * Instantiate a Mozel based on raw data.
      * @param {Data} [data]
      */
     static create<T extends Mozel>(data?: MozelData<T>): T;
@@ -112,45 +112,45 @@ export default class Mozel {
      * Definitions of Collections made at class level.
      */
     protected static get classCollectionDefinitions(): CollectionDefinition[];
-    constructor(modelFactory?: ModelFactoryInterface, registry?: Registry<Mozel>);
+    constructor(mozelFactory?: MozelFactoryInterface, registry?: Registry<Mozel>);
     get static(): typeof Mozel;
     init(): void;
     /**
-     * Instantiate a Model based on the given class and the data.
+     * Instantiate a Mozel based on the given class and the data.
      * @param Class
      * @param data
      * @param root					If true, references will be resolved after creation.
      * @param asReference		If true, will not be registered.
      */
-    create(Class: ModelClass, data?: Data, root?: boolean, asReference?: boolean): Mozel;
+    create(Class: MozelClass, data?: Data, root?: boolean, asReference?: boolean): Mozel;
     destroy(): void;
     /**
-     * Set the Model's parent Model.
-     * @param {Mozel} parent			The parent this Model is a child of.
+     * Set the Mozel's parent Mozel.
+     * @param {Mozel} parent			The parent this Mozel is a child of.
      * @param {string} relation			The name of the parent-child relationship.
-     * @param {boolean} lock			Locks the Model to the parent, so it cannot be transferred to another parent.
+     * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
     setParent(parent: Mozel, relation: string, lock?: boolean): void;
     /**
-     * Get the Model's parent.
+     * Get the Mozel's parent.
      */
     getParent(): Mozel | null;
     /**
-     * Get the Model's relation to its parent.
+     * Get the Mozel's relation to its parent.
      */
     getRelation(): string | null;
     /**
      * @protected
-     * For override. Any properties and collections of the model should be defined here.
+     * For override. Any properties and collections of the mozel should be defined here.
      */
     define(): void;
     /**
-     * Defines a property to be part of the Model's data. Only defined properties will be exported and imported
+     * Defines a property to be part of the Mozel's data. Only defined properties will be exported and imported
      * to and from plain objects and arrays. A getter and setter will be created, overwriting the original property.
      *
      * @param {string} name							The name of the property.
      * @param {PropertyType} type				The runtime type of the property. Can be one of the following values:
-     * 																	Number, String, Alphanumeric, Boolean, (subclass of) Model, Collection or undefined.
+     * 																	Number, String, Alphanumeric, Boolean, (subclass of) Mozel, Collection or undefined.
      * @param {PropertyOptions} [options]
      */
     defineProperty(name: string, type?: PropertyType, options?: PropertyOptions): Property;
@@ -166,7 +166,7 @@ export default class Mozel {
      * Set value with type checking.
      * @param {string} property				The name of the property
      * @param {PropertyInput} value		The value to set on the property
-     * @param {boolean} init					If set to true, Models and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
     set(property: string, value: PropertyInput, init?: boolean): boolean;
     /**
@@ -181,8 +181,8 @@ export default class Mozel {
     getProperty(property: string): Property;
     /**
      * Sets all registered properties from the given data.
-     * @param {object} data			The data to set into the model.
-     * @param {boolean} [init]	If set to true, Models and Collections can be initialized from objects and arrays.
+     * @param {object} data			The data to set into the mozel.
+     * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
      */
     setData(data: Data, init?: boolean): void;
     watch(watcher: PropertyWatcher<PropertyValue>): void;
@@ -192,7 +192,7 @@ export default class Mozel {
      * Resolves the given reference, or its own if no data is provided and it's marked as one.
      * @param ref
      */
-    resolveReference<Model>(ref?: {
+    resolveReference<Mozel>(ref?: {
         gid: alphanumeric;
     }): Mozel | undefined;
     /**
@@ -207,7 +207,7 @@ export default class Mozel {
      */
     setPrimitiveProperties(properties: Data): void;
     /**
-     * Checks if the Model has a property
+     * Checks if the Mozel has a property
      * @param property
      */
     hasProperty(property: string): boolean;
@@ -236,12 +236,12 @@ export default class Mozel {
      */
     export(): Data;
     /**
-     * Renders string templates in all properties of the Model, recursively.
+     * Renders string templates in all properties of the Mozel, recursively.
      * @param {Templater|object} templater	A Templater to use to render the templates, or a data object to fill in the values.
      * 																			If a data object is provided, a new Templater will be instantiated with that data object.
      */
     renderTemplates(templater: Templater | Data): void;
-    getModelName(): string;
-    getModelPlural(): string;
+    getMozelName(): string;
+    getMozelPlural(): string;
     getURIPart(): string;
 }

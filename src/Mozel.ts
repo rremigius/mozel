@@ -4,8 +4,8 @@ import Property, {
 	Alphanumeric,
 	ComplexValue,
 	isComplexValue,
-	isModelClass,
-	ModelClass,
+	isMozelClass,
+	MozelClass,
 	PropertyInput,
 	PropertyOptions,
 	PropertyType,
@@ -17,8 +17,8 @@ import {find, forEach, get, isPlainObject, isString, cloneDeep} from 'lodash';
 
 import Templater from '@/Templater';
 import {inject, injectable, optional} from "inversify";
-import {injectableModel} from "@/inversify";
-import ModelFactoryInterface, {ModelFactoryType} from "@/MozelFactoryInterface";
+import {injectableMozel} from "@/inversify";
+import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
 import {alphanumeric, primitive} from 'validation-kit';
 
@@ -38,7 +38,7 @@ export type PropertyWatcher<T extends PropertyValue> = {
 	handler: (newValue: T, oldValue: T) => void
 };
 
-// Types for Model creation by plain object
+// Types for Mozel creation by plain object
 export type PropertyKeys<T extends Mozel> = { [K in keyof T]: T[K] extends PropertyValue ? K : never }[keyof T];
 export type CollectionData<T> = T extends Mozel ? MozelData<T>[] : T extends primitive ? T[] | Collection<T> : never;
 export type PropertyData<T> =
@@ -49,15 +49,15 @@ export type PropertyData<T> =
 			? CollectionData<C>
 			: T
 		: false; // not a PropertyValue
-export type MozelData<T extends Mozel> = T extends { ModelDataType: any }
-	? T['ModelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
+export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
+	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
 type CollectionDefinition = { name: string, type?: CollectionType, options?: CollectionOptions };
 
-// re-export for easy import together with Model
-export {Alphanumeric, alphanumeric, ModelClass};
-export {injectableModel};
+// re-export for easy import together with Mozel
+export {Alphanumeric, alphanumeric, MozelClass};
+export {injectableMozel};
 
 // TYPE GUARDS
 
@@ -101,11 +101,11 @@ export const reference = true;
 
 
 /**
- * Model class providing runtime type checking and can be exported and imported to and from plain objects.
+ * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */
 @injectable()
 export default class Mozel {
-	public _type?: string; // just for ModelData typing
+	public _type?: string; // just for MozelData typing
 	static get type() {
 		return this.name; // Try using class name (will not work ben uglified).
 	};
@@ -114,7 +114,7 @@ export default class Mozel {
 	private static _classCollectionDefinitions: (CollectionDefinition)[] = [];
 
 	// Injected properties
-	private readonly modelFactory?: ModelFactoryInterface;
+	private readonly mozelFactory?: MozelFactoryInterface;
 	private readonly registry?: Registry<Mozel>;
 
 	private properties: Record<string, Property> = {};
@@ -128,12 +128,12 @@ export default class Mozel {
 	@property(Alphanumeric)
 	id?: alphanumeric;
 	@property(Alphanumeric, {required})
-	gid: alphanumeric = 0; // a non-database ID that can be used to reference other models
+	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
 
 	isReference: boolean = false;
 
 	/**
-	 * Define a property for the model.
+	 * Define a property for the mozel.
 	 * @param {string} name					Name of the property
 	 * @param {PropertyType} [runtimeType]	Type to check at runtime
 	 * @param {PropertyOptions} [options]
@@ -146,7 +146,7 @@ export default class Mozel {
 	}
 
 	/**
-	 * Define a collection for the model.
+	 * Define a collection for the mozel.
 	 * @param {string} name					Name of the collection
 	 * @param {CollectionType} runtimeType	Type to check on the items in the collection
 	 * @param {CollectionOptions} options
@@ -159,16 +159,16 @@ export default class Mozel {
 	}
 
 	/**
-	 * Instantiate a Model based on raw data.
+	 * Instantiate a Mozel based on raw data.
 	 * @param {Data} [data]
 	 */
 	static create<T extends Mozel>(data?: MozelData<T>):T {
 		// Instantiate this class.
-		const model = new this();
+		const mozel = new this();
 		if (data) {
-			model.setData(data, true);
+			mozel.setData(data, true);
 		}
-		return <T>model;
+		return <T>mozel;
 	}
 
 	static getParentClass() {
@@ -198,10 +198,10 @@ export default class Mozel {
 	}
 
 	constructor(
-		@inject(ModelFactoryType) @optional() modelFactory?: ModelFactoryInterface,
+		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface,
 		@inject(Registry) @optional() registry?: Registry<Mozel>
 	) {
-		this.modelFactory = modelFactory;
+		this.mozelFactory = mozelFactory;
 		this.registry = registry;
 		this.watchers = [];
 
@@ -209,7 +209,7 @@ export default class Mozel {
 
 		// Check if subclass properly overrode defineData method.
 		if (!('id' in this.properties)) {
-			console.warn(`Modl property 'id' was not defined in model ${this.getModelName()}. Perhaps defineData did not call super?`);
+			console.warn(`Modl property 'id' was not defined in mozel ${this.getMozelName()}. Perhaps defineData did not call super?`);
 		}
 
 		this.applyDefaults();
@@ -225,32 +225,32 @@ export default class Mozel {
 	} // for override
 
 	/**
-	 * Instantiate a Model based on the given class and the data.
+	 * Instantiate a Mozel based on the given class and the data.
 	 * @param Class
 	 * @param data
 	 * @param root					If true, references will be resolved after creation.
 	 * @param asReference		If true, will not be registered.
 	 */
-	create(Class: ModelClass, data?: Data, root: boolean = false, asReference: boolean = false) {
-		if (this.modelFactory) {
+	create(Class: MozelClass, data?: Data, root: boolean = false, asReference: boolean = false) {
+		if (this.mozelFactory) {
 			// Preferably, use DI-injected factory
-			return this.modelFactory.create(Class, data, root, asReference);
+			return this.mozelFactory.create(Class, data, root, asReference);
 		}
 		// Otherwise, just create an instance of this class.
 		return Class.create(data);
 	}
 
 	destroy() {
-		if (this.modelFactory) {
-			this.modelFactory.destroy(this);
+		if (this.mozelFactory) {
+			this.mozelFactory.destroy(this);
 		}
 	}
 
 	/**
-	 * Set the Model's parent Model.
-	 * @param {Mozel} parent			The parent this Model is a child of.
+	 * Set the Mozel's parent Mozel.
+	 * @param {Mozel} parent			The parent this Mozel is a child of.
 	 * @param {string} relation			The name of the parent-child relationship.
-	 * @param {boolean} lock			Locks the Model to the parent, so it cannot be transferred to another parent.
+	 * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
 	 */
 	setParent(parent: Mozel, relation: string, lock: boolean = true) {
 		if (this.parentLock) {
@@ -262,14 +262,14 @@ export default class Mozel {
 	}
 
 	/**
-	 * Get the Model's parent.
+	 * Get the Mozel's parent.
 	 */
 	getParent() {
 		return this.parent;
 	}
 
 	/**
-	 * Get the Model's relation to its parent.
+	 * Get the Mozel's relation to its parent.
 	 */
 	getRelation() {
 		return this.relation;
@@ -277,11 +277,11 @@ export default class Mozel {
 
 	/**
 	 * @protected
-	 * For override. Any properties and collections of the model should be defined here.
+	 * For override. Any properties and collections of the mozel should be defined here.
 	 */
 	define() {
 		// To be called for each class on the prototype chain
-		const _defineData = (Class: ModelClass) => {
+		const _defineData = (Class: MozelClass) => {
 			if (Class !== Mozel) {
 				// Define class properties of parent class
 				_defineData(Object.getPrototypeOf(Class));
@@ -298,12 +298,12 @@ export default class Mozel {
 	}
 
 	/**
-	 * Defines a property to be part of the Model's data. Only defined properties will be exported and imported
+	 * Defines a property to be part of the Mozel's data. Only defined properties will be exported and imported
 	 * to and from plain objects and arrays. A getter and setter will be created, overwriting the original property.
 	 *
 	 * @param {string} name							The name of the property.
 	 * @param {PropertyType} type				The runtime type of the property. Can be one of the following values:
-	 * 																	Number, String, Alphanumeric, Boolean, (subclass of) Model, Collection or undefined.
+	 * 																	Number, String, Alphanumeric, Boolean, (subclass of) Mozel, Collection or undefined.
 	 * @param {PropertyOptions} [options]
 	 */
 	defineProperty(name: string, type?: PropertyType, options?: PropertyOptions) {
@@ -345,11 +345,11 @@ export default class Mozel {
 	 * Set value with type checking.
 	 * @param {string} property				The name of the property
 	 * @param {PropertyInput} value		The value to set on the property
-	 * @param {boolean} init					If set to true, Models and Collections may be initialized from objects and arrays, respectively.
+	 * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
 	 */
 	set(property: string, value: PropertyInput, init = false) {
 		if (!(property in this.properties)) {
-			throw new Error(`Could not set non-existing property '${property}' on ${this.getModelName()}.`);
+			throw new Error(`Could not set non-existing property '${property}' on ${this.getMozelName()}.`);
 		}
 		this.properties[property].set(value, init);
 		return true;
@@ -361,7 +361,7 @@ export default class Mozel {
 	 */
 	get(property: string) {
 		if (!(property in this.properties)) {
-			throw new Error(`Could not get non-existing property '${property}' on ${this.getModelName()}.`);
+			throw new Error(`Could not get non-existing property '${property}' on ${this.getMozelName()}.`);
 		}
 		return this.properties[property].value;
 	}
@@ -376,8 +376,8 @@ export default class Mozel {
 
 	/**
 	 * Sets all registered properties from the given data.
-	 * @param {object} data			The data to set into the model.
-	 * @param {boolean} [init]	If set to true, Models and Collections can be initialized from objects and arrays.
+	 * @param {object} data			The data to set into the mozel.
+	 * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
 	 */
 	setData(data: Data, init = false) {
 		forEach(this.properties, (property: Property, key: string) => {
@@ -440,12 +440,12 @@ export default class Mozel {
 	 * Resolves the given reference, or its own if no data is provided and it's marked as one.
 	 * @param ref
 	 */
-	resolveReference<Model>(ref?: { gid: alphanumeric }) {
+	resolveReference<Mozel>(ref?: { gid: alphanumeric }) {
 		if (!this.registry) return;
 
 		if (!ref) {
 			if (!this.isReference) {
-				// Model is already resolved
+				// Mozel is already resolved
 				return this;
 			}
 			return this.registry.byGid(this.gid);
@@ -490,7 +490,7 @@ export default class Mozel {
 	}
 
 	/**
-	 * Checks if the Model has a property
+	 * Checks if the Mozel has a property
 	 * @param property
 	 */
 	hasProperty(property: string) {
@@ -532,7 +532,7 @@ export default class Mozel {
 	 */
 	isPrimitiveProperty(key: string) {
 		let type = this.properties[key].type;
-		return !isModelClass(type);
+		return !isMozelClass(type);
 	}
 
 	/**
@@ -558,7 +558,7 @@ export default class Mozel {
 	}
 
 	/**
-	 * Renders string templates in all properties of the Model, recursively.
+	 * Renders string templates in all properties of the Mozel, recursively.
 	 * @param {Templater|object} templater	A Templater to use to render the templates, or a data object to fill in the values.
 	 * 																			If a data object is provided, a new Templater will be instantiated with that data object.
 	 */
@@ -584,15 +584,15 @@ export default class Mozel {
 
 	// For override
 
-	getModelName() {
+	getMozelName() {
 		return this.static.type;
 	}
 
-	getModelPlural() {
-		return this.getModelName() + 's';
+	getMozelPlural() {
+		return this.getMozelName() + 's';
 	}
 
 	getURIPart() {
-		return this.getModelPlural().toLowerCase();
+		return this.getMozelPlural().toLowerCase();
 	}
 }

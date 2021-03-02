@@ -1,6 +1,6 @@
 import Mozel, { MozelConstructor, MozelData } from "@/Mozel";
 export default interface MozelFactoryInterface {
     create<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>, root?: boolean, asReference?: boolean): T;
-    destroy(model: Mozel): void;
+    destroy(mozel: Mozel): void;
 }
-export declare const ModelFactoryType: unique symbol;
+export declare const MozelFactoryType: unique symbol;

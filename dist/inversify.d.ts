@@ -1,10 +1,10 @@
 import "reflect-metadata";
 import { Container } from "inversify";
-import { ModelClass } from "@/Mozel";
+import { MozelClass } from "@/Mozel";
 /**
  * CLASS decorator factory
- * Registers the class to the default model DI Container, under the class name or static `type`.
+ * Registers the class to the default mozel DI Container, under the class name or static `type`.
  */
-export declare function injectableModel(container?: Container): (Target: ModelClass) => void;
-declare let modelContainer: Container;
-export default modelContainer;
+export declare function injectableMozel(container?: Container): (Target: MozelClass) => void;
+declare let mozelContainer: Container;
+export default mozelContainer;

@@ -15,12 +15,12 @@ export function isComplexValue(value) {
     return value instanceof Mozel || value instanceof Collection;
 }
 export function isComplexType(value) {
-    return isModelClass(value) || value instanceof Collection;
+    return isMozelClass(value) || value instanceof Collection;
 }
 export function isPropertyValue(value) {
     return isComplexValue(value) || isPrimitive(value);
 }
-export function isModelClass(value) {
+export function isMozelClass(value) {
     return isSubClass(value, Mozel);
 }
 export function isPrimitiveObject(object) {
@@ -40,8 +40,8 @@ let Property = Property_1 = class Property {
         this._reference = false;
         this._required = false;
         this._isDefault = false;
-        if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isModelClass(this.type)) {
-            console.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Model, Collection or undefined. Using default: undefined.");
+        if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
+            console.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
             type = undefined;
         }
         this.parent = parent;
@@ -60,7 +60,7 @@ let Property = Property_1 = class Property {
     }
     static checkType(value, type, required = false) {
         if (isNil(value) && !required) {
-            // All model properties can be undefined if not required
+            // All mozel properties can be undefined if not required
             return true;
         }
         switch (type) {
@@ -78,8 +78,8 @@ let Property = Property_1 = class Property {
             case Function:
                 return isFunction(value);
             default:
-                // Value should be Model or Collection
-                return isModelClass(type) && value instanceof type ||
+                // Value should be Mozel or Collection
+                return isMozelClass(type) && value instanceof type ||
                     type === Collection && value instanceof Collection;
         }
     }
@@ -98,7 +98,7 @@ let Property = Property_1 = class Property {
     }
     set default(value) {
         if (!this.checkType(value)) {
-            console.error(`Default for ${this.parent.getModelName()}.${this.name} expects ${this.getTypeName()}.`, value);
+            console.error(`Default for ${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`, value);
             return;
         }
         this._default = value;
@@ -121,20 +121,20 @@ let Property = Property_1 = class Property {
         if (this.value === undefined) {
             return; // no error necessary, undefined is fine.
         }
-        if (isModelClass(this.type) && this.value instanceof Mozel) {
-            // Replace placeholder model with the resolved reference
-            let model = this.value.resolveReference();
-            if (!model) {
-                console.error(`No Model found with GID ${this.value.gid}`);
+        if (isMozelClass(this.type) && this.value instanceof Mozel) {
+            // Replace placeholder mozel with the resolved reference
+            let mozel = this.value.resolveReference();
+            if (!mozel) {
+                console.error(`No Mozel found with GID ${this.value.gid}`);
             }
-            else if (!this.checkType(model)) {
-                console.error(`Referenced Model with GID ${this.value.gid} was not a ${this.type.name}.`);
-                model = undefined;
+            else if (!this.checkType(mozel)) {
+                console.error(`Referenced Mozel with GID ${this.value.gid} was not a ${this.type.name}.`);
+                mozel = undefined;
             }
-            this.set(model);
+            this.set(mozel);
             return;
         }
-        console.error("Property is not of Model type. Cannot resolve reference.");
+        console.error("Property is not of Mozel type. Cannot resolve reference.");
         return;
     }
     /**
@@ -150,7 +150,7 @@ let Property = Property_1 = class Property {
         this.value.resolveReferences();
     }
     isDefault() {
-        // Model and Collection pointer can be default but nested properties may have changed
+        // Mozel and Collection pointer can be default but nested properties may have changed
         if (isComplexValue(this._value) && this._value === this._default) {
             return this._value.isDefault();
         }
@@ -174,7 +174,7 @@ let Property = Property_1 = class Property {
         const oldValue = this._value;
         this._value = value;
         this._isDefault = false;
-        // If Property is not just a reference but part of a hierarchy, set Parent on Models and Collections.
+        // If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
         if (!this._reference && isComplexValue(value)) {
             value.setParent(this.parent, this.name);
         }
@@ -183,7 +183,7 @@ let Property = Property_1 = class Property {
     /**
      * Set value with type checking
      * @param {PropertyInput} value
-     * @param {boolean} init					If set to true, Models and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
     set(value, init = false) {
         if (!this.checkType(value)) {
@@ -203,7 +203,7 @@ let Property = Property_1 = class Property {
         this.parent.propertyChanged([this.name], newValue, oldValue);
     }
     setErrorValue(value) {
-        let err = new Error(`${this.parent.getModelName()}.${this.name} expects ${this.getTypeName()}.`);
+        let err = new Error(`${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`);
         this.error = err;
         console.error(err.message, "Received: ", value);
     }
@@ -233,7 +233,7 @@ let Property = Property_1 = class Property {
         }
         if (isNil(this.type))
             return '';
-        if (isModelClass(this.type)) {
+        if (isMozelClass(this.type)) {
             if (this.isReference) {
                 throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
             }
@@ -252,7 +252,7 @@ let Property = Property_1 = class Property {
         return isClass(this.type) ? this.type.name : 'a primitive value';
     }
     /**
-     * Try to initialize the value for this property using initialization data. Will only work for Models and Collections
+     * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections
      * with objects or arrays, respectively.
      * @param value
      */
@@ -265,11 +265,11 @@ let Property = Property_1 = class Property {
             // We're done here (we don't have to overwrite the collection)
             return true;
         }
-        // Init Model
-        if (this.type && isModelClass(this.type) && isPlainObject(value)) {
-            // Create model and try to set again, without type check
-            let model = this.parent.create(this.type, value, false, this.isReference);
-            this._set(model);
+        // Init Mozel
+        if (this.type && isMozelClass(this.type) && isPlainObject(value)) {
+            // Create mozel and try to set again, without type check
+            let mozel = this.parent.create(this.type, value, false, this.isReference);
+            this._set(mozel);
             return true;
         }
         return false;

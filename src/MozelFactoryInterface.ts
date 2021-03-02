@@ -1,12 +1,12 @@
 /*
-Simple definition file to prevent circular dependencies between ModelFactory and Model
+Simple definition file to prevent circular dependencies between MozelFactory and Mozel
  */
 
 import Mozel, {MozelConstructor, MozelData} from "@/Mozel";
 
 export default interface MozelFactoryInterface {
 	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root?:boolean, asReference?:boolean):T;
-	destroy(model:Mozel):void;
+	destroy(mozel:Mozel):void;
 }
 
-export const ModelFactoryType = Symbol.for("ModelFactory");
+export const MozelFactoryType = Symbol.for("MozelFactory");

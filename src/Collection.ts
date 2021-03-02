@@ -1,5 +1,5 @@
 import Mozel, {Data, isData} from './Mozel';
-import Property, {isComplexValue, isModelClass, ModelClass} from './Property';
+import Property, {isComplexValue, isMozelClass, MozelClass} from './Property';
 
 import {Class, primitive} from 'validation-kit';
 import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
@@ -7,7 +7,7 @@ import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
 import Templater from "./Templater";
 import EventInterface, {Event} from "event-interface-mixin";
 
-export type CollectionType = ModelClass|Class;
+export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
 
 export class AddedEvent<T> extends Event<{item:T}>{}
@@ -55,7 +55,7 @@ export default class Collection<T extends Mozel|primitive> {
 	/**
 	 * Checks if the given item is a valid item for the Collection.
 	 * @param item							The item to check for the list.
-	 * @param {boolean} [init]	If set to `true`, Model Collections may try to initialize a Model based on the provided data.
+	 * @param {boolean} [init]	If set to `true`, Mozel Collections may try to initialize a Mozel based on the provided data.
 	 * @return 		Either the revised item, or `false`, if the item did not pass.
 	 */
 	revise(item:any, init = false):T|false {
@@ -64,7 +64,7 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 
 		// Try to initialize
-		if(init && isPlainObject(item) && isModelClass(this.type)) {
+		if(init && isPlainObject(item) && isMozelClass(this.type)) {
 			// If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
 			return <T><any>this.parent.create(this.type, item, false, this.isReference);
 		}
@@ -72,13 +72,13 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	resolveReferences() {
-		if(!isModelClass(this.type)) {
+		if(!isMozelClass(this.type)) {
 			return; // nothing to resolve
 		}
 		if(!this.isReference) {
-			// Have all Models resolve their references
+			// Have all Mozels resolve their references
 			this.each((item:T) => {
-				// The Collection type is a Model class, so our items are Models
+				// The Collection type is a Mozel class, so our items are Mozels
 				(<Mozel>item).resolveReferences();
 			});
 			return;
@@ -92,9 +92,9 @@ export default class Collection<T extends Mozel|primitive> {
 				let resolved = this.parent.resolveReference(item);
 
 				if(!resolved) {
-					console.error(`No Model found with GID ${item.gid}.`);
+					console.error(`No Mozel found with GID ${item.gid}.`);
 				} else if (!this.checkType(resolved)) {
-					console.error(`Model with GID ${item.gid} was not a ${this.type}.`);
+					console.error(`Mozel with GID ${item.gid} was not a ${this.type}.`);
 					resolved = undefined;
 				}
 
@@ -104,7 +104,7 @@ export default class Collection<T extends Mozel|primitive> {
 					continue;
 				}
 
-				// Replace placeholder Model with resolved reference
+				// Replace placeholder Mozel with resolved reference
 				this.list[i] = resolved;
 			}
 		}
@@ -113,7 +113,7 @@ export default class Collection<T extends Mozel|primitive> {
 	/**
 	 * Add an item to the Collection.
 	 * @param item							The item to add.
-	 * @param {boolean} init		If set to `true`, Model Collections may create and initialize a Model based on the given data.
+	 * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize a Mozel based on the given data.
 	 */
 	add(item:T|object, init = false) {
 		let final = this.revise(item, init);
@@ -132,7 +132,7 @@ export default class Collection<T extends Mozel|primitive> {
 	/**
 	 * Add an item to the Collection.
 	 * @param items							The items to add.
-	 * @param {boolean} init		If set to `true`, Model Collections may create and initialize Models based on the given data.
+	 * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize Mozels based on the given data.
 	 */
 	addItems(items:Array<object|T>, init = false) {
 		forEach(items, (item:object|T) => {
@@ -182,7 +182,7 @@ export default class Collection<T extends Mozel|primitive> {
 		if(listItem === specs) {
 			return true;
 		}
-		// Check model identity
+		// Check mozel identity
 		if(listItem instanceof Mozel && isData(specs)) {
 			// I don't know why TS won't resolve item to Data
 			return isMatch(listItem, specs);
@@ -259,7 +259,7 @@ export default class Collection<T extends Mozel|primitive> {
 				this.list[i] = templater.render(item);
 				return;
 			}
-			// Render Models recursively
+			// Render Mozels recursively
 			if(item instanceof Mozel) {
 				item.renderTemplates(templater);
 				return;

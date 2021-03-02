@@ -3,7 +3,7 @@ import Property from "@/Property";
 import {forEach, mapValues} from 'lodash';
 
 /**
- * GenericModel can take any number of Primitive Properties, which can be defined on the fly.
+ * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
  * will be validated as undefined Primitive types, and will be exported in the `export()` method.
  *
@@ -11,24 +11,24 @@ import {forEach, mapValues} from 'lodash';
 export default class GenericMozel<K extends Data = Data> extends Mozel {
 	[key:string]:any;
 
-	ModelDataType:{[I in keyof K]?:K[I]} = {};
+	MozelDataType:{[I in keyof K]?:K[I]} = {};
 
 	private genericProperties:Record<string,Property> = {};
 
 	static create<T extends Mozel>(data?:Data):T {
 		// Cannot use `K` in static method unfortunately
-		let model = <GenericMozel<any>><unknown>super.create(data);
+		let mozel = <GenericMozel<any>><unknown>super.create(data);
 		if(!data) {
-			// TS ignore: 'GenericModel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Model'.
-			return <T><unknown>model;
+			// TS ignore: 'GenericMozel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Mozel'.
+			return <T><unknown>mozel;
 		}
 
 		for(let key in data) {
-			model.initProperty(key);
+			mozel.initProperty(key);
 		}
 		// Try again, with defined properties
-		model.setData(data);
-		return <T><unknown>model;
+		mozel.setData(data);
+		return <T><unknown>mozel;
 	}
 
 	initialized = false;
@@ -59,10 +59,10 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
 	}
 
 	/**
-	 * Sets a Property value on the GenericModel. If the Property did not exist, it will be initialized first.
+	 * Sets a Property value on the GenericMozel. If the Property did not exist, it will be initialized first.
 	 * @param {string} property
 	 * @param value
-	 * @param {boolean} [init]			Allow intialization of Models and Collections.
+	 * @param {boolean} [init]			Allow intialization of Mozels and Collections.
 	 */
 	set(property:string, value:any, init?:boolean) {
 		this.initProperty(property);

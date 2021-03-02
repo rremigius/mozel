@@ -1,13 +1,13 @@
 import Mozel, { Data } from '@/Mozel';
 /**
- * GenericModel can take any number of Primitive Properties, which can be defined on the fly.
+ * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
  * will be validated as undefined Primitive types, and will be exported in the `export()` method.
  *
  */
 export default class GenericMozel<K extends Data = Data> extends Mozel {
     [key: string]: any;
-    ModelDataType: {
+    MozelDataType: {
         [I in keyof K]?: K[I];
     };
     private genericProperties;
@@ -15,10 +15,10 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
     initialized: boolean;
     constructor();
     /**
-     * Sets a Property value on the GenericModel. If the Property did not exist, it will be initialized first.
+     * Sets a Property value on the GenericMozel. If the Property did not exist, it will be initialized first.
      * @param {string} property
      * @param value
-     * @param {boolean} [init]			Allow intialization of Models and Collections.
+     * @param {boolean} [init]			Allow intialization of Mozels and Collections.
      */
     set(property: string, value: any, init?: boolean): boolean;
     setData(data: Data): void;

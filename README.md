@@ -219,19 +219,19 @@ between sub-Mozels and 3) inject Mozel dependencies.
 ```typescript
 let factory = new MozelFactory();
 
-@injectableModel()
+@injectableMozel()
 class Person extends Mozel {
     @collection(Dog)
 	dogs!:Collection<Dog>;
 }
 
-@injectableModel()
+@injectableMozel()
 class Dog extends Mozel {}
 
-@injectableModel()
+@injectableMozel()
 class Pug extends Dog {}
 
-@injectableModel()
+@injectableMozel()
 class StBernard extends Dog {}
 
 let james = factory.create(Person, {
@@ -242,8 +242,8 @@ console.log(james.dogs.get(0) instanceof Pug); // true
 console.log(james.dogs.get(1) instanceof StBernard); // true
 ```
 
-Both the MozelFactory and the decorator `@injectableModel` use a default dependency injection container.
-All `injectableModel`s will be added to that container and registered as candidates for instantiation,
+Both the MozelFactory and the decorator `@injectableMozel` use a default dependency injection container.
+All `injectableMozel`s will be added to that container and registered as candidates for instantiation,
 based on the `_type` property of the initialisation data.
 
 #### References between sub-Mozels
@@ -254,7 +254,7 @@ make references rather than nested Mozels.
 ```typescript
 let factory = new MozelFactory();
 
-@injectableModel()
+@injectableMozel()
 class Person extends Mozel {
     @collection(Person, {reference})
     likes!:Collection<Person>;
@@ -283,14 +283,14 @@ let romeFactory = new MozelFactory(rome);
 let egypt = MozelFactory.createDependencyContainer();
 let egyptFactory = new MozelFactory(egypt);
 
-@injectableModel(rome)
+@injectableMozel(rome)
 class Roman extends Mozel {
     static get type() {
         return 'Person';
     }
 }
 
-@injectableModel(egypt)
+@injectableMozel(egypt)
 class Egyptian extends Mozel {
     static get type() {
         return 'Person'
@@ -304,4 +304,15 @@ let egyptian = egyptFactory.create(data);
 console.log(roman instanceof Roman); // true
 console.log(egyptian instanceof Egyptian); // true
 
+```
+### Plain Javascript alternative
+
+Without Typescript, the injectable Mozels can be written like this:
+
+```javascript
+let rome = MozelFactory.createDependencyContainer();
+
+class Roman extends Mozel {}
+
+Roman.injectable(rome);
 ```

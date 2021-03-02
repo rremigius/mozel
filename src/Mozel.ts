@@ -16,7 +16,7 @@ import Collection, {CollectionOptions, CollectionType} from './Collection';
 import {find, forEach, get, isPlainObject, isString, cloneDeep} from 'lodash';
 
 import Templater from '@/Templater';
-import {inject, injectable, optional} from "inversify";
+import {Container, inject, injectable, optional} from "inversify";
 import {injectableMozel} from "@/inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
@@ -109,6 +109,11 @@ export default class Mozel {
 	static get type() {
 		return this.name; // Try using class name (will not work ben uglified).
 	};
+
+	static injectable(container:Container) {
+		// Non-typescript alternative for decorator
+		injectableMozel(container)(this);
+	}
 
 	private static _classPropertyDefinitions: (PropertyDefinition)[] = [];
 	private static _classCollectionDefinitions: (CollectionDefinition)[] = [];

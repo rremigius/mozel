@@ -1,4 +1,11 @@
-import Mozel, { alphanumeric } from "@/Mozel";
-
-export default Mozel;
-export {alphanumeric};
+export {
+	default as Mozel,
+	collection,
+	property,
+	alphanumeric,
+	Alphanumeric,
+	deep,
+	reference,
+	required,
+	immediate
+} from './Mozel';

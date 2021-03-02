@@ -9,11 +9,14 @@ import Model, {Data, ModelClass} from "@/Model";
  * @param {interfaces.Container} container
  */
 function bindModelType(Target:ModelClass, container:interfaces.Container) {
-	if(!Target.hasOwnProperty('type')) {
-		console.warn(`No 'type' getter defined for ${Target.name}. Cannot bind Model dependency.`);
-		return;
+	let type;
+	if(Target.hasOwnProperty('type')) {
+		type = Target.type;
+	} else {
+		type = Target.name;
+		console.warn(`No 'type' getter defined for ${Target.name}. Using class name, which is not always reliable.`);
 	}
-	container.bind<Model>(Model).to(Target).whenTargetNamed(Target.type);
+	container.bind<Model>(Model).to(Target).whenTargetNamed(type);
 }
 
 /**

@@ -7,7 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc"
   },
-  "keywords": ["model", "entity", "structure"],
+  "keywords": [
+    "model",
+    "entity",
+    "structure"
+  ],
   "author": "",
   "license": "ISC",
   "directories": {
@@ -25,7 +29,6 @@
     "@types/lodash": "^4.14.168",
     "@types/mocha": "^8.2.1",
     "@types/string-format": "^2.0.0",
-    "event-interface-mixin": "git+https://github.com/rremigius/event-interface-mixin.git",
     "inversify": "^5.0.5",
     "lodash": "^4.17.21",
     "reflect-metadata": "^0.1.13",

@@ -11,23 +11,40 @@ import MozelFactory from "@/MozelFactory";
 import GenericMozel from "../src/GenericMozel";
 
 describe('Mozel', () => {
-	it('.export() only returns properties defined with .defineProperty()', () => {
-		class FooMozel extends Mozel {
-			foo?:number;
-			bar?:number;
-			define() {
-				super.define();
-				this.defineProperty('foo');
+	describe(".export", () => {
+		it('only returns properties defined with .defineProperty()', () => {
+			class FooMozel extends Mozel {
+				foo?:number;
+				bar?:number;
+				define() {
+					super.define();
+					this.defineProperty('foo');
+				}
 			}
-		}
-		let mozel = new FooMozel();
+			let mozel = new FooMozel();
 
-		mozel.foo = 123;
-		mozel.bar = 456;
+			mozel.foo = 123;
+			mozel.bar = 456;
 
-		let exported = mozel.export();
-		assert.deepInclude(exported, {foo: 123}, "Defined property 'foo' was exported with correct value");
-		assert.notProperty(exported, 'bar', "Undefined property 'bar' was not exported");
+			let exported = mozel.export();
+			assert.deepInclude(exported, {foo: 123}, "Defined property 'foo' was exported with correct value");
+			assert.notProperty(exported, 'bar', "Undefined property 'bar' was not exported");
+		});
+		it("generates an object that can be imported to reconstruct the same mozels", () => {
+			class FooMozel extends Mozel {
+				@property(String)
+				foo?:string;
+				@collection(Number)
+				bar!:Collection<number>;
+			}
+			const foo = FooMozel.create<FooMozel>({
+				foo: 'foo',
+				bar: [1,2,3]
+			});
+			const reconstructed = FooMozel.create<FooMozel>(foo.export());
+			assert.equal(reconstructed.foo, foo.foo);
+			assert.deepEqual(reconstructed.bar, foo.bar);
+		});
 	});
 
 	it('.defineProperty() with type argument creates setter that only accepts type-checked values or undefined and throws an error otherwise.', () => {

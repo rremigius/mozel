@@ -5,13 +5,12 @@ import {Class, primitive} from 'validation-kit';
 import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
 
 import Templater from "./Templater";
-import EventInterface, {Event} from "event-interface-mixin";
 
 export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
 
-export class AddedEvent<T> extends Event<{item:T}>{}
-export class RemovedEvent<T> extends Event<{item:T, index:number}>{}
+type AddedListener<T> = (item:T)=>void;
+type RemovedListener<T> = (item:T, index?:number)=>void;
 
 export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
@@ -24,7 +23,8 @@ export default class Collection<T extends Mozel|primitive> {
 	relation:string;
 	isReference:boolean = false;
 
-	readonly eventInterface = new EventInterface();
+	addedListeners:AddedListener<T>[] = [];
+	removedListeners:RemovedListener<T>[] = [];
 
 	constructor(parent:Mozel, relation:string, type?:CollectionType, list = []) {
 		this.type = type;
@@ -125,7 +125,7 @@ export default class Collection<T extends Mozel|primitive> {
 			final.setParent(this.parent, this.relation);
 		}
 		this.list.push(<T>final);
-		this.eventInterface.fire<AddedEvent<T>>(AddedEvent.name, {item: final});
+		this.addedListeners.forEach(listener => listener(<T>final));
 		return this;
 	}
 
@@ -152,7 +152,7 @@ export default class Collection<T extends Mozel|primitive> {
 		if(track) {
 			this.removed.push(item);
 		}
-		this.eventInterface.fire<RemovedEvent<T>>(RemovedEvent.name, {item: item, index: index});
+		this.removedListeners.forEach(listener => listener(item, index));
 		return item;
 	}
 
@@ -267,15 +267,11 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 	}
 
-	onAdded(callback:(controller:T)=>void) {
-		this.eventInterface.on<AddedEvent<T>>(AddedEvent.name, (data:{item:T}) => {
-			callback(data.item);
-		});
+	onAdded(callback:AddedListener<T>) {
+		this.addedListeners.push(callback);
 	}
 
-	onRemoved(callback:(controller:T, index:number)=>void) {
-		this.eventInterface.on<RemovedEvent<T>>(RemovedEvent.name, (data:{item:T, index:number}) => {
-			callback(data.item, data.index);
-		});
+	onRemoved(callback:RemovedListener<T>) {
+		this.removedListeners.push(callback);
 	}
 }

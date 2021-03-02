@@ -3,7 +3,6 @@ Mozel
 
 A Mozel is a strongly-typed model, which ensures that its properties are of the correct type,
 both at runtime and compile-time (Typescript). It is easy to define a Mozel, and it brings a number of useful features.
-The JSON import/export feature makes it easy to share Mozels between frontend and backend.
 
 Mozel can be used both in Typescript and plain Javascript. 
 
@@ -13,22 +12,14 @@ Mozel can be used both in Typescript and plain Javascript.
 - Strongly-typed properties and collections (both compile-time and runtime)
 - Simple Typescript declarations
 - Deep change watching
-- Import/export from/to plain objects
+- Import/export from/to plain objects - allows easy transmission between systems through JSON.
 - Deep string templating (e.g. {"name": "{username}"})
 
 ## Getting Started
 
 ### Definition
 
-Javascript:
-
-```javascript
-import Mozel, {required} from "mozel";
-
-class Person extends Mozel {}
-Person.property('name', String, {required});
-Person.collection('nicknames', String);
-```
+A Mozel definition is simple and can be done both in Typescript and plain Javascript:
 
 Typescript:
 
@@ -42,6 +33,16 @@ class Person extends Mozel {
     @collection(String)
     nicknames!:Collection<String>;
 }
+```
+
+Javascript:
+
+```javascript
+import Mozel, {required} from "mozel";
+
+class Person extends Mozel {}
+Person.property('name', String, {required});
+Person.collection('nicknames', String);
 ```
 
 ### Instantiation
@@ -59,12 +60,17 @@ console.log(person.name); // James
 console.log(person.nicknames.list); // ['Johnny', 'Jack']
 ```
 
-### Nested models
+Only predefined and valid property values will be accepted.
 
+### Properties and nested Mozels
+
+Properties can be either primitive, or other Mozels. 
 Nested Mozels can be instantiated entirely by providing nested data to the `create` method, or partially by providing
 existing Mozels for the nested data.
 
 ```typescript
+// Definitions
+
 class Dog extends Mozel {
     @property(String, {required})
 	name!:string;
@@ -77,15 +83,19 @@ class Person extends Mozel {
     dog?:Dog;
 }
 
+// Instances
+
 let bobby = Dog.create({
     name: 'Bobby'
 });
 
+// Lisa has an existing dog
 let lisa = Person.create({
     name: 'Lisa',
     dog: bobby
 })
 
+// James has a new dog
 let james = Person.create({
     name: 'James',
     dog: { // will create a new Dog called Baxter
@@ -105,6 +115,8 @@ Collections can contain primitives (string/number/boolean) or Mozels. The defini
 the collection should be.
 
 ```typescript
+// Definitions 
+
 class Dog extends Mozel {
     @property(String, {required})
     name!:string;
@@ -116,6 +128,8 @@ class Person extends Mozel {
     @collection(Dog)
     dogs!:Collection<Dog>;
 }
+
+// Instances
 
 let james = Person.create({
     name: 'James',
@@ -132,6 +146,7 @@ The import/export feature makes it easy to transmit a Mozel as plain object data
 reconstructed into a Mozel on the other side.
 
 ```typescript
+// Definitions
 class Dog extends Mozel {
     @property(String, {required})
     name!:string;
@@ -143,6 +158,8 @@ class Person extends Mozel {
     @collection(Dog)
     dogs!:Collection<Dog>;
 }
+
+// Instances
 
 let person = Person.create({
    name: 'James',
@@ -162,6 +179,7 @@ need to persist even if some part of the hierarchy is replaced, they should be d
 hierarchy.
 
 ```typescript
+// Definitions
 class Toy extends Mozel {
     @property(String, {required, default: 'new'})
     state!:string;
@@ -175,11 +193,15 @@ class Person extends Mozel {
     dog?:Dog
 }
 
+// Instances
+
 let james = Person.create<Person>({
     dog: {
         toy: {}
     }
 });
+
+// Watchers
 
 james.watch({ // watcher A
     path: 'dog.toy.state',
@@ -217,7 +239,7 @@ between sub-Mozels and 3) inject Mozel dependencies.
 #### Mozel subtype instantiation
 
 ```typescript
-let factory = new MozelFactory();
+// Definitions
 
 @injectableMozel()
 class Person extends Mozel {
@@ -234,6 +256,9 @@ class Pug extends Dog {}
 @injectableMozel()
 class StBernard extends Dog {}
 
+// Instances
+
+let factory = new MozelFactory();
 let james = factory.create(Person, {
     dogs: [{_type: 'Pug'}, {_type: 'StBernard'}]
 });
@@ -252,13 +277,15 @@ All mozels have a built-in `gid` property. This property allows the MozelFactory
 make references rather than nested Mozels.
 
 ```typescript
-let factory = new MozelFactory();
+// Definitions
 
 @injectableMozel()
 class Person extends Mozel {
     @collection(Person, {reference})
     likes!:Collection<Person>;
 }
+
+// Instances
 
 let data = [
     {gid: 'james', likes: [{gid: 'peter'}, {gid: 'frank'}]},
@@ -267,6 +294,7 @@ let data = [
     {gid: 'frank', likes: [{gid: 'lisa'}]}
 ]
 
+let factory = new MozelFactory();
 let people = factory.createSet(data);
 
 console.log(people[0].likes.get(2) === people[3]); // true (both frank)
@@ -283,6 +311,8 @@ let romeFactory = new MozelFactory(rome);
 let egypt = MozelFactory.createDependencyContainer();
 let egyptFactory = new MozelFactory(egypt);
 
+// Definitions
+
 @injectableMozel(rome)
 class Roman extends Mozel {
     static get type() {
@@ -296,6 +326,8 @@ class Egyptian extends Mozel {
         return 'Person'
     }
 }
+
+// Instances
 
 let data = {_type: 'Person'};
 let roman = romeFactory.create(data);

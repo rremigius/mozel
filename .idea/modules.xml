@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/log.iml" filepath="$PROJECT_DIR$/log.iml" />
-      <module fileurl="file://$PROJECT_DIR$/modl.iml" filepath="$PROJECT_DIR$/modl.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mozel.iml" filepath="$PROJECT_DIR$/mozel.iml" />
     </modules>
   </component>
 </project>

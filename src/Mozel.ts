@@ -18,14 +18,14 @@ import {find, forEach, get, isPlainObject, isString, cloneDeep} from 'lodash';
 import Templater from '@/Templater';
 import {inject, injectable, optional} from "inversify";
 import {injectableModel} from "@/inversify";
-import ModelFactoryInterface, {ModelFactoryType} from "@/ModelFactoryInterface";
+import ModelFactoryInterface, {ModelFactoryType} from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
 import {alphanumeric, primitive} from 'validation-kit';
 
 // TYPES
 
 export type Data = { [key: string]: any }; // General-purpose plain object
-export type ModelConstructor<T extends Model> = {
+export type MozelConstructor<T extends Mozel> = {
 	new(...args: any[]): T;
 	type: string;
 };
@@ -39,17 +39,17 @@ export type PropertyWatcher<T extends PropertyValue> = {
 };
 
 // Types for Model creation by plain object
-export type PropertyKeys<T extends Model> = { [K in keyof T]: T[K] extends PropertyValue ? K : never }[keyof T];
-export type CollectionData<T> = T extends Model ? ModelData<T>[] : T extends primitive ? T[] | Collection<T> : never;
+export type PropertyKeys<T extends Mozel> = { [K in keyof T]: T[K] extends PropertyValue ? K : never }[keyof T];
+export type CollectionData<T> = T extends Mozel ? MozelData<T>[] : T extends primitive ? T[] | Collection<T> : never;
 export type PropertyData<T> =
 	T extends PropertyValue
-		? T extends Model
-		? ModelData<T>
+		? T extends Mozel
+		? MozelData<T>
 		: T extends Collection<infer C>
 			? CollectionData<C>
 			: T
 		: false; // not a PropertyValue
-export type ModelData<T extends Model> = T extends { ModelDataType: any }
+export type MozelData<T extends Mozel> = T extends { ModelDataType: any }
 	? T['ModelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
@@ -75,7 +75,7 @@ export function isData(value: any): value is Data {
  * @param {object} options
  */
 export function property(runtimeType?: PropertyType, options?: PropertyOptions) {
-	return function (target: Model, propertyName: string) {
+	return function (target: Mozel, propertyName: string) {
 		target.static.defineClassProperty(propertyName, runtimeType, options);
 	};
 }
@@ -88,7 +88,7 @@ export function property(runtimeType?: PropertyType, options?: PropertyOptions) 
  * @param {CollectionOptions} options
  */
 export function collection(runtimeType?: CollectionType, options?: CollectionOptions) {
-	return function (target: Model, propertyName: string) {
+	return function (target: Mozel, propertyName: string) {
 		target.static.defineClassCollection(propertyName, runtimeType, options);
 	};
 }
@@ -104,7 +104,7 @@ export const reference = true;
  * Model class providing runtime type checking and can be exported and imported to and from plain objects.
  */
 @injectable()
-export default class Model {
+export default class Mozel {
 	public _type?: string; // just for ModelData typing
 	static get type() {
 		return this.name; // Try using class name (will not work ben uglified).
@@ -115,11 +115,11 @@ export default class Model {
 
 	// Injected properties
 	private readonly modelFactory?: ModelFactoryInterface;
-	private readonly registry?: Registry<Model>;
+	private readonly registry?: Registry<Mozel>;
 
 	private properties: Record<string, Property> = {};
 
-	private parent: Model | null = null;
+	private parent: Mozel | null = null;
 	private parentLock: boolean = false;
 	private relation: string | null = null;
 
@@ -162,7 +162,7 @@ export default class Model {
 	 * Instantiate a Model based on raw data.
 	 * @param {Data} [data]
 	 */
-	static create<T extends Model>(data?: ModelData<T>):T {
+	static create<T extends Mozel>(data?: MozelData<T>):T {
 		// Instantiate this class.
 		const model = new this();
 		if (data) {
@@ -199,7 +199,7 @@ export default class Model {
 
 	constructor(
 		@inject(ModelFactoryType) @optional() modelFactory?: ModelFactoryInterface,
-		@inject(Registry) @optional() registry?: Registry<Model>
+		@inject(Registry) @optional() registry?: Registry<Mozel>
 	) {
 		this.modelFactory = modelFactory;
 		this.registry = registry;
@@ -217,8 +217,8 @@ export default class Model {
 		this.init();
 	}
 
-	get static(): typeof Model {
-		return <typeof Model>this.constructor;
+	get static(): typeof Mozel {
+		return <typeof Mozel>this.constructor;
 	}
 
 	init() {
@@ -248,11 +248,11 @@ export default class Model {
 
 	/**
 	 * Set the Model's parent Model.
-	 * @param {Model} parent			The parent this Model is a child of.
+	 * @param {Mozel} parent			The parent this Model is a child of.
 	 * @param {string} relation			The name of the parent-child relationship.
 	 * @param {boolean} lock			Locks the Model to the parent, so it cannot be transferred to another parent.
 	 */
-	setParent(parent: Model, relation: string, lock: boolean = true) {
+	setParent(parent: Mozel, relation: string, lock: boolean = true) {
 		if (this.parentLock) {
 			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
 		}
@@ -282,7 +282,7 @@ export default class Model {
 	define() {
 		// To be called for each class on the prototype chain
 		const _defineData = (Class: ModelClass) => {
-			if (Class !== Model) {
+			if (Class !== Mozel) {
 				// Define class properties of parent class
 				_defineData(Object.getPrototypeOf(Class));
 			}
@@ -326,7 +326,7 @@ export default class Model {
 	/**
 	 * Defines a property and instantiates it as a Collection.
 	 * @param {string} relation       				The relation name.
-	 * @param {Model} [type]       						The class of the items in the Collection.
+	 * @param {Mozel} [type]       						The class of the items in the Collection.
 	 * @param {CollectionOptions} [options]
 	 * @return {Collection}
 	 */
@@ -391,7 +391,7 @@ export default class Model {
 		this.watchers.push(watcher);
 		const currentValue = get(this, watcher.path);
 		if (watcher.immediate) {
-			Model.callWatcherHandler(watcher, get(this, watcher.path));
+			Mozel.callWatcherHandler(watcher, get(this, watcher.path));
 		} else {
 			watcher.currentValue = currentValue;
 		}
@@ -415,7 +415,7 @@ export default class Model {
 		this.watchers.forEach(watcher => {
 			// Simple case: the exact value we're watching changed
 			if (pathStr === watcher.path) {
-				Model.callWatcherHandler(watcher, newValue);
+				Mozel.callWatcherHandler(watcher, newValue);
 				return;
 			}
 
@@ -423,7 +423,7 @@ export default class Model {
 			if (watcher.path.substring(0, pathStr.length) === pathStr) {
 				const newWatcherValue = get(this, watcher.path);
 				if (newWatcherValue !== watcher.currentValue) {
-					Model.callWatcherHandler(watcher, newWatcherValue);
+					Mozel.callWatcherHandler(watcher, newWatcherValue);
 					watcher.currentValue = newWatcherValue;
 				}
 				return;
@@ -431,7 +431,7 @@ export default class Model {
 
 			// Child of watched property changed (deep watching only)
 			if (watcher.deep && pathStr.substring(0, watcher.path.length) === watcher.path) {
-				Model.callWatcherHandler(watcher, get(this, watcher.path)); // cannot keep track of previous value without cloning
+				Mozel.callWatcherHandler(watcher, get(this, watcher.path)); // cannot keep track of previous value without cloning
 			}
 		});
 	}

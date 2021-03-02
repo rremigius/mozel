@@ -1,4 +1,4 @@
-import Model, { alphanumeric } from "@/Model";
+import Mozel, { alphanumeric } from "@/Mozel";
 
-export default Model;
+export default Mozel;
 export {alphanumeric};

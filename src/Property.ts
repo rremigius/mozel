@@ -3,13 +3,13 @@ import Collection from '@/Collection';
 import {find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil} from 'lodash';
 
 import {isClass, isPrimitive, isAlphanumeric, isSubClass, Class, primitive} from "validation-kit"
-import Model from "@/Model";
+import Mozel from "@/Mozel";
 import {injectable} from "inversify";
 
 // TYPES
 
-export type ModelClass = typeof Model;
-export type ComplexValue = Model|Collection<any>;
+export type ModelClass = typeof Mozel;
+export type ComplexValue = Mozel|Collection<any>;
 export type ComplexType = ModelClass|Collection<any>;
 export type PropertyValue = primitive|Function|ComplexValue|undefined;
 export type PropertyInput = PropertyValue|object|any[];
@@ -27,7 +27,7 @@ export class Alphanumeric {}
 // TYPEGUARDS
 
 export function isComplexValue(value: any ): value is ComplexValue {
-	return value instanceof Model || value instanceof Collection;
+	return value instanceof Mozel || value instanceof Collection;
 }
 export function isComplexType(value:any): value is ComplexType {
 	return isModelClass(value) || value instanceof Collection;
@@ -36,7 +36,7 @@ export function isPropertyValue(value:any): value is PropertyValue {
 	return isComplexValue(value) || isPrimitive(value);
 }
 export function isModelClass(value:any): value is ModelClass {
-	return isSubClass(value, Model);
+	return isSubClass(value, Mozel);
 }
 export function isPrimitiveObject(object:any): object is PrimitiveObject {
 	return isPlainObject(object) && !find(object, (value:any, key:string) => {
@@ -91,9 +91,9 @@ export default class Property {
 	private _value:PropertyValue;
 	private _isDefault = false;
 
-	private readonly parent:Model;
+	private readonly parent:Mozel;
 
-	constructor(parent:Model, name:string, type?:PropertyType, options?:PropertyOptions) {
+	constructor(parent:Mozel, name:string, type?:PropertyType, options?:PropertyOptions) {
 		if(this.type && !includes(Property.AcceptedNonComplexTypes, this.type) && !isModelClass(this.type)) {
 			console.error("Type argument can be " + Property.AcceptedNonComplexTypes.join(',') + ", (subclass of) Model, Collection or undefined. Using default: undefined.");
 			type = undefined;
@@ -158,7 +158,7 @@ export default class Property {
 		if(this.value === undefined) {
 			return; // no error necessary, undefined is fine.
 		}
-		if(isModelClass(this.type) && this.value instanceof Model) {
+		if(isModelClass(this.type) && this.value instanceof Mozel) {
 			// Replace placeholder model with the resolved reference
 			let model = this.value.resolveReference();
 			if(!model) {
@@ -267,7 +267,7 @@ export default class Property {
 		}
 		// Apply
 		this.value = this.default;
-		if(this.value instanceof Model) {
+		if(this.value instanceof Mozel) {
 			this.value.applyDefaults();
 		}
 		this._isDefault = true;

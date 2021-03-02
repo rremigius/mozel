@@ -1,23 +1,23 @@
 import {Container, inject, injectable, optional} from "inversify";
 import {Class} from "validation-kit";
 import Registry from "@/Registry";
-import Model, {ModelConstructor, ModelData} from "@/Model";
+import Mozel, {MozelConstructor, MozelData} from "@/Mozel";
 import modelContainer from "@/inversify";
 import {alphanumeric} from "validation-kit";
-import ModelFactoryInterface, {ModelFactoryType} from "@/ModelFactoryInterface";
+import ModelFactoryInterface, {ModelFactoryType} from "@/MozelFactoryInterface";
 
 @injectable()
-export default class ModelFactory implements ModelFactoryInterface {
+export default class MozelFactory implements ModelFactoryInterface {
 
 	// If not set in constructor params, will be set in constructor. And readonly, so will always have value.
 	readonly diContainer:Container;
-	readonly registry:Registry<Model>;
+	readonly registry:Registry<Mozel>;
 
 	constructor(
 		@inject('container') @optional() diContainer?:Container,
-		@inject(Registry) @optional() modelRegistry?:Registry<Model>
+		@inject(Registry) @optional() modelRegistry?:Registry<Mozel>
 	) {
-		this.registry = modelRegistry || new Registry<Model>();
+		this.registry = modelRegistry || new Registry<Mozel>();
 
 		this.diContainer = new Container({autoBindInjectable:true});
 		this.diContainer.parent = diContainer ? diContainer : modelContainer;
@@ -38,11 +38,11 @@ export default class ModelFactory implements ModelFactoryInterface {
 		return this.registry.findMaxGid() + 1;
 	}
 
-	destroy(model:Model) {
+	destroy(model:Mozel) {
 		this.registry.remove(model);
 	}
 
-	createSet<T extends Model>(ExpectedClass:ModelConstructor<T>, data:ModelData<T>[]) {
+	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
 		const models = data.map(item => this.create<T>(ExpectedClass, item));
 		models.forEach(item => item.resolveReferences());
 		return models;
@@ -58,19 +58,19 @@ export default class ModelFactory implements ModelFactoryInterface {
 	 * @param {boolean} root			Set to true if Model is root of its hierarchy and references should be resolved recursively after its creation.
 	 * @param {boolean} asReference		Set to true if the Model will only be a reference to another Model. It will not be registered.
 	 */
-	create<T extends Model>(ExpectedClass:ModelConstructor<T>, data?:ModelData<T>, root:boolean = false, asReference:boolean = false) {
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root:boolean = false, asReference:boolean = false) {
 		function isT(model:any) : model is T {
 			return model instanceof ExpectedClass;
 		}
 
 		let model;
 		try {
-			if (data && data._type && this.diContainer.isBoundNamed(Model, data._type)) {
+			if (data && data._type && this.diContainer.isBoundNamed(Mozel, data._type)) {
 				// Try to get most specific class
-				model = this.diContainer.getNamed<Model>(Model, data._type);
+				model = this.diContainer.getNamed<Mozel>(Mozel, data._type);
 			} else if (ExpectedClass) {
 				// Try to resolve exact class
-				model = this.diContainer.resolve<Model>(ExpectedClass);
+				model = this.diContainer.resolve<Mozel>(ExpectedClass);
 			}
 			if(!model && ExpectedClass) {
 				console.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);

@@ -1,4 +1,4 @@
-import Model, {Data, isData} from './Model';
+import Mozel, {Data, isData} from './Model';
 import Property, {isComplexValue, isModelClass, ModelClass} from './Property';
 
 import {Class, primitive} from 'validation-kit';
@@ -13,20 +13,20 @@ export type CollectionOptions = {reference?:boolean};
 export class AddedEvent<T> extends Event<{item:T}>{}
 export class RemovedEvent<T> extends Event<{item:T, index:number}>{}
 
-export default class Collection<T extends Model|primitive> {
+export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
 
 	private readonly type?:CollectionType;
 	private list:T[];
 	private readonly removed:T[];
 
-	parent:Model;
+	parent:Mozel;
 	relation:string;
 	isReference:boolean = false;
 
 	readonly eventInterface = new EventInterface();
 
-	constructor(parent:Model, relation:string, type?:CollectionType, list = []) {
+	constructor(parent:Mozel, relation:string, type?:CollectionType, list = []) {
 		this.type = type;
 		this.parent = parent;
 		this.relation = relation;
@@ -48,7 +48,7 @@ export default class Collection<T extends Model|primitive> {
 		return Property.checkType(value, this.type);
 	}
 
-	setParent(parent:Model){
+	setParent(parent:Mozel){
 		this.parent = parent;
 	}
 
@@ -79,7 +79,7 @@ export default class Collection<T extends Model|primitive> {
 			// Have all Models resolve their references
 			this.each((item:T) => {
 				// The Collection type is a Model class, so our items are Models
-				(<Model>item).resolveReferences();
+				(<Mozel>item).resolveReferences();
 			});
 			return;
 		}
@@ -88,7 +88,7 @@ export default class Collection<T extends Model|primitive> {
 		for(let i = this.list.length-1; i >= 0; i--) {
 			let item = this.list[i];
 
-			if(item instanceof Model) {
+			if(item instanceof Mozel) {
 				let resolved = this.parent.resolveReference(item);
 
 				if(!resolved) {
@@ -183,7 +183,7 @@ export default class Collection<T extends Model|primitive> {
 			return true;
 		}
 		// Check model identity
-		if(listItem instanceof Model && isData(specs)) {
+		if(listItem instanceof Mozel && isData(specs)) {
 			// I don't know why TS won't resolve item to Data
 			return isMatch(listItem, specs);
 		}
@@ -225,7 +225,7 @@ export default class Collection<T extends Model|primitive> {
 
 	export():(Data|primitive)[] {
 	  return map(this.list, (item:T) => {
-	  	if(item instanceof Model) {
+	  	if(item instanceof Mozel) {
 				return item.export();
 			}
 	  	return item;
@@ -234,7 +234,7 @@ export default class Collection<T extends Model|primitive> {
 
 	/**
    * @param index
-   * @return {Model}
+   * @return {Mozel}
    */
 	get(index:number):T|undefined {
 		return this.list[index];
@@ -260,7 +260,7 @@ export default class Collection<T extends Model|primitive> {
 				return;
 			}
 			// Render Models recursively
-			if(item instanceof Model) {
+			if(item instanceof Mozel) {
 				item.renderTemplates(templater);
 				return;
 			}

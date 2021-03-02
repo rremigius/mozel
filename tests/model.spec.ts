@@ -1,18 +1,18 @@
 import {assert} from 'chai';
 import {describe,it} from 'mocha';
-import Model, {Alphanumeric, collection, Data, injectableModel, ModelData, property,} from '@/Model';
+import Mozel, {Alphanumeric, collection, Data, injectableModel, ModelData, property,} from '@/Model';
 import Collection from '@/Collection';
 
 import {forEach, includes, uniq} from 'lodash';
 import {Container, injectable} from "inversify";
 import modelContainer from "@/inversify";
 import {reference, required, alphanumeric} from "@/Model";
-import ModelFactory from "@/ModelFactory";
-import GenericModel from "../src/GenericModel";
+import MozelFactory from "@/ModelFactory";
+import GenericMozel from "../src/GenericModel";
 
 describe('Model', () => {
 	it('.export() only returns properties defined with .defineProperty()', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			foo?:number;
 			bar?:number;
 			define() {
@@ -32,13 +32,13 @@ describe('Model', () => {
 
 	it('.defineProperty() with type argument creates setter that only accepts type-checked values or undefined and throws an error otherwise.', () => {
 		// TS: Ignore model[property] access
-		let model = <Model&{[key:string]:any}>new Model();
+		let model = <Mozel&{[key:string]:any}>new Mozel();
 		model.defineProperty('foo', String);
 		model.defineProperty('bar', Number);
 		model.defineProperty('qux', Boolean);
-		model.defineProperty('baz', Model);
+		model.defineProperty('baz', Mozel);
 
-		let obj = {}, arr:any[] = [], func = ()=>{}, otherModel = new Model(), collection = new Collection(model, 'xyz', Model);
+		let obj = {}, arr:any[] = [], func = ()=>{}, otherModel = new Mozel(), collection = new Collection(model, 'xyz', Mozel);
 		const acceptable:{[key:string]:any[]} = {
 			foo: ['abc', undefined],
 			bar: [123, undefined],
@@ -70,10 +70,10 @@ describe('Model', () => {
 
 	it('.defineProperty with without type argument creates setter that accepts only plain values or undefined.', () => {
 		// TS: Ignore model[property] access
-		let model = <Model&{[key:string]:any}>new Model();
+		let model = <Mozel&{[key:string]:any}>new Mozel();
 		model.defineProperty('foo');
 
-		let obj = {}, arr:any[] = [], func = ()=>{}, otherModel = new Model(), collection = new Collection(model, 'xyz', Model);
+		let obj = {}, arr:any[] = [], func = ()=>{}, otherModel = new Mozel(), collection = new Collection(model, 'xyz', Mozel);
 		const acceptable:any[] = ['abc', 123, true, undefined];
 
 		const values = ['abc', 123, true, obj, arr, func, otherModel, collection];
@@ -95,7 +95,7 @@ describe('Model', () => {
 	});
 
 	it('.create() initializes Model with properties from argument, based on properties defined in .defineData with .defineProperty().', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('foo');
@@ -113,13 +113,13 @@ describe('Model', () => {
 	});
 
 	it('.create() data initialization recursively initializes sub-models.', ()=>{
-		class BarModel extends Model {
+		class BarModel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('bar');
 			}
 		}
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('foo', FooModel);
@@ -150,7 +150,7 @@ describe('Model', () => {
 	});
 
 	it("model properties and collections can be statically defined", () => {
-		class FooModel extends Model {}
+		class FooModel extends Mozel {}
 		FooModel.property('foo', String);
 		FooModel.collection('bar', Number);
 
@@ -163,14 +163,14 @@ describe('Model', () => {
 
 	it('constructor using exported data from another object clones the exported object recursively.', () => {
 		@injectable()
-		class BarModel extends Model {
+		class BarModel extends Mozel {
 			define() {
 				super.define();
 				this.defineProperty('qux');
 			}
 		}
 		@injectable()
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			define() {
 				super.define();
 				this.defineCollection('bars', BarModel);
@@ -199,7 +199,7 @@ describe('Model', () => {
 	});
 
 	it('@property decorator defines Property based on the decorated property.', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(String)
 			foo?:String;
 			@property(String)
@@ -221,7 +221,7 @@ describe('Model', () => {
 	});
 
 	it('@collection decorator defines Property based on the decorated property.', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(String)
 			foo?:String;
 
@@ -238,11 +238,11 @@ describe('Model', () => {
 	});
 
 	it("constructor applies defaults for Properties recursively.", () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(String, {default: 'abc'})
 			qux?:String;
 		}
-		class BarModel extends Model {
+		class BarModel extends Mozel {
 			@property(FooModel, {default: new FooModel()})
 			foo?:FooModel;
 			@property(Number, {default:123})
@@ -265,7 +265,7 @@ describe('Model', () => {
 	});
 
 	it('cannot set required properties to null or undefined.', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(String, {default:'abc', required:true})
 			foo?:string|null; // setting incorrect type for test's sake
 		}
@@ -279,7 +279,7 @@ describe('Model', () => {
 	});
 
 	it('required Properties without defaults get generated default values', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(String, {required:true})
 			fooString!:string;
 			@property(Number, {required:true})
@@ -288,35 +288,35 @@ describe('Model', () => {
 			fooBoolean!:boolean;
 			@property(Alphanumeric, {required:true})
 			fooAlphanumeric!:alphanumeric;
-			@property(Model, {required:true})
-			fooModel!:Model;
+			@property(Mozel, {required:true})
+			fooModel!:Mozel;
 		}
 		let model = new FooModel();
 		assert.equal(model.fooString, '', "String standard default set correctly");
 		assert.equal(model.fooNumber, 0, "Numberic standard default set correctly");
 		assert.equal(model.fooBoolean, false, "Boolean standard default set correctly");
 		assert.equal(model.fooAlphanumeric, '', "Alphanumeric standard default set correctly");
-		assert.instanceOf(model.fooModel, Model, "Model standard default set correctly");
+		assert.instanceOf(model.fooModel, Mozel, "Model standard default set correctly");
 	});
 
 	it('created with ModelFactory generates submodels based on _type property.', () => {
 		let container = new Container({autoBindInjectable:true});
 		container.parent = modelContainer;
 
-		const factory = new ModelFactory(container);
+		const factory = new MozelFactory(container);
 
 		@injectableModel(container)
-		class FooModel extends Model {}
+		class FooModel extends Mozel {}
 
 		@injectableModel(container)
 		class SubFooModel extends FooModel {}
 
 		@injectableModel(container)
-		class BarModel extends Model {
-			@property(Model)
-			foo?:Model;
-			@collection(Model)
-			foos!:Collection<Model>;
+		class BarModel extends Mozel {
+			@property(Mozel)
+			foo?:Mozel;
+			@collection(Mozel)
+			foos!:Collection<Mozel>;
 		}
 
 		// Instantiate model
@@ -330,7 +330,7 @@ describe('Model', () => {
 		assert.instanceOf(bar.foos.get(1), SubFooModel, "Subclass was instantiated correctly")
 	});
 	it('function as default Property value is called to compute default.', () => {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(Number, {required, default: ()=>1+1})
 			foo!:number;
 		}
@@ -343,11 +343,11 @@ describe('Model', () => {
 		const container = new Container({autoBindInjectable:true});
 
 		@injectableModel(container)
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(FooModel)
 			foo?:FooModel;
 		}
-		const factory = new ModelFactory(container);
+		const factory = new MozelFactory(container);
 		const model1 = factory.create<FooModel>(FooModel);
 		const model2 = factory.create<FooModel>(FooModel, {
 			foo: {}
@@ -363,7 +363,7 @@ describe('Model', () => {
 		assert.equal(model3.gid, 'bar');
 	});
 	it('property can be a function.', ()=> {
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(Function)
 			foo?:()=>void;
 		}
@@ -377,7 +377,7 @@ describe('Model', () => {
 		assert.equal(foo.foo, expected);
 	});
 	it('notifies changes to watchers and deep watchers.', ()=>{
-		class FooModel extends Model {
+		class FooModel extends Mozel {
 			@property(FooModel)
 			foo?:FooModel;
 

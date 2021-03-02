@@ -1,6 +1,6 @@
 import Collection from "@/Collection";
-import Model, {collection, injectableModel, property, reference} from "@/Model";
-import ModelFactory from "@/ModelFactory";
+import Mozel, {collection, injectableModel, property, reference} from "@/Model";
+import MozelFactory from "@/ModelFactory";
 import {it} from "mocha";
 import {Container} from "inversify";
 import {assert} from "chai";
@@ -9,10 +9,10 @@ describe("ModelFactory", () => {
 	describe(".createSet", () => {
 		it("resolves references within the set based on gid", () => {
 			const container = new Container({autoBindInjectable:true});
-			let factory = new ModelFactory(container);
+			let factory = new MozelFactory(container);
 
 			@injectableModel(container)
-			class Person extends Model {
+			class Person extends Mozel {
 				@collection(Person, {reference})
 				likes!:Collection<Person>;
 			}
@@ -35,7 +35,7 @@ describe("ModelFactory", () => {
 			const container = new Container({autoBindInjectable:true});
 
 			@injectableModel(container)
-			class FooModel extends Model {
+			class FooModel extends Mozel {
 				@collection(FooModel)
 				fooChildren!:Collection<FooModel>;
 				@property(FooModel, {reference})
@@ -43,7 +43,7 @@ describe("ModelFactory", () => {
 				@collection(FooModel, {reference})
 				fooReferences!:Collection<FooModel>;
 			}
-			const factory = new ModelFactory(container);
+			const factory = new MozelFactory(container);
 			const foo = factory.create<FooModel>(FooModel, {
 				gid: 1,
 				fooChildren: [
@@ -76,28 +76,28 @@ describe("ModelFactory", () => {
 		});
 		it('resolves Model types based on its container', () => {
 			let rome = new Container({autoBindInjectable:true});
-			let romeFactory = new ModelFactory(rome);
+			let romeFactory = new MozelFactory(rome);
 
 			let egypt = new Container({autoBindInjectable:true});
-			let egyptFactory = new ModelFactory(egypt);
+			let egyptFactory = new MozelFactory(egypt);
 
 			@injectableModel(rome)
-			class Roman extends Model {
+			class Roman extends Mozel {
 				static get type() {
 					return 'Person';
 				}
 			}
 
 			@injectableModel(egypt)
-			class Egyptian extends Model {
+			class Egyptian extends Mozel {
 				static get type() {
 					return 'Person'
 				}
 			}
 
 			const data = {_type: 'Person'};
-			let roman = romeFactory.create(Model, data);
-			let egyptian = egyptFactory.create(Model, data);
+			let roman = romeFactory.create(Mozel, data);
+			let egyptian = egyptFactory.create(Mozel, data);
 
 			assert.instanceOf(roman, Roman, "Roman model instantiated correctly");
 			assert.instanceOf(egyptian, Egyptian, "Egyptian model instantiated correctly");

@@ -1,4 +1,4 @@
-import Model, {Data, ModelData} from '@/Model';
+import Mozel, {Data, MozelData} from '@/Mozel';
 import Property from "@/Property";
 import {forEach, mapValues} from 'lodash';
 
@@ -8,16 +8,16 @@ import {forEach, mapValues} from 'lodash';
  * will be validated as undefined Primitive types, and will be exported in the `export()` method.
  *
  */
-export default class GenericModel<K extends Data = Data> extends Model {
+export default class GenericMozel<K extends Data = Data> extends Mozel {
 	[key:string]:any;
 
 	ModelDataType:{[I in keyof K]?:K[I]} = {};
 
 	private genericProperties:Record<string,Property> = {};
 
-	static create<T extends Model>(data?:Data):T {
+	static create<T extends Mozel>(data?:Data):T {
 		// Cannot use `K` in static method unfortunately
-		let model = <GenericModel<any>><unknown>super.create(data);
+		let model = <GenericMozel<any>><unknown>super.create(data);
 		if(!data) {
 			// TS ignore: 'GenericModel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Model'.
 			return <T><unknown>model;
@@ -38,10 +38,10 @@ export default class GenericModel<K extends Data = Data> extends Model {
 		// All inherited properties and methods have been set; for all future properties, define Properties.
 		this.initialized = true;
 		return new Proxy(this, {
-			get: (target:GenericModel<K>, name:string) => {
+			get: (target:GenericMozel<K>, name:string) => {
 				return target[name];
 			},
-			set: (target:GenericModel<K>, name:string, value:any) => {
+			set: (target:GenericMozel<K>, name:string, value:any) => {
 				// Still in constructor procedure, or property exists; act like a normal class.
 				if(!this.initialized || name in target) {
 					target[name] = value;

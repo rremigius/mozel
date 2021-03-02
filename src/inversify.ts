@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import {Container, injectable, interfaces} from "inversify";
-import Model, {Data, ModelClass} from "@/Model";
+import Mozel, {ModelClass} from "@/Mozel";
 
 /**
  * Registers the class to the default model DI Container, under the class name or static `type`.
@@ -16,7 +16,7 @@ function bindModelType(Target:ModelClass, container:interfaces.Container) {
 		type = Target.name;
 		console.warn(`No 'type' getter defined for ${Target.name}. Using class name, which is not always reliable.`);
 	}
-	container.bind<Model>(Model).to(Target).whenTargetNamed(type);
+	container.bind<Mozel>(Mozel).to(Target).whenTargetNamed(type);
 }
 
 /**

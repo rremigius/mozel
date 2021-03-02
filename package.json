@@ -1,0 +1,37 @@
+{
+  "name": "modl",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "directories": {
+    "test": "tests"
+  },
+  "description": "",
+  "dependencies": {
+    "@types/chai": "^4.2.15",
+    "@types/lodash": "^4.14.168",
+    "@types/mocha": "^8.2.1",
+    "@types/string-format": "^2.0.0",
+    "event-interface-mixin": "git+https://github.com/rremigius/event-interface-mixin.git",
+    "inversify": "^5.0.5",
+    "lodash": "^4.17.21",
+    "reflect-metadata": "^0.1.13",
+    "string-format": "^2.0.0",
+    "tslib": "^2.1.0",
+    "validation-kit": "git+https://github.com/rremigius/validation-kit.git"
+  },
+  "devDependencies": {
+    "chai": "^4.3.0",
+    "esm": "^3.2.25",
+    "mocha": "^8.3.0",
+    "ts-mocha": "^8.0.0",
+    "ts-node": "^9.1.1",
+    "tsconfig-paths": "^3.9.0",
+    "typescript": "^4.2.2"
+  }
+}

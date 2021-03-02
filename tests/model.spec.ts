@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 import {describe,it} from 'mocha';
-import Model, {Alphanumeric, collection, injectableModel, property,} from '@/Model';
+import Model, {Alphanumeric, collection, Data, injectableModel, ModelData, property,} from '@/Model';
 import Collection from '@/Collection';
 
 import {forEach, includes, uniq} from 'lodash';
@@ -8,6 +8,7 @@ import {Container, injectable} from "inversify";
 import modelContainer from "@/inversify";
 import {reference, required, alphanumeric} from "@/Model";
 import ModelFactory from "@/ModelFactory";
+import GenericModel from "../src/GenericModel";
 
 describe('Model', () => {
 	it('.export() only returns properties defined with .defineProperty()', () => {
@@ -101,8 +102,8 @@ describe('Model', () => {
 			}
 		}
 
-		// TS: Ignore model[property] access
-		let foo = <{[key:string]:any}>FooModel.create({
+		// TS: Ignore model[property] access, use GenericModel type to allow any data
+		let foo = <{[key:string]:any}>FooModel.create<any>({
 			foo: 123,
 			bar: 456
 		});
@@ -127,8 +128,8 @@ describe('Model', () => {
 			}
 		}
 
-		// TS: Ignore model[property] access
-		let foo = <{[key:string]:any}>FooModel.create({
+		// TS: Ignore model[property] access, use GenericModel to allow any input data
+		let foo = <{[key:string]:any}>FooModel.create<any>({
 			foo: {
 				qux: 123
 			},
@@ -195,7 +196,7 @@ describe('Model', () => {
 			qux?:FooModel;
 		}
 
-		let model = <FooModel>FooModel.create({
+		let model = <FooModel>FooModel.create<any>({
 			foo: 'bar'
 		});
 		model.bar = 'foo';
@@ -216,7 +217,7 @@ describe('Model', () => {
 			bar?:Collection<FooModel>;
 		}
 
-		let foo = <FooModel>FooModel.create({
+		let foo = <FooModel>FooModel.create<any>({
 			bar: [{foo:'abc'}]
 		});
 
@@ -413,31 +414,39 @@ describe('Model', () => {
 			bar?:string;
 		}
 
-		const container = new Container({autoBindInjectable:true});
-		const factory = new ModelFactory(container);
-		const foo = factory.create<FooModel>(FooModel, {
+		const model = FooModel.create<FooModel>({
 			foo: {
-				bar: 'foobar'
+				foo: {
+					bar: 'foobar'
+				}
 			}
 		});
 
 		let count = 0;
-		foo.watch({
-			path: 'foo.bar',
+		model.watch({
+			path: 'foo.foo.bar',
 			handler: (newValue, oldValue) => {
 				assert.equal(oldValue, 'foobar', "Old value was correct");
 				assert.equal(newValue, 'barfoo', "New value was correct");
 				count++;
 			}
 		});
-		foo.watch({
+		model.watch({
+			path: 'foo.foo',
+			handler: (newValue, oldValue) => {
+				assert.equal((<FooModel>oldValue).bar, 'foobar', "Old nested value was correct");
+				assert.equal((<FooModel>newValue).bar, 'barfoo', "New nested value was correct");
+				count++;
+			}
+		})
+		model.watch({
 			path: 'bar',
 		 	handler: ()=> {
 				assert.ok(false, "Incorrect watched notified");
 				count++;
 			}
 		});
-		foo.watch({
+		model.watch({
 			path: 'foo',
 			deep: true,
 			handler: ()=> {
@@ -445,7 +454,7 @@ describe('Model', () => {
 				count++;
 			}
 		});
-		foo.watch({
+		model.watch({
 			path: 'bar',
 			deep: true,
 			handler: ()=>{
@@ -454,8 +463,9 @@ describe('Model', () => {
 			}
 		});
 
-		foo.foo && (foo.foo.bar = 'barfoo');
+		if(!model.foo) return;
+		model.foo.setData({foo: {bar: 'barfoo'}}, true);
 
-		assert.equal(count, 2, "Correct number of handlers called");
+		assert.equal(count, 3, "Correct number of handlers called");
 	});
 });

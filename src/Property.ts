@@ -319,9 +319,9 @@ export default class Property {
 		if(this.type && isModelClass(this.type) && isPlainObject(value)) {
 			// Create model and try to set again, without type check
 			let model = this.parent.create(this.type, value, false, this.isReference);
-				this._set(model);
-				return true;
-			}
+			this._set(model);
+			return true;
+		}
 
 		return false;
 	}

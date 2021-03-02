@@ -13,7 +13,7 @@ import Property, {
 } from './Property';
 import Collection, {CollectionOptions, CollectionType} from './Collection';
 
-import {find, forEach, get, isPlainObject, isString} from 'lodash';
+import {find, forEach, get, isPlainObject, isString, cloneDeep} from 'lodash';
 
 import Templater from '@/Templater';
 import {inject, injectable, optional} from "inversify";
@@ -144,13 +144,13 @@ export default class Model {
 	 * Instantiate a Model based on raw data.
 	 * @param {Data} [data]
 	 */
-	static create(data?: Data): Model {
+	static create<T extends Model>(data?: ModelData<T>):T {
 		// Instantiate this class.
 		const model = new this();
 		if (data) {
 			model.setData(data, true);
 		}
-		return model;
+		return <T>model;
 	}
 
 	static getParentClass() {
@@ -371,16 +371,20 @@ export default class Model {
 
 	watch(watcher: PropertyWatcher<PropertyValue>) {
 		this.watchers.push(watcher);
+		const currentValue = get(this, watcher.path);
 		if (watcher.immediate) {
-			Model.callWatcherHandler(watcher, get(this, watcher.path), undefined);
+			Model.callWatcherHandler(watcher, get(this, watcher.path));
+		} else {
+			watcher.currentValue = currentValue;
 		}
 	}
 
-	private static callWatcherHandler(watcher: PropertyWatcher<PropertyValue>, newValue: PropertyValue, oldValue: PropertyValue) {
+	private static callWatcherHandler(watcher: PropertyWatcher<PropertyValue>, newValue: PropertyValue) {
 		if (watcher.type && !Property.checkType(newValue, watcher.type)) {
 			throw new Error(`Property change event expected ${watcher.type}, ${typeof (newValue)} given.`);
 		}
-		return watcher.handler(newValue, oldValue);
+		watcher.handler(newValue, watcher.currentValue);
+		watcher.currentValue = watcher.deep ? cloneDeep(watcher.currentValue) : watcher.currentValue;
 	};
 
 	propertyChanged(path: string[], newValue: PropertyValue, oldValue: PropertyValue) {
@@ -393,7 +397,7 @@ export default class Model {
 		this.watchers.forEach(watcher => {
 			// Simple case: the exact value we're watching changed
 			if (pathStr === watcher.path) {
-				Model.callWatcherHandler(watcher, newValue, oldValue);
+				Model.callWatcherHandler(watcher, newValue);
 				return;
 			}
 
@@ -401,7 +405,7 @@ export default class Model {
 			if (watcher.path.substring(0, pathStr.length) === pathStr) {
 				const newWatcherValue = get(this, watcher.path);
 				if (newWatcherValue !== watcher.currentValue) {
-					Model.callWatcherHandler(watcher, newWatcherValue, watcher.currentValue);
+					Model.callWatcherHandler(watcher, newWatcherValue);
 					watcher.currentValue = newWatcherValue;
 				}
 				return;
@@ -409,7 +413,7 @@ export default class Model {
 
 			// Child of watched property changed (deep watching only)
 			if (watcher.deep && pathStr.substring(0, watcher.path.length) === watcher.path) {
-				Model.callWatcherHandler(watcher, get(this, watcher.path), undefined); // cannot keep track of previous value without cloning
+				Model.callWatcherHandler(watcher, get(this, watcher.path)); // cannot keep track of previous value without cloning
 			}
 		});
 	}

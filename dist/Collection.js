@@ -2,15 +2,11 @@ import Mozel, { isData } from './Mozel';
 import Property, { isComplexValue, isMozelClass } from './Property';
 import { forEach, isPlainObject, isString, map, isMatch } from 'lodash';
 import Templater from "./Templater";
-import EventInterface, { Event } from "event-interface-mixin";
-export class AddedEvent extends Event {
-}
-export class RemovedEvent extends Event {
-}
 export default class Collection {
     constructor(parent, relation, type, list = []) {
         this.isReference = false;
-        this.eventInterface = new EventInterface();
+        this.addedListeners = [];
+        this.removedListeners = [];
         this.type = type;
         this.parent = parent;
         this.relation = relation;
@@ -98,7 +94,7 @@ export default class Collection {
             final.setParent(this.parent, this.relation);
         }
         this.list.push(final);
-        this.eventInterface.fire(AddedEvent.name, { item: final });
+        this.addedListeners.forEach(listener => listener(final));
         return this;
     }
     /**
@@ -123,7 +119,7 @@ export default class Collection {
         if (track) {
             this.removed.push(item);
         }
-        this.eventInterface.fire(RemovedEvent.name, { item: item, index: index });
+        this.removedListeners.forEach(listener => listener(item, index));
         return item;
     }
     /**
@@ -225,14 +221,10 @@ export default class Collection {
         }
     }
     onAdded(callback) {
-        this.eventInterface.on(AddedEvent.name, (data) => {
-            callback(data.item);
-        });
+        this.addedListeners.push(callback);
     }
     onRemoved(callback) {
-        this.eventInterface.on(RemovedEvent.name, (data) => {
-            callback(data.item, data.index);
-        });
+        this.removedListeners.push(callback);
     }
 }
 //# sourceMappingURL=Collection.js.map

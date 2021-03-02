@@ -2,20 +2,12 @@ import Mozel, { Data } from './Mozel';
 import { MozelClass } from './Property';
 import { Class, primitive } from 'validation-kit';
 import Templater from "./Templater";
-import EventInterface, { Event } from "event-interface-mixin";
 export declare type CollectionType = MozelClass | Class;
 export declare type CollectionOptions = {
     reference?: boolean;
 };
-export declare class AddedEvent<T> extends Event<{
-    item: T;
-}> {
-}
-export declare class RemovedEvent<T> extends Event<{
-    item: T;
-    index: number;
-}> {
-}
+declare type AddedListener<T> = (item: T) => void;
+declare type RemovedListener<T> = (item: T, index?: number) => void;
 export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
     private readonly type?;
@@ -24,7 +16,8 @@ export default class Collection<T extends Mozel | primitive> {
     parent: Mozel;
     relation: string;
     isReference: boolean;
-    readonly eventInterface: EventInterface;
+    addedListeners: AddedListener<T>[];
+    removedListeners: RemovedListener<T>[];
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: never[]);
     getTypeName(): string;
     checkType(value: any): value is T;
@@ -84,6 +77,7 @@ export default class Collection<T extends Mozel | primitive> {
     set(index: number, item: T): void;
     isDefault(): boolean;
     renderTemplates(templater: Templater | Data): void;
-    onAdded(callback: (controller: T) => void): void;
-    onRemoved(callback: (controller: T, index: number) => void): void;
+    onAdded(callback: AddedListener<T>): void;
+    onRemoved(callback: RemovedListener<T>): void;
 }
+export {};

@@ -7,5 +7,6 @@ export {
 	deep,
 	reference,
 	required,
-	immediate
+	immediate,
+	LogLevel
 } from './Mozel';

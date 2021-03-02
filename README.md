@@ -348,3 +348,20 @@ class Roman extends Mozel {}
 
 Roman.injectable(rome);
 ```
+
+### Logging
+
+Mozel has fine-grained logging controls, based on the [Log Control](https://www.npmjs.com/package/log-control) library.
+For example, it is possible to change the log levels for Mozel, or use a custom driver rather than `console`:
+
+```typescript
+Mozel.log.setLevel(LogLevel.OFF);
+Mozel.log.setDriver({
+    trace(...args:any[]){ /* ... */ },
+    debug(...args:any[]){ /* ... */ },
+    log(...args:any[]){ /* ... */ },
+    info(...args:any[]){ /* ... */ },
+    warn(...args:any[]){ /* ... */ },
+    error(...args:any[]){ /* ... */ }
+});
+```

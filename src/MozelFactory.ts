@@ -5,6 +5,9 @@ import Mozel, {MozelConstructor, MozelData} from "@/Mozel";
 import mozelContainer from "@/inversify";
 import {alphanumeric} from "validation-kit";
 import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
+import logRoot from "./log";
+
+const log = logRoot.instance("factory");
 
 @injectable()
 export default class MozelFactory implements MozelFactoryInterface {
@@ -77,19 +80,19 @@ export default class MozelFactory implements MozelFactoryInterface {
 				mozel = this.diContainer.resolve<Mozel>(ExpectedClass);
 			}
 			if(!mozel && ExpectedClass) {
-				console.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);
+				log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);
 				// DI failed; call exact class constructor
 				mozel = new ExpectedClass();
 			}
 		} catch(e) {
 			const message = `Mozel creation failed for ${ExpectedClass.type}: ${e.message}`;
-			console.error(message, data);
+			log.error(message, data);
 			throw new Error(message);
 		}
 
 		if(!isT(mozel)) {
 			const message = "Created Mozel was not a(n) " + ExpectedClass.name;
-			console.error(message, data);
+			log.error(message, data);
 			throw new Error(message);
 		}
 

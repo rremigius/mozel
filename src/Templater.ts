@@ -1,5 +1,8 @@
 import { isString, isPlainObject, isArray, forEach, extend } from 'lodash';
 import format from 'string-format';
+import logRoot from "./log";
+
+const log = logRoot.instance("templater");
 
 type Data = Record<string,any>;
 export type ApiOptions = {
@@ -20,7 +23,7 @@ export default class Templater {
 
 	setData(data:Data) {
 		if(!isPlainObject(data)) {
-			console.warn("Cannot set Templater data, expected plain object.", data);
+			log.warn("Cannot set Templater data, expected plain object.", data);
 			return;
 		}
 		extend(this.data, data);

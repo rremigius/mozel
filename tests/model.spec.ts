@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, property, required,} from '@/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, LogLevel, property, required,} from '@/Mozel';
 import Collection from '@/Collection';
 
 import {forEach, includes, uniq} from 'lodash';

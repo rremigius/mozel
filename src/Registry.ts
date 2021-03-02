@@ -1,4 +1,7 @@
 import {Class, alphanumeric} from "validation-kit";
+import logRoot from "./log";
+
+const log = logRoot.instance("registry");
 
 export type Registerable = {id?:alphanumeric, gid?:alphanumeric};
 
@@ -9,14 +12,14 @@ export default class Registry<T extends Registerable> {
 	register(item:T) {
 		if(item.id) {
 			if(item.id in this.indexById) {
-				console.error(`Duplicate registration for ID: ${item.id}.`);
+				log.error(`Duplicate registration for ID: ${item.id}.`);
 			} else {
 				this.indexById[item.id] = item;
 			}
 		}
 		if(item.gid) {
 			if(item.gid in this.indexByGid) {
-				console.error(`Duplicate registration for GID: ${item.gid}.`);
+				log.error(`Duplicate registration for GID: ${item.gid}.`);
 			} else {
 				this.indexByGid[item.gid] = item;
 			}
@@ -47,7 +50,7 @@ export default class Registry<T extends Registerable> {
 	byId<E extends T>(id:alphanumeric, ExpectedClass?:Class):E|undefined {
 		const found = this.indexById[id];
 		if(ExpectedClass && !(found instanceof ExpectedClass)) {
-			console.error(`Object with ID ${id} was found, but was not a ${ExpectedClass.name}.`);
+			log.error(`Object with ID ${id} was found, but was not a ${ExpectedClass.name}.`);
 			return undefined;
 		}
 		return <E>found;
@@ -55,7 +58,7 @@ export default class Registry<T extends Registerable> {
 	byGid<E extends T>(gid:alphanumeric, ExpectedClass?:Class):E|undefined {
 		const found = this.indexByGid[gid];
 		if(ExpectedClass && !(found instanceof ExpectedClass)) {
-			console.error(`Object with GID ${gid} was found, but was not a ${ExpectedClass.name}.`);
+			log.error(`Object with GID ${gid} was found, but was not a ${ExpectedClass.name}.`);
 			return undefined;
 		}
 		return <E>found;

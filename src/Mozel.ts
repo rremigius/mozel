@@ -22,6 +22,9 @@ import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
 import Registry from "@/Registry";
 import {alphanumeric, primitive} from 'validation-kit';
 
+import Log, {LogLevel} from "log-control";
+import log from "./log";
+
 // TYPES
 
 export type Data = { [key: string]: any }; // General-purpose plain object
@@ -58,6 +61,7 @@ type CollectionDefinition = { name: string, type?: CollectionType, options?: Col
 // re-export for easy import together with Mozel
 export {Alphanumeric, alphanumeric, MozelClass};
 export {injectableMozel};
+export {LogLevel};
 
 // TYPE GUARDS
 
@@ -109,6 +113,13 @@ export default class Mozel {
 	static get type() {
 		return this.name; // Try using class name (will not work ben uglified).
 	};
+
+	/**
+	 * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
+	 */
+	static get log() {
+		return log;
+	}
 
 	static injectable(container:Container) {
 		// Non-typescript alternative for decorator
@@ -214,7 +225,7 @@ export default class Mozel {
 
 		// Check if subclass properly overrode defineData method.
 		if (!('id' in this.properties)) {
-			console.warn(`Modl property 'id' was not defined in mozel ${this.getMozelName()}. Perhaps defineData did not call super?`);
+			log.warn(`Modl property 'id' was not defined in mozel ${this.getMozelName()}. Perhaps defineData did not call super?`);
 		}
 
 		this.applyDefaults();

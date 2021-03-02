@@ -5,6 +5,9 @@ import {Class, primitive} from 'validation-kit';
 import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
 
 import Templater from "./Templater";
+import Log from 'log-control';
+
+const log = Log.instance("mozel/collection")
 
 export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
@@ -92,9 +95,9 @@ export default class Collection<T extends Mozel|primitive> {
 				let resolved = this.parent.resolveReference(item);
 
 				if(!resolved) {
-					console.error(`No Mozel found with GID ${item.gid}.`);
+					log.error(`No Mozel found with GID ${item.gid}.`);
 				} else if (!this.checkType(resolved)) {
-					console.error(`Mozel with GID ${item.gid} was not a ${this.type}.`);
+					log.error(`Mozel with GID ${item.gid} was not a ${this.type}.`);
 					resolved = undefined;
 				}
 
@@ -118,7 +121,7 @@ export default class Collection<T extends Mozel|primitive> {
 	add(item:T|object, init = false) {
 		let final = this.revise(item, init);
 		if(!final) {
-			console.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
+			log.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
 			return this;
 		}
 		if(isComplexValue(final)) {

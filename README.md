@@ -9,3 +9,8 @@ Model
 - Deep change watching
 - Import/export from/to plain objects
 - Deep string templating (e.g. {"name": "{username}"})
+
+
+TODO:
+
+- Simpler non-typescript (static) definitions

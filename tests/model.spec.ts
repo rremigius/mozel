@@ -15,8 +15,8 @@ describe('Model', () => {
 		class FooModel extends Model {
 			foo?:number;
 			bar?:number;
-			defineData() {
-				super.defineData();
+			define() {
+				super.define();
 				this.defineProperty('foo');
 			}
 		}
@@ -96,8 +96,8 @@ describe('Model', () => {
 
 	it('.create() initializes Model with properties from argument, based on properties defined in .defineData with .defineProperty().', () => {
 		class FooModel extends Model {
-			defineData() {
-				super.defineData();
+			define() {
+				super.define();
 				this.defineProperty('foo');
 			}
 		}
@@ -114,14 +114,14 @@ describe('Model', () => {
 
 	it('.create() data initialization recursively initializes sub-models.', ()=>{
 		class BarModel extends Model {
-			defineData() {
-				super.defineData();
+			define() {
+				super.define();
 				this.defineProperty('bar');
 			}
 		}
 		class FooModel extends Model {
-			defineData() {
-				super.defineData();
+			define() {
+				super.define();
 				this.defineProperty('foo', FooModel);
 				this.defineProperty('qux');
 				this.defineCollection('bars', BarModel);
@@ -149,18 +149,30 @@ describe('Model', () => {
 		assert.equal(foo.bars.get(1).bar, 222, "Second item in 'bars' collection was initialized with correct 'bar' property value");
 	});
 
+	it("model properties and collections can be statically defined", () => {
+		class FooModel extends Model {}
+		FooModel.property('foo', String);
+		FooModel.collection('bar', Number);
+
+		const model:any = FooModel.create({foo: 'bar', bar: [1,2,3], qux: 123} as any);
+		model.foo = 123;
+		assert.equal(model.foo, 'bar', "Property set to correct value");
+		assert.deepEqual(model.bar.list, [1,2,3], "Collection set");
+		assert.notProperty(model, 'qux', "Non-existing property not set");
+	});
+
 	it('constructor using exported data from another object clones the exported object recursively.', () => {
 		@injectable()
 		class BarModel extends Model {
-			defineData() {
-				super.defineData();
+			define() {
+				super.define();
 				this.defineProperty('qux');
 			}
 		}
 		@injectable()
 		class FooModel extends Model {
-			defineData() {
-				super.defineData();
+			define() {
+				super.define();
 				this.defineCollection('bars', BarModel);
 			}
 		}

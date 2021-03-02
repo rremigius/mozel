@@ -1,4 +1,4 @@
-import Model, {Data} from '@/Model';
+import Model, {Data, ModelData} from '@/Model';
 import Property from "@/Property";
 import {forEach, mapValues} from 'lodash';
 
@@ -15,10 +15,12 @@ export default class GenericModel<K extends Data = Data> extends Model {
 
 	private genericProperties:Record<string,Property> = {};
 
-	static create(data?:Data) {
-		let model = <GenericModel<any>>super.create(data);
+	static create<T extends Model>(data?:Data):T {
+		// Cannot use `K` in static method unfortunately
+		let model = <GenericModel<any>><unknown>super.create(data);
 		if(!data) {
-			return model;
+			// TS ignore: 'GenericModel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Model'.
+			return <T><unknown>model;
 		}
 
 		for(let key in data) {
@@ -26,7 +28,7 @@ export default class GenericModel<K extends Data = Data> extends Model {
 		}
 		// Try again, with defined properties
 		model.setData(data);
-		return model;
+		return <T><unknown>model;
 	}
 
 	initialized = false;

@@ -132,10 +132,28 @@ export default class Model {
 
 	isReference: boolean = false;
 
+	/**
+	 * Define a property for the model.
+	 * @param {string} name					Name of the property
+	 * @param {PropertyType} [runtimeType]	Type to check at runtime
+	 * @param {PropertyOptions} [options]
+	 */
+	static property(name:string, runtimeType?:PropertyType, options?:PropertyOptions) {
+		return this.defineClassProperty(name, runtimeType, options);
+	}
 	static defineClassProperty(name: string, runtimeType?: PropertyType, options?: PropertyOptions) {
 		this.classPropertyDefinitions.push({name, type: runtimeType, options});
 	}
 
+	/**
+	 * Define a collection for the model.
+	 * @param {string} name					Name of the collection
+	 * @param {CollectionType} runtimeType	Type to check on the items in the collection
+	 * @param {CollectionOptions} options
+	 */
+	static collection(name: string, runtimeType?: CollectionType, options?: CollectionOptions) {
+		return this.defineClassCollection(name, runtimeType, options);
+	}
 	static defineClassCollection(name: string, runtimeType?: CollectionType, options?: CollectionOptions) {
 		this.classCollectionDefinitions.push({name, type: runtimeType, options});
 	}
@@ -187,7 +205,7 @@ export default class Model {
 		this.registry = registry;
 		this.watchers = [];
 
-		this.defineData();
+		this.define();
 
 		// Check if subclass properly overrode defineData method.
 		if (!('id' in this.properties)) {
@@ -261,7 +279,7 @@ export default class Model {
 	 * @protected
 	 * For override. Any properties and collections of the model should be defined here.
 	 */
-	defineData() {
+	define() {
 		// To be called for each class on the prototype chain
 		const _defineData = (Class: ModelClass) => {
 			if (Class !== Model) {

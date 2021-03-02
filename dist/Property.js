@@ -3,7 +3,7 @@ import { __decorate } from "tslib";
 import Collection from '@/Collection';
 import { find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil } from 'lodash';
 import { isClass, isPrimitive, isAlphanumeric, isSubClass } from "validation-kit";
-import Model from "@/Model";
+import Mozel from "@/Mozel";
 import { injectable } from "inversify";
 /**
  * Placeholder class for runtime Property type definition
@@ -12,7 +12,7 @@ export class Alphanumeric {
 }
 // TYPEGUARDS
 export function isComplexValue(value) {
-    return value instanceof Model || value instanceof Collection;
+    return value instanceof Mozel || value instanceof Collection;
 }
 export function isComplexType(value) {
     return isModelClass(value) || value instanceof Collection;
@@ -21,7 +21,7 @@ export function isPropertyValue(value) {
     return isComplexValue(value) || isPrimitive(value);
 }
 export function isModelClass(value) {
-    return isSubClass(value, Model);
+    return isSubClass(value, Mozel);
 }
 export function isPrimitiveObject(object) {
     return isPlainObject(object) && !find(object, (value, key) => {
@@ -121,7 +121,7 @@ let Property = Property_1 = class Property {
         if (this.value === undefined) {
             return; // no error necessary, undefined is fine.
         }
-        if (isModelClass(this.type) && this.value instanceof Model) {
+        if (isModelClass(this.type) && this.value instanceof Mozel) {
             // Replace placeholder model with the resolved reference
             let model = this.value.resolveReference();
             if (!model) {
@@ -222,7 +222,7 @@ let Property = Property_1 = class Property {
         }
         // Apply
         this.value = this.default;
-        if (this.value instanceof Model) {
+        if (this.value instanceof Mozel) {
             this.value.applyDefaults();
         }
         this._isDefault = true;

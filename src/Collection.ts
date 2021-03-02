@@ -1,4 +1,4 @@
-import Mozel, {Data, isData} from './Model';
+import Mozel, {Data, isData} from './Mozel';
 import Property, {isComplexValue, isModelClass, ModelClass} from './Property';
 
 import {Class, primitive} from 'validation-kit';

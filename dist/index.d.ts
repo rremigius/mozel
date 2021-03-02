@@ -1,3 +1,3 @@
-import Model, { alphanumeric } from "@/Model";
-export default Model;
+import Mozel, { alphanumeric } from "@/Mozel";
+export default Mozel;
 export { alphanumeric };

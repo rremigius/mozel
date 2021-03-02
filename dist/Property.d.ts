@@ -1,8 +1,8 @@
 import Collection from '@/Collection';
 import { Class, primitive } from "validation-kit";
-import Model from "@/Model";
-export declare type ModelClass = typeof Model;
-export declare type ComplexValue = Model | Collection<any>;
+import Mozel from "@/Mozel";
+export declare type ModelClass = typeof Mozel;
+export declare type ComplexValue = Mozel | Collection<any>;
 export declare type ComplexType = ModelClass | Collection<any>;
 export declare type PropertyValue = primitive | Function | ComplexValue | undefined;
 export declare type PropertyInput = PropertyValue | object | any[];
@@ -43,7 +43,7 @@ export default class Property {
     private _value;
     private _isDefault;
     private readonly parent;
-    constructor(parent: Model, name: string, type?: PropertyType, options?: PropertyOptions);
+    constructor(parent: Mozel, name: string, type?: PropertyType, options?: PropertyOptions);
     get value(): PropertyValue;
     set value(value: PropertyValue);
     get default(): PropertyValue;
@@ -77,7 +77,7 @@ export default class Property {
     notifyChange(newValue: PropertyValue, oldValue: PropertyValue): void;
     setErrorValue(value: any): void;
     applyDefault(): void;
-    generateDefaultValue(): false | "" | 0 | Model | (() => void);
+    generateDefaultValue(): false | "" | 0 | Mozel | (() => void);
     getTypeName(): string;
     /**
      * Try to initialize the value for this property using initialization data. Will only work for Models and Collections

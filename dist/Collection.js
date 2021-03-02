@@ -1,4 +1,4 @@
-import Model, { isData } from './Model';
+import Mozel, { isData } from './Mozel';
 import Property, { isComplexValue, isModelClass } from './Property';
 import { forEach, isPlainObject, isString, map, isMatch } from 'lodash';
 import Templater from "./Templater";
@@ -64,7 +64,7 @@ export default class Collection {
         // Resolve all references in the list
         for (let i = this.list.length - 1; i >= 0; i--) {
             let item = this.list[i];
-            if (item instanceof Model) {
+            if (item instanceof Mozel) {
                 let resolved = this.parent.resolveReference(item);
                 if (!resolved) {
                     console.error(`No Model found with GID ${item.gid}.`);
@@ -152,7 +152,7 @@ export default class Collection {
             return true;
         }
         // Check model identity
-        if (listItem instanceof Model && isData(specs)) {
+        if (listItem instanceof Mozel && isData(specs)) {
             // I don't know why TS won't resolve item to Data
             return isMatch(listItem, specs);
         }
@@ -186,7 +186,7 @@ export default class Collection {
     }
     export() {
         return map(this.list, (item) => {
-            if (item instanceof Model) {
+            if (item instanceof Mozel) {
                 return item.export();
             }
             return item;
@@ -194,7 +194,7 @@ export default class Collection {
     }
     /**
    * @param index
-   * @return {Model}
+   * @return {Mozel}
    */
     get(index) {
         return this.list[index];
@@ -218,7 +218,7 @@ export default class Collection {
                 return;
             }
             // Render Models recursively
-            if (item instanceof Model) {
+            if (item instanceof Mozel) {
                 item.renderTemplates(templater);
                 return;
             }

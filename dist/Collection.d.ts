@@ -1,4 +1,4 @@
-import Model, { Data } from './Model';
+import Mozel, { Data } from './Mozel';
 import { ModelClass } from './Property';
 import { Class, primitive } from 'validation-kit';
 import Templater from "./Templater";
@@ -16,19 +16,19 @@ export declare class RemovedEvent<T> extends Event<{
     index: number;
 }> {
 }
-export default class Collection<T extends Model | primitive> {
+export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
     private readonly type?;
     private list;
     private readonly removed;
-    parent: Model;
+    parent: Mozel;
     relation: string;
     isReference: boolean;
     readonly eventInterface: EventInterface;
-    constructor(parent: Model, relation: string, type?: CollectionType, list?: never[]);
+    constructor(parent: Mozel, relation: string, type?: CollectionType, list?: never[]);
     getTypeName(): string;
     checkType(value: any): value is T;
-    setParent(parent: Model): void;
+    setParent(parent: Mozel): void;
     /**
      * Checks if the given item is a valid item for the Collection.
      * @param item							The item to check for the list.
@@ -78,7 +78,7 @@ export default class Collection<T extends Model | primitive> {
     export(): (Data | primitive)[];
     /**
    * @param index
-   * @return {Model}
+   * @return {Mozel}
    */
     get(index: number): T | undefined;
     set(index: number, item: T): void;

@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { Container } from "inversify";
-import { ModelClass } from "@/Model";
+import { ModelClass } from "@/Mozel";
 /**
  * CLASS decorator factory
  * Registers the class to the default model DI Container, under the class name or static `type`.

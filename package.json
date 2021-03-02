@@ -34,7 +34,7 @@
     "reflect-metadata": "^0.1.13",
     "string-format": "^2.0.0",
     "tslib": "^2.1.0",
-    "validation-kit": "git+https://github.com/rremigius/validation-kit.git"
+    "validation-kit": "0.0.3"
   },
   "devDependencies": {
     "chai": "^4.3.0",

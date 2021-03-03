@@ -1,4 +1,4 @@
-import Mozel, { Data } from '@/Mozel';
+import Mozel, { Data } from './Mozel';
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
@@ -23,7 +23,7 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
     set(property: string, value: any, init?: boolean): boolean;
     setData(data: Data): void;
     exportGeneric(): {
-        [x: string]: import("@/Property").PropertyValue;
+        [x: string]: import("./Property").PropertyValue;
     };
     /**
      * Initialize a property if it was not already initialized.

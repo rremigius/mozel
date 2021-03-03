@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { Container, injectable } from "inversify";
-import Mozel from "@/Mozel";
+import Mozel from "./Mozel";
 import logRoot from "./log";
 const log = logRoot.instance("mozel/injection");
 /**

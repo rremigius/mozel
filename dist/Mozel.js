@@ -4,11 +4,11 @@ import "reflect-metadata";
 import Property, { Alphanumeric, isComplexValue, isMozelClass } from './Property';
 import Collection from './Collection';
 import { find, forEach, get, isPlainObject, isString, cloneDeep } from 'lodash';
-import Templater from '@/Templater';
+import Templater from './Templater';
 import { inject, injectable, optional } from "inversify";
-import { injectableMozel } from "@/inversify";
-import { MozelFactoryType } from "@/MozelFactoryInterface";
-import Registry from "@/Registry";
+import { injectableMozel } from "./inversify";
+import { MozelFactoryType } from "./MozelFactoryInterface";
+import Registry from "./Registry";
 import { LogLevel } from "log-control";
 import log from "./log";
 // re-export for easy import together with Mozel

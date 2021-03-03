@@ -1,10 +1,10 @@
 var MozelFactory_1;
 import { __decorate, __param } from "tslib";
 import { Container, inject, injectable, optional } from "inversify";
-import Registry from "@/Registry";
-import Mozel from "@/Mozel";
-import mozelContainer from "@/inversify";
-import { MozelFactoryType } from "@/MozelFactoryInterface";
+import Registry from "./Registry";
+import Mozel from "./Mozel";
+import mozelContainer from "./inversify";
+import { MozelFactoryType } from "./MozelFactoryInterface";
 import logRoot from "./log";
 const log = logRoot.instance("factory");
 let MozelFactory = MozelFactory_1 = class MozelFactory {

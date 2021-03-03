@@ -1,4 +1,4 @@
-import Mozel from '@/Mozel';
+import Mozel from './Mozel';
 import { forEach, mapValues } from 'lodash';
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.

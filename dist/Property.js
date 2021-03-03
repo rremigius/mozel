@@ -1,9 +1,9 @@
 var Property_1;
 import { __decorate } from "tslib";
-import Collection from '@/Collection';
+import Collection from './Collection';
 import { find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil } from 'lodash';
 import { isClass, isPrimitive, isAlphanumeric, isSubClass } from "validation-kit";
-import Mozel from "@/Mozel";
+import Mozel from "./Mozel";
 import { injectable } from "inversify";
 import logRoot from "./log";
 const log = logRoot.instance("property");

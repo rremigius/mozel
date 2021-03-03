@@ -1,8 +1,8 @@
 import { Container } from "inversify";
-import Registry from "@/Registry";
-import Mozel, { MozelConstructor, MozelData } from "@/Mozel";
+import Registry from "./Registry";
+import Mozel, { MozelConstructor, MozelData } from "./Mozel";
 import { alphanumeric } from "validation-kit";
-import MozelFactoryInterface from "@/MozelFactoryInterface";
+import MozelFactoryInterface from "./MozelFactoryInterface";
 export default class MozelFactory implements MozelFactoryInterface {
     static createDependencyContainer(): Container;
     readonly diContainer: Container;

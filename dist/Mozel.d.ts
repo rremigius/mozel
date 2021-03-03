@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import Property, { Alphanumeric, ComplexValue, MozelClass, PropertyInput, PropertyOptions, PropertyType, PropertyValue } from './Property';
 import Collection, { CollectionOptions, CollectionType } from './Collection';
-import Templater from '@/Templater';
+import Templater from './Templater';
 import { Container } from "inversify";
-import { injectableMozel } from "@/inversify";
-import MozelFactoryInterface from "@/MozelFactoryInterface";
-import Registry from "@/Registry";
+import { injectableMozel } from "./inversify";
+import MozelFactoryInterface from "./MozelFactoryInterface";
+import Registry from "./Registry";
 import { alphanumeric, primitive } from 'validation-kit';
 import Log, { LogLevel } from "log-control";
 export declare type Data = {

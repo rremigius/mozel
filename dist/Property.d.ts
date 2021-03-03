@@ -1,6 +1,6 @@
-import Collection from '@/Collection';
+import Collection from './Collection';
 import { Class, primitive } from "validation-kit";
-import Mozel from "@/Mozel";
+import Mozel from "./Mozel";
 export declare type MozelClass = typeof Mozel;
 export declare type ComplexValue = Mozel | Collection<any>;
 export declare type ComplexType = MozelClass | Collection<any>;

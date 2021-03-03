@@ -409,7 +409,7 @@ export default class Mozel {
 		if (watcher.immediate) {
 			Mozel.callWatcherHandler(watcher, get(this, watcher.path));
 		} else {
-			watcher.currentValue = currentValue;
+			Mozel.setWatcherCurrentValue(watcher, currentValue);
 		}
 	}
 
@@ -418,13 +418,17 @@ export default class Mozel {
 			throw new Error(`Property change event expected ${watcher.type}, ${typeof (newValue)} given.`);
 		}
 		watcher.handler(newValue, watcher.currentValue);
-		watcher.currentValue = watcher.deep ? cloneDeep(watcher.currentValue) : watcher.currentValue;
+		this.setWatcherCurrentValue(watcher, newValue);
 	};
 
-	propertyChanged(path: string[], newValue: PropertyValue, oldValue: PropertyValue) {
+	private static setWatcherCurrentValue(watcher: PropertyWatcher<PropertyValue>, value: PropertyValue) {
+		watcher.currentValue = watcher.deep ? cloneDeep(value) : value;
+	}
+
+	propertyChanged(path: string[], newValue: PropertyValue) {
 		if (this.parent && this.relation) {
 			const parentPath = [this.relation, ...path];
-			this.parent.propertyChanged(parentPath, newValue, oldValue);
+			this.parent.propertyChanged(parentPath, newValue);
 		}
 
 		const pathStr = path.join('.');
@@ -440,7 +444,6 @@ export default class Mozel {
 				const newWatcherValue = get(this, watcher.path);
 				if (newWatcherValue !== watcher.currentValue) {
 					Mozel.callWatcherHandler(watcher, newWatcherValue);
-					watcher.currentValue = newWatcherValue;
 				}
 				return;
 			}
@@ -571,6 +574,10 @@ export default class Mozel {
 		});
 
 		return exported;
+	}
+
+	cloneDeep<T extends Mozel>() {
+		return this.static.create(this.export() as MozelData<T>);
 	}
 
 	/**

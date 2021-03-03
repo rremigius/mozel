@@ -1,12 +1,14 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, LogLevel, property, required,} from '../src/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, property, required,} from '../src/Mozel';
 import Collection from '../src/Collection';
 
 import {forEach, includes, uniq} from 'lodash';
 import {Container, injectable} from "inversify";
 import mozelContainer from "../src/inversify";
 import MozelFactory from "../src/MozelFactory";
+import {check, instanceOf} from "validation-kit";
+import get = Reflect.get;
 
 describe('Mozel', () => {
 	describe(".export", () => {
@@ -42,6 +44,36 @@ describe('Mozel', () => {
 			const reconstructed = FooMozel.create<FooMozel>(foo.export());
 			assert.equal(reconstructed.foo, foo.foo);
 			assert.deepEqual(reconstructed.bar, foo.bar);
+		});
+	});
+
+	describe(".cloneDeep", () => {
+		it("creates a new instance of the Mozel, with all nested properties having the same values.", () => {
+			class Bar extends Mozel {
+				@property(String)
+				bar?:string;
+			}
+			class Foo extends Mozel {
+				@property(Number, {required})
+				foo!:number;
+
+				@property(Foo)
+				other?:Foo;
+
+				@collection(Bar)
+				bars!:Collection<Bar>
+			}
+			const foo = Foo.create<Foo>({
+				foo:1,
+				other:{foo:2},
+				bars:[{bar:'a'},{bar:'b'}]
+			});
+			const clone = foo.cloneDeep<Foo>();
+			assert.equal(foo.foo, clone.foo);
+			assert.equal(get(foo, 'other.foo'), get(clone, 'other.foo'));
+			const fooExport = foo.export();
+			const cloneExport = clone.export();
+			assert.deepEqual(fooExport, cloneExport);
 		});
 	});
 
@@ -453,5 +485,90 @@ describe('Mozel', () => {
 		mozel.foo.setData({foo: {bar: 'barfoo'}}, true);
 
 		assert.equal(count, 3, "Correct number of handlers called");
+	});
+	it("notifies about changes to collections", () => {
+		class Foo extends Mozel {
+			@collection(Number)
+			bars!:Collection<number>
+		}
+		const foo = Foo.create<Foo>({
+			bars: [1,2,3]
+		});
+
+		let count = 0;
+		foo.watch({
+			path: 'bars',
+			handler(newValue, oldValue) {
+				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				assert.deepEqual(value.toArray(), [4,5,6]);
+				assert.deepEqual(old.toArray(), [1,2,3])
+				count++;
+			}
+		})
+		foo.setData({bars: [4,5,6]}, true);
+		assert.equal(count, 1, "Correct number of watchers called.");
+	});
+	it("notifies about additions/removals to/from Collection ", () => {
+		class Foo extends Mozel {
+			@collection(Number)
+			bars!:Collection<number>
+		}
+		const foo = Foo.create<Foo>({
+			bars: [1,2,3]
+		});
+
+		let count = 0;
+		foo.watch({
+			path: 'bars',
+			handler(newValue, oldValue) {
+				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				assert.deepEqual(value.toArray(), [1,2,3,4]);
+				assert.deepEqual(old.toArray(), [1,2,3]);
+				count++;
+			},
+			deep: true // is necessary to keep a clone of the old value
+		})
+		foo.bars.add(4);
+		assert.equal(count, 1, "Correct number of watchers called.");
+	});
+	it("notifies about changes to any item in Collection ", () => {
+		class Bar extends Mozel {
+			@property(Number)
+			bar?:number;
+		}
+		class Foo extends Mozel {
+			@collection(Bar)
+			bars!:Collection<Bar>
+		}
+		const foo = Foo.create<Foo>({
+			bars: [{bar: 1},{bar: 2}]
+		});
+
+		let count = 0;
+		foo.watch({
+			path: 'bars',
+			handler(newValue, oldValue) {
+				const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				const newBar = value.get(1);
+				const oldBar = old.get(1);
+				assert.exists(newBar);
+				assert.exists(oldBar);
+				if(newBar && oldBar) {
+					assert.equal(newBar.bar, 3);
+					assert.equal(oldBar.bar, 2);
+				}
+				count++;
+			},
+			deep: true // is necessary to keep a clone of the old value
+		})
+
+		// Change item
+		const bar = foo.bars.get(1);
+		if(bar) bar.bar = 3;
+
+		assert.equal(count, 1, "Correct number of watchers called.");
 	});
 });

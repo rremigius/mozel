@@ -47,6 +47,10 @@ export default class Collection<T extends Mozel|primitive> {
 		return this.type.name;
 	}
 
+	getType() {
+		return this.type;
+	}
+
 	checkType(value:any):value is T {
 		return Property.checkType(value, this.type);
 	}

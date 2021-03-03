@@ -6,6 +6,7 @@ import mozelContainer from "./inversify";
 import {alphanumeric} from "validation-kit";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
+import {isNil} from 'lodash';
 
 const log = logRoot.instance("factory");
 
@@ -35,7 +36,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 	}
 
 	ensureUniqueGID(gid:alphanumeric) {
-		if(!gid || this.registry.byGid(gid)) {
+		if(isNil(gid) || this.registry.byGid(gid)) {
 			return this.nextGID();
 		}
 		return gid;
@@ -107,7 +108,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 		}
 
 		// Register
-		if(!mozel.gid) {
+		if(isNil(mozel.gid)) {
 			mozel.gid = this.nextGID();
 		}
 		if(!mozel.isReference) {

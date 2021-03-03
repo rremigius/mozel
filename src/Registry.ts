@@ -1,5 +1,6 @@
 import {Class, alphanumeric} from "validation-kit";
 import logRoot from "./log";
+import {isNil} from 'lodash';
 
 const log = logRoot.instance("registry");
 
@@ -10,14 +11,14 @@ export default class Registry<T extends Registerable> {
 	private indexByGid:Record<alphanumeric,T> = {};
 
 	register(item:T) {
-		if(item.id) {
+		if(!isNil(item.id)) {
 			if(item.id in this.indexById) {
 				log.error(`Duplicate registration for ID: ${item.id}.`);
 			} else {
 				this.indexById[item.id] = item;
 			}
 		}
-		if(item.gid) {
+		if(!isNil(item.gid)) {
 			if(item.gid in this.indexByGid) {
 				log.error(`Duplicate registration for GID: ${item.gid}.`);
 			} else {
@@ -27,20 +28,20 @@ export default class Registry<T extends Registerable> {
 	}
 
 	remove(item:T) {
-		if(item.id) {
+		if(!isNil(item.id)) {
 			delete this.indexById[item.id];
 		}
-		if(item.gid) {
+		if(!isNil(item.gid)) {
 			delete this.indexByGid[item.gid];
 		}
 	}
 
 	find(ids:{id?:alphanumeric, gid?:alphanumeric}) {
-		if(ids.id) {
+		if(!isNil(ids.id)) {
 			let item = this.byId(ids.id);
 			if(item) return item;
 		}
-		if(ids.gid) {
+		if(!isNil(ids.gid)) {
 			let item = this.byGid(ids.gid);
 			if(item) return item;
 		}

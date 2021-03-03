@@ -1,6 +1,6 @@
 import Collection from './Collection';
 
-import {find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil} from 'lodash';
+import {find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil, cloneDeep} from 'lodash';
 
 import {isClass, isPrimitive, isAlphanumeric, isSubClass, Class, primitive} from "validation-kit"
 import Mozel from "./Mozel";
@@ -215,7 +215,6 @@ export default class Property {
 		if(value === this._value) return;
 
 		// Set value on parent
-		const oldValue = this._value;
 		this._value = value;
 		this._isDefault = false;
 
@@ -224,7 +223,17 @@ export default class Property {
 			value.setParent(this.parent, this.name);
 		}
 
-		this.notifyChange(this._value, oldValue);
+		// If value is Collection, should listen to changes in Collection
+		if(value instanceof Collection) {
+			value.onAdded(item => {
+				this.notifyChange(value);
+			});
+			value.onRemoved(item => {
+				this.notifyChange(value);
+			});
+		}
+
+		this.notifyChange(this._value);
 	}
 	/**
 	 * Set value with type checking
@@ -244,9 +253,9 @@ export default class Property {
 		return true;
 	}
 
-	notifyChange(newValue:PropertyValue, oldValue:PropertyValue) {
+	notifyChange(newValue:PropertyValue) {
 		if(!this.parent) return;
-		this.parent.propertyChanged([this.name], newValue, oldValue);
+		this.parent.propertyChanged([this.name], newValue);
 	}
 
 	setErrorValue(value:any) {
@@ -310,14 +319,15 @@ export default class Property {
 	 */
 	tryInit(value:any) {
 		let current = this.value;
-		// Init collection
-		if(this.type === Collection && current instanceof Collection && isArray(value)) {
-			current.clear();
-			current.addItems(value, true);
 
-			// We're done here (we don't have to overwrite the collection)
+		// Init Collection
+		if(this.type === Collection && current instanceof Collection && isArray(value)) {
+			const newCollection = new Collection(this.parent, this.name, current.getType());
+			newCollection.addItems(value, true);
+			this._set(newCollection);
 			return true;
 		}
+
 		// Init Mozel
 		if(this.type && isMozelClass(this.type) && isPlainObject(value)) {
 			// Create mozel and try to set again, without type check

@@ -57,7 +57,7 @@ let person = Person.create({
 });
 
 console.log(person.name); // James
-console.log(person.nicknames.list); // ['Johnny', 'Jack']
+console.log(person.nicknames.toArray()); // ['Johnny', 'Jack']
 ```
 
 Only predefined and valid property values will be accepted.

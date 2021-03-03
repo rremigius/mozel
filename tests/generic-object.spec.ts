@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import GenericMozel from "@/GenericMozel";
+import GenericMozel from "../src/GenericMozel";
 
 describe('GenericMozel', () => {
 	it('.create defines properties based on the given data.', () => {

@@ -1,7 +1,7 @@
 import {assert} from 'chai';
 import {describe,it} from 'mocha';
 
-import Mozel, {collection} from "@/Mozel";
+import Mozel, {collection} from "../src/Mozel";
 import Collection from "../src/Collection";
 
 describe("Collection", () => {

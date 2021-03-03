@@ -15,11 +15,11 @@ import Collection, {CollectionOptions, CollectionType} from './Collection';
 
 import {find, forEach, get, isPlainObject, isString, cloneDeep} from 'lodash';
 
-import Templater from '@/Templater';
+import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
-import {injectableMozel} from "@/inversify";
-import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
-import Registry from "@/Registry";
+import {injectableMozel} from "./inversify";
+import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
+import Registry from "./Registry";
 import {alphanumeric, primitive} from 'validation-kit';
 
 import Log, {LogLevel} from "log-control";

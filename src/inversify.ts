@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import {Container, injectable, interfaces} from "inversify";
-import Mozel, {MozelClass} from "@/Mozel";
+import Mozel, {MozelClass} from "./Mozel";
 
 import logRoot from "./log";
 

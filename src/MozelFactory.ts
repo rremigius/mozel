@@ -1,10 +1,10 @@
 import {Container, inject, injectable, optional} from "inversify";
 import {Class} from "validation-kit";
-import Registry from "@/Registry";
-import Mozel, {MozelConstructor, MozelData} from "@/Mozel";
-import mozelContainer from "@/inversify";
+import Registry from "./Registry";
+import Mozel, {MozelConstructor, MozelData} from "./Mozel";
+import mozelContainer from "./inversify";
 import {alphanumeric} from "validation-kit";
-import MozelFactoryInterface, {MozelFactoryType} from "@/MozelFactoryInterface";
+import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
 
 const log = logRoot.instance("factory");

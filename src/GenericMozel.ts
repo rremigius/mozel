@@ -1,5 +1,5 @@
-import Mozel, {Data, MozelData} from '@/Mozel';
-import Property from "@/Property";
+import Mozel, {Data, MozelData} from './Mozel';
+import Property from "./Property";
 import {forEach, mapValues} from 'lodash';
 
 /**

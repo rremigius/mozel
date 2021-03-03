@@ -1,6 +1,6 @@
-import Collection from "@/Collection";
-import Mozel, {collection, injectableMozel, property, reference} from "@/Mozel";
-import MozelFactory from "@/MozelFactory";
+import Collection from "../src/Collection";
+import Mozel, {collection, injectableMozel, property, reference} from "../src/Mozel";
+import MozelFactory from "../src/MozelFactory";
 import {it} from "mocha";
 import {Container} from "inversify";
 import {assert} from "chai";

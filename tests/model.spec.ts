@@ -1,12 +1,12 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, LogLevel, property, required,} from '@/Mozel';
-import Collection from '@/Collection';
+import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, LogLevel, property, required,} from '../src/Mozel';
+import Collection from '../src/Collection';
 
 import {forEach, includes, uniq} from 'lodash';
 import {Container, injectable} from "inversify";
-import mozelContainer from "@/inversify";
-import MozelFactory from "@/MozelFactory";
+import mozelContainer from "../src/inversify";
+import MozelFactory from "../src/MozelFactory";
 
 describe('Mozel', () => {
 	describe(".export", () => {

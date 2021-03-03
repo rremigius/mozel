@@ -1,7 +1,7 @@
 import Mozel, {Data, isData} from './Mozel';
 import Property, {isComplexValue, isMozelClass, MozelClass} from './Property';
 
-import {Class, primitive} from 'validation-kit';
+import {Class, isSubClass, primitive} from 'validation-kit';
 import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
 
 import Templater from "./Templater";
@@ -29,7 +29,7 @@ export default class Collection<T extends Mozel|primitive> {
 	addedListeners:AddedListener<T>[] = [];
 	removedListeners:RemovedListener<T>[] = [];
 
-	constructor(parent:Mozel, relation:string, type?:CollectionType, list = []) {
+	constructor(parent:Mozel, relation:string, type?:CollectionType, list:T[] = []) {
 		this.type = type;
 		this.parent = parent;
 		this.relation = relation;
@@ -280,5 +280,16 @@ export default class Collection<T extends Mozel|primitive> {
 
 	onRemoved(callback:RemovedListener<T>) {
 		this.removedListeners.push(callback);
+	}
+
+	cloneDeep() {
+		let list = this.toArray();
+		if(isMozelClass(this.type)) {
+			// TS: We can cast item to Mozel because we checked `isMozelClass`
+			// We can cast it to T because Mozel is part of T
+			list = this.map(item => <T>(<Mozel>item).cloneDeep());
+		}
+
+		return new Collection<T>(this.parent, this.relation, this.type, list);
 	}
 }

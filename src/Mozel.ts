@@ -422,7 +422,10 @@ export default class Mozel {
 	};
 
 	private static setWatcherCurrentValue(watcher: PropertyWatcher<PropertyValue>, value: PropertyValue) {
-		watcher.currentValue = watcher.deep ? cloneDeep(value) : value;
+		if(watcher.deep && isComplexValue(value)) {
+			value = value.cloneDeep();
+		}
+		watcher.currentValue = value;
 	}
 
 	propertyChanged(path: string[], newValue: PropertyValue) {

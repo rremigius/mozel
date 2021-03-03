@@ -563,7 +563,7 @@ describe('Mozel', () => {
 				count++;
 			},
 			deep: true // is necessary to keep a clone of the old value
-		})
+		});
 
 		// Change item
 		const bar = foo.bars.get(1);

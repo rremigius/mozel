@@ -428,10 +428,10 @@ export default class Mozel {
 		watcher.currentValue = value;
 	}
 
-	propertyChanged(path: string[], newValue: PropertyValue) {
+	propertyChanged(path: string[], newValue: PropertyValue, oldValue?:PropertyValue) {
 		if (this.parent && this.relation) {
 			const parentPath = [this.relation, ...path];
-			this.parent.propertyChanged(parentPath, newValue);
+			this.parent.propertyChanged(parentPath, newValue, oldValue);
 		}
 
 		const pathStr = path.join('.');

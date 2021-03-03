@@ -43,7 +43,7 @@ describe('Mozel', () => {
 			});
 			const reconstructed = FooMozel.create<FooMozel>(foo.export());
 			assert.equal(reconstructed.foo, foo.foo);
-			assert.deepEqual(reconstructed.bar, foo.bar);
+			assert.deepEqual(reconstructed.bar.toArray(), foo.bar.toArray());
 		});
 	});
 
@@ -564,11 +564,19 @@ describe('Mozel', () => {
 			},
 			deep: true // is necessary to keep a clone of the old value
 		});
+		foo.watch({
+			path: 'bars.bar',
+			handler(newValue, oldValue) {
+				assert.equal(newValue, 3);
+				// currently not possible to get old value due to unknown path to object in array
+				count++;
+			}
+		})
 
 		// Change item
 		const bar = foo.bars.get(1);
 		if(bar) bar.bar = 3;
 
-		assert.equal(count, 1, "Correct number of watchers called.");
+		assert.equal(count, 2, "Correct number of watchers called.");
 	});
 });

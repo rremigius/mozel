@@ -323,6 +323,7 @@ export default class Property {
 		// Init Collection
 		if(this.type === Collection && current instanceof Collection && isArray(value)) {
 			const newCollection = new Collection(this.parent, this.name, current.getType());
+			newCollection.isReference = current.isReference;
 			newCollection.addItems(value, true);
 			this._set(newCollection);
 			return true;

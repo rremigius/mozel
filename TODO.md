@@ -1,0 +1,3 @@
+- Validation errors
+- Check change detection in Collection
+- Adding non-Mozel properties/methods

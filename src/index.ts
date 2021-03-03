@@ -1,5 +1,8 @@
+import Mozel from "./Mozel";
+
+export default Mozel;
+
 export {
-	default as Mozel,
 	collection,
 	property,
 	alphanumeric,
@@ -10,3 +13,7 @@ export {
 	immediate,
 	LogLevel
 } from './Mozel';
+
+export { default as Collection } from "@/Collection"
+export { default as MozelFactory } from "@/MozelFactory"
+export { default as GenericMozel } from "@/GenericMozel"

@@ -1,5 +1,5 @@
 import Mozel, {Data, isData} from './Mozel';
-import Property, {isComplexValue, isMozelClass, MozelClass} from './Property';
+import Property, {isComplexValue, isMozelClass, MozelClass, PropertyValue} from './Property';
 
 import {Class, isSubClass, primitive} from 'validation-kit';
 import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
@@ -26,6 +26,8 @@ export default class Collection<T extends Mozel|primitive> {
 	relation:string;
 	isReference:boolean = false;
 
+	beforeAddedListeners:AddedListener<T>[] = [];
+	beforeRemovedListeners:RemovedListener<T>[] = [];
 	addedListeners:AddedListener<T>[] = [];
 	removedListeners:RemovedListener<T>[] = [];
 
@@ -128,10 +130,13 @@ export default class Collection<T extends Mozel|primitive> {
 			log.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
 			return this;
 		}
+		this.beforeAddedListeners.forEach(listener => listener(<T>final));
+
 		if(isComplexValue(final)) {
 			final.setParent(this.parent, this.relation);
 		}
 		this.list.push(<T>final);
+
 		this.addedListeners.forEach(listener => listener(<T>final));
 		return this;
 	}
@@ -155,10 +160,14 @@ export default class Collection<T extends Mozel|primitive> {
 	 */
 	removeIndex(index:number, track=true) {
 		let item = this.list[index];
+
+		this.beforeRemovedListeners.forEach(listener => listener(item, index));
+
 		this.list.splice(index, 1);
 		if(track) {
 			this.removed.push(item);
 		}
+
 		this.removedListeners.forEach(listener => listener(item, index));
 		return item;
 	}
@@ -222,6 +231,31 @@ export default class Collection<T extends Mozel|primitive> {
 		return map(this.list, func);
 	}
 
+	indexOf(item:T) {
+		return this.list.indexOf(item);
+	}
+
+	getPath(path:string|string[]):PropertyValue {
+		if(isString(path)) {
+			path = path.split('.');
+		}
+		const step = path[0];
+		const index = parseInt(step);
+
+		if(isNaN(index)) return undefined; // not a numeric index
+		const item = this.get(index);
+		if(path.length === 1) {
+			// Last step, so we can return
+			return item;
+		}
+		// More steps to go
+		if(!isComplexValue(item)) {
+			// Cannot continue path on primitive value
+			return undefined;
+		}
+		return item.getPath(path.slice(1));
+	}
+
 	toArray() {
 		return this.list.slice();
 	}
@@ -274,10 +308,16 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 	}
 
+	beforeAdd(callback:AddedListener<T>) {
+		this.beforeAddedListeners.push(callback);
+	}
 	onAdded(callback:AddedListener<T>) {
 		this.addedListeners.push(callback);
 	}
 
+	beforeRemoveod(callback:RemovedListener<T>) {
+		this.beforeRemovedListeners.push(callback);
+	}
 	onRemoved(callback:RemovedListener<T>) {
 		this.removedListeners.push(callback);
 	}
@@ -288,6 +328,8 @@ export default class Collection<T extends Mozel|primitive> {
 			// TS: We can cast item to Mozel because we checked `isMozelClass`
 			// We can cast it to T because Mozel is part of T
 			list = this.map(item => <T>(<Mozel>item).cloneDeep());
+		} else {
+			list = list.slice();
 		}
 
 		return new Collection<T>(this.parent, this.relation, this.type, list);

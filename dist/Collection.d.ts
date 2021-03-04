@@ -1,5 +1,5 @@
 import Mozel, { Data } from './Mozel';
-import { MozelClass } from './Property';
+import { MozelClass, PropertyValue } from './Property';
 import { Class, primitive } from 'validation-kit';
 import Templater from "./Templater";
 export declare type CollectionType = MozelClass | Class;
@@ -16,10 +16,13 @@ export default class Collection<T extends Mozel | primitive> {
     parent: Mozel;
     relation: string;
     isReference: boolean;
+    beforeAddedListeners: AddedListener<T>[];
+    beforeRemovedListeners: RemovedListener<T>[];
     addedListeners: AddedListener<T>[];
     removedListeners: RemovedListener<T>[];
-    constructor(parent: Mozel, relation: string, type?: CollectionType, list?: never[]);
+    constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
     getTypeName(): string;
+    getType(): CollectionType | undefined;
     checkType(value: any): value is T;
     setParent(parent: Mozel): void;
     /**
@@ -66,6 +69,8 @@ export default class Collection<T extends Mozel | primitive> {
     find(specs: Data | T): T | undefined;
     each(func: (item: T, index: number) => any): T[];
     map<V>(func: (item: T, index: number) => V): V[];
+    indexOf(item: T): number;
+    getPath(path: string | string[]): PropertyValue;
     toArray(): T[];
     getRemovedItems(): T[];
     export(): (Data | primitive)[];
@@ -77,7 +82,10 @@ export default class Collection<T extends Mozel | primitive> {
     set(index: number, item: T): void;
     isDefault(): boolean;
     renderTemplates(templater: Templater | Data): void;
+    beforeAdd(callback: AddedListener<T>): void;
     onAdded(callback: AddedListener<T>): void;
+    beforeRemoveod(callback: RemovedListener<T>): void;
     onRemoved(callback: RemovedListener<T>): void;
+    cloneDeep(): Collection<T>;
 }
 export {};

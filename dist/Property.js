@@ -172,15 +172,23 @@ let Property = Property_1 = class Property {
     _set(value) {
         if (value === this._value)
             return;
+        // Notify watchers before the change, so they can get the old value
+        this.notifyBeforeChange();
         // Set value on parent
-        const oldValue = this._value;
         this._value = value;
         this._isDefault = false;
         // If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
         if (!this._reference && isComplexValue(value)) {
             value.setParent(this.parent, this.name);
         }
-        this.notifyChange(this._value, oldValue);
+        // If value is Collection, should listen to changes in Collection
+        if (value instanceof Collection) {
+            value.beforeAdd(() => this.notifyBeforeChange());
+            value.onAdded(() => this.notifyChange());
+            value.beforeRemoveod(() => this.notifyBeforeChange());
+            value.onRemoved(() => this.notifyChange());
+        }
+        this.notifyChange();
     }
     /**
      * Set value with type checking
@@ -199,10 +207,15 @@ let Property = Property_1 = class Property {
         this._set(value);
         return true;
     }
-    notifyChange(newValue, oldValue) {
+    notifyBeforeChange() {
         if (!this.parent)
             return;
-        this.parent.propertyChanged([this.name], newValue, oldValue);
+        this.parent.propertyBeforeChange([this.name]);
+    }
+    notifyChange() {
+        if (!this.parent)
+            return;
+        this.parent.propertyChanged([this.name]);
     }
     setErrorValue(value) {
         let err = new Error(`${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`);
@@ -260,11 +273,12 @@ let Property = Property_1 = class Property {
      */
     tryInit(value) {
         let current = this.value;
-        // Init collection
+        // Init Collection
         if (this.type === Collection && current instanceof Collection && isArray(value)) {
-            current.clear();
-            current.addItems(value, true);
-            // We're done here (we don't have to overwrite the collection)
+            const newCollection = new Collection(this.parent, this.name, current.getType());
+            newCollection.isReference = current.isReference;
+            newCollection.addItems(value, true);
+            this._set(newCollection);
             return true;
         }
         // Init Mozel

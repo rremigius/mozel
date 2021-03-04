@@ -214,6 +214,9 @@ export default class Property {
 	private _set(value:PropertyValue) {
 		if(value === this._value) return;
 
+		// Notify watchers before the change, so they can get the old value
+		this.notifyBeforeChange();
+
 		// Set value on parent
 		this._value = value;
 		this._isDefault = false;
@@ -225,15 +228,13 @@ export default class Property {
 
 		// If value is Collection, should listen to changes in Collection
 		if(value instanceof Collection) {
-			value.onAdded(item => {
-				this.notifyChange(value);
-			});
-			value.onRemoved(item => {
-				this.notifyChange(value);
-			});
+			value.beforeAdd(() => this.notifyBeforeChange());
+			value.onAdded(() => this.notifyChange());
+			value.beforeRemoveod(() => this.notifyBeforeChange());
+			value.onRemoved(() => this.notifyChange());
 		}
 
-		this.notifyChange(this._value);
+		this.notifyChange();
 	}
 	/**
 	 * Set value with type checking
@@ -253,9 +254,14 @@ export default class Property {
 		return true;
 	}
 
-	notifyChange(newValue:PropertyValue) {
+	notifyBeforeChange() {
 		if(!this.parent) return;
-		this.parent.propertyChanged([this.name], newValue);
+		this.parent.propertyBeforeChange([this.name]);
+	}
+
+	notifyChange() {
+		if(!this.parent) return;
+		this.parent.propertyChanged([this.name]);
 	}
 
 	setErrorValue(value:any) {

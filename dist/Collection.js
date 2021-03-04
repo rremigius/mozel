@@ -7,6 +7,8 @@ const log = Log.instance("mozel/collection");
 export default class Collection {
     constructor(parent, relation, type, list = []) {
         this.isReference = false;
+        this.beforeAddedListeners = [];
+        this.beforeRemovedListeners = [];
         this.addedListeners = [];
         this.removedListeners = [];
         this.type = type;
@@ -23,6 +25,9 @@ export default class Collection {
             return 'primitive';
         }
         return this.type.name;
+    }
+    getType() {
+        return this.type;
     }
     checkType(value) {
         return Property.checkType(value, this.type);
@@ -92,6 +97,7 @@ export default class Collection {
             log.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
             return this;
         }
+        this.beforeAddedListeners.forEach(listener => listener(final));
         if (isComplexValue(final)) {
             final.setParent(this.parent, this.relation);
         }
@@ -117,6 +123,7 @@ export default class Collection {
      */
     removeIndex(index, track = true) {
         let item = this.list[index];
+        this.beforeRemovedListeners.forEach(listener => listener(item, index));
         this.list.splice(index, 1);
         if (track) {
             this.removed.push(item);
@@ -176,6 +183,29 @@ export default class Collection {
     map(func) {
         return map(this.list, func);
     }
+    indexOf(item) {
+        return this.list.indexOf(item);
+    }
+    getPath(path) {
+        if (isString(path)) {
+            path = path.split('.');
+        }
+        const step = path[0];
+        const index = parseInt(step);
+        if (isNaN(index))
+            return undefined; // not a numeric index
+        const item = this.get(index);
+        if (path.length === 1) {
+            // Last step, so we can return
+            return item;
+        }
+        // More steps to go
+        if (!isComplexValue(item)) {
+            // Cannot continue path on primitive value
+            return undefined;
+        }
+        return item.getPath(path.slice(1));
+    }
     toArray() {
         return this.list.slice();
     }
@@ -222,11 +252,29 @@ export default class Collection {
             }
         }
     }
+    beforeAdd(callback) {
+        this.beforeAddedListeners.push(callback);
+    }
     onAdded(callback) {
         this.addedListeners.push(callback);
     }
+    beforeRemoveod(callback) {
+        this.beforeRemovedListeners.push(callback);
+    }
     onRemoved(callback) {
         this.removedListeners.push(callback);
+    }
+    cloneDeep() {
+        let list = this.toArray();
+        if (isMozelClass(this.type)) {
+            // TS: We can cast item to Mozel because we checked `isMozelClass`
+            // We can cast it to T because Mozel is part of T
+            list = this.map(item => item.cloneDeep());
+        }
+        else {
+            list = list.slice();
+        }
+        return new Collection(this.parent, this.relation, this.type, list);
     }
 }
 //# sourceMappingURL=Collection.js.map

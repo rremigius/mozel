@@ -3,7 +3,7 @@ import { __decorate, __param } from "tslib";
 import "reflect-metadata";
 import Property, { Alphanumeric, isComplexValue, isMozelClass } from './Property';
 import Collection from './Collection';
-import { find, forEach, get, isPlainObject, isString, cloneDeep } from 'lodash';
+import { find, forEach, isPlainObject, isString, get } from 'lodash';
 import Templater from './Templater';
 import { inject, injectable, optional } from "inversify";
 import { injectableMozel } from "./inversify";
@@ -11,6 +11,7 @@ import { MozelFactoryType } from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import { LogLevel } from "log-control";
 import log from "./log";
+import PropertyWatcher from "./PropertyWatcher";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
 export { injectableMozel };
@@ -287,6 +288,24 @@ let Mozel = Mozel_1 = class Mozel {
         return this.properties[property];
     }
     /**
+     * Get value at given path (not type-safe).
+     * @param path
+     */
+    getPath(path) {
+        if (isString(path)) {
+            path = path.split('.');
+        }
+        if (path.length === 0)
+            return undefined;
+        const step = this.get(path[0]);
+        if (path.length === 1)
+            return step;
+        if (isComplexValue(step)) {
+            return step.getPath(path.slice(1));
+        }
+        return undefined;
+    }
+    /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
      * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
@@ -298,50 +317,75 @@ let Mozel = Mozel_1 = class Mozel {
             }
         });
     }
-    watch(watcher) {
+    watch(options) {
+        const watcher = new PropertyWatcher(options);
         this.watchers.push(watcher);
-        const currentValue = get(this, watcher.path);
         if (watcher.immediate) {
-            Mozel_1.callWatcherHandler(watcher, get(this, watcher.path));
-        }
-        else {
-            watcher.currentValue = currentValue;
+            const newValue = this.getWatcherValue(watcher, watcher.path);
+            const parent = this.getWatcherValueParent(watcher, watcher.path);
+            watcher.execute(newValue, parent);
         }
     }
-    static callWatcherHandler(watcher, newValue) {
-        if (watcher.type && !Property.checkType(newValue, watcher.type)) {
-            throw new Error(`Property change event expected ${watcher.type}, ${typeof (newValue)} given.`);
-        }
-        watcher.handler(newValue, watcher.currentValue);
-        watcher.currentValue = watcher.deep ? cloneDeep(watcher.currentValue) : watcher.currentValue;
+    getWatchers(path) {
+        return this.watchers.filter(watcher => watcher.matches(path));
     }
-    ;
-    propertyChanged(path, newValue, oldValue) {
-        if (this.parent && this.relation) {
-            const parentPath = [this.relation, ...path];
-            this.parent.propertyChanged(parentPath, newValue, oldValue);
+    getWatcherValue(watcher, matchedPath) {
+        const path = watcher.applyMatchedPath(matchedPath);
+        return this.getPath(path);
+    }
+    getWatcherValueParent(watcher, matchedPath) {
+        const path = watcher.applyMatchedPath(matchedPath);
+        const parentPath = path.split('.').slice(0, -1);
+        if (parentPath.length === 0) {
+            return this;
         }
-        const pathStr = path.join('.');
-        this.watchers.forEach(watcher => {
-            // Simple case: the exact value we're watching changed
-            if (pathStr === watcher.path) {
-                Mozel_1.callWatcherHandler(watcher, newValue);
-                return;
-            }
-            // Parent of watched property changed, check if new parent has new value at given path
-            if (watcher.path.substring(0, pathStr.length) === pathStr) {
-                const newWatcherValue = get(this, watcher.path);
-                if (newWatcherValue !== watcher.currentValue) {
-                    Mozel_1.callWatcherHandler(watcher, newWatcherValue);
-                    watcher.currentValue = newWatcherValue;
-                }
-                return;
-            }
-            // Child of watched property changed (deep watching only)
-            if (watcher.deep && pathStr.substring(0, watcher.path.length) === watcher.path) {
-                Mozel_1.callWatcherHandler(watcher, get(this, watcher.path)); // cannot keep track of previous value without cloning
-            }
+        const parent = this.getPath(parentPath);
+        if (parent instanceof Collection) {
+            return parent.parent;
+        }
+        if (!(parent instanceof Mozel_1)) {
+            log.error("Unexpected parent for watcher value:", parent);
+            throw new Error("Unexpected parent for watcher value.");
+        }
+        return parent;
+    }
+    getCollectionMozelPath(mozel, path) {
+        // Property changed in submozel
+        let relation = path[0];
+        const property = this.getProperty(relation);
+        if (!(property.value instanceof Collection)) {
+            return path;
+        }
+        const index = property.value.indexOf(mozel);
+        // Put the relation with index in front of the path
+        return [relation, index.toString(), ...path.slice(1)];
+    }
+    propertyBeforeChange(path, mozel) {
+        if (mozel) {
+            path = this.getCollectionMozelPath(mozel, path);
+        }
+        const pathString = path.join('.');
+        this.getWatchers(pathString).forEach(watcher => {
+            const currentValue = this.getWatcherValue(watcher, pathString);
+            watcher.setCurrentValue(currentValue);
         });
+        if (this.parent && this.relation) {
+            this.parent.propertyBeforeChange([this.relation, ...path], this);
+        }
+    }
+    propertyChanged(path, mozel) {
+        if (mozel) {
+            path = this.getCollectionMozelPath(mozel, path);
+        }
+        const pathString = path.join('.');
+        this.getWatchers(pathString).forEach(watcher => {
+            const newValue = this.getWatcherValue(watcher, pathString);
+            const parent = this.getWatcherValueParent(watcher, pathString);
+            watcher.execute(newValue, parent);
+        });
+        if (this.parent && this.relation) {
+            this.parent.propertyChanged([this.relation, ...path], this);
+        }
     }
     /**
      * Resolves the given reference, or its own if no data is provided and it's marked as one.
@@ -449,6 +493,9 @@ let Mozel = Mozel_1 = class Mozel {
             exported[name] = value;
         });
         return exported;
+    }
+    cloneDeep() {
+        return this.static.create(this.export());
     }
     /**
      * Renders string templates in all properties of the Mozel, recursively.

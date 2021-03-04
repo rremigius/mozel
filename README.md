@@ -27,13 +27,17 @@ Typescript:
 import Mozel, {required} from "mozel";
 
 class Person extends Mozel {
-    @property(String, {required}) // runtime typing
+    @property(String, {required, default: 'John Doe'}) // runtime typing
     name!:string; // compile-time (Typescript) typing
     
     @collection(String) // runtime typing
     nicknames!:Collection<String>; // compile-time (Typescript) typing
 }
 ```
+
+Note that, if you set `{required}` on a `@property`, you can safely assume the value will never be undefined.
+In Typescript, you can therefore use `!` with the property. Without `{required}`, you should use `?`.
+Collections are always instantiated and therefore will never be undefined.
 
 Javascript:
 
@@ -44,6 +48,8 @@ class Person extends Mozel {}
 Person.property('name', String, {required});
 Person.collection('nicknames', String);
 ```
+
+To set a default, use `{default: ...}` in the property options, instead of `myProperty:string = 'myDefault'`.
 
 ### Instantiation
 
@@ -112,7 +118,7 @@ console.log(james.dog.name); // Baxter
 ### Collections
 
 Collections can contain primitives (string/number/boolean) or Mozels. The definition determines which type all items in
-the collection should be.
+the collection should be. A Collection on a Mozel will always be instantiated with the Mozel, so it cannot be `undefined`.
 
 ```typescript
 // Definitions 
@@ -228,6 +234,40 @@ james.dog.toy.state = 'old'; // potentially triggers watchers A and D
 
 Note: watchers only get triggered if the new value is different than the old value. 
 If a new dog has a toy with the same state, the `dog.toy.state` watcher will not be triggered.
+
+#### Wildcard watchers
+
+Wildcards (`*`) can be used in the watcher's path to match any property. This can also be used to watch for changes
+in any of a Collection's items: 
+
+```typescript
+class Toy extends Mozel {
+    @property(String, {required})
+    name!:string;
+}
+class Dog extends Mozel {
+    @collection(Toy)
+    toys!:Collection<Toy>;
+}
+let dog = Dog.create({
+   toys: [{name: 'ball'}, {name: 'stick'}] 
+});
+dog.watch('toys.*.name', (newName, oldName, toy) => {
+    // do something if the name of any toy changes
+});
+```
+
+#### Watcher properties
+
+A watcher can be configured with the following properties:
+
+- `path`: (string, required): The path from the current Mozel to watch.
+- `handler`: (function, required): The handler to call when a value changes. Takes three arguments:
+    - `newValue`: the new value
+    - `oldValue`: the value before the change
+    - `mozel`: the Mozel of the changed property
+- `deep`: (boolean) If set to `true`, will respond to changes deeper than the given path. Will make a deep clone to provide the old value.
+- `immediate`: (boolean) If set to `true`, will call the handler immediately with the current value.
 
 ## Advanced
 

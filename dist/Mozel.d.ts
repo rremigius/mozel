@@ -8,20 +8,13 @@ import MozelFactoryInterface from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import { alphanumeric, primitive } from 'validation-kit';
 import Log, { LogLevel } from "log-control";
+import PropertyWatcher, { PropertyWatcherOptions } from "./PropertyWatcher";
 export declare type Data = {
     [key: string]: any;
 };
 export declare type MozelConstructor<T extends Mozel> = {
     new (...args: any[]): T;
     type: string;
-};
-export declare type PropertyWatcher<T extends PropertyValue> = {
-    path: string;
-    type?: PropertyType;
-    immediate?: boolean;
-    deep?: boolean;
-    currentValue?: T;
-    handler: (newValue: T, oldValue: T) => void;
 };
 export declare type PropertyKeys<T extends Mozel> = {
     [K in keyof T]: T[K] extends PropertyValue ? K : never;
@@ -188,14 +181,23 @@ export default class Mozel {
      */
     getProperty(property: string): Property;
     /**
+     * Get value at given path (not type-safe).
+     * @param path
+     */
+    getPath(path: string | string[]): PropertyValue;
+    /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
      * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
      */
     setData(data: Data, init?: boolean): void;
-    watch(watcher: PropertyWatcher<PropertyValue>): void;
-    private static callWatcherHandler;
-    propertyChanged(path: string[], newValue: PropertyValue, oldValue: PropertyValue): void;
+    watch(options: PropertyWatcherOptions<any>): void;
+    getWatchers(path: string): PropertyWatcher<PropertyValue>[];
+    getWatcherValue(watcher: PropertyWatcher<any>, matchedPath: string): PropertyValue;
+    getWatcherValueParent(watcher: PropertyWatcher<any>, matchedPath: string): Mozel;
+    getCollectionMozelPath(mozel: Mozel, path: string[]): string[];
+    propertyBeforeChange(path: string[], mozel?: Mozel): void;
+    propertyChanged(path: string[], mozel?: Mozel): void;
     /**
      * Resolves the given reference, or its own if no data is provided and it's marked as one.
      * @param ref
@@ -243,6 +245,7 @@ export default class Mozel {
      * @return {Data}
      */
     export(): Data;
+    cloneDeep<T extends Mozel>(): T;
     /**
      * Renders string templates in all properties of the Mozel, recursively.
      * @param {Templater|object} templater	A Templater to use to render the templates, or a data object to fill in the values.

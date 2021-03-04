@@ -1,14 +1,13 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, property, required,} from '../src/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, property, required} from '../src/Mozel';
 import Collection from '../src/Collection';
-
 import {forEach, includes, uniq} from 'lodash';
 import {Container, injectable} from "inversify";
 import mozelContainer from "../src/inversify";
 import MozelFactory from "../src/MozelFactory";
 import {check, instanceOf} from "validation-kit";
-import get = Reflect.get;
+import {get} from 'lodash';
 
 describe('Mozel', () => {
 	describe(".export", () => {
@@ -423,160 +422,174 @@ describe('Mozel', () => {
 		});
 		assert.equal(foo.foo, expected);
 	});
-	it('notifies changes to watchers and deep watchers.', ()=>{
-		class FooMozel extends Mozel {
-			@property(FooMozel)
-			foo?:FooMozel;
+	describe(".getWatchers", () => {
+		it("returns all watchers matching the given path", () => {
+			let mozel = new Mozel();
+			mozel.watch({path: 'foo', handler(){}, deep: true});
+			mozel.watch({path: 'foo.bar', handler(){}});
+			mozel.watch({path: 'foo.bar.qux', handler(){}});
+			mozel.watch({path: 'baz', handler(){}});
+			mozel.watch({path: 'baz.bar', handler(){}});
+			const watchers = mozel.getWatchers('foo.bar');
+			assert.deepEqual(watchers.map(watcher => watcher.path), ['foo', 'foo.bar', 'foo.bar.qux']);
+		});
+	});
+	describe(".watch", () => {
+		it('notifies changes to watchers and deep watchers.', ()=>{
+			class FooMozel extends Mozel {
+				@property(FooMozel)
+				foo?:FooMozel;
 
-			@property(String)
-			bar?:string;
-		}
+				@property(String)
+				bar?:string;
+			}
 
-		const mozel = FooMozel.create<FooMozel>({
-			foo: {
+			const mozel = FooMozel.create<FooMozel>({
 				foo: {
-					bar: 'foobar'
+					foo: {
+						bar: 'foobar'
+					}
 				}
-			}
-		});
+			});
 
-		let count = 0;
-		mozel.watch({
-			path: 'foo.foo.bar',
-			handler: (newValue, oldValue) => {
-				assert.equal(oldValue, 'foobar', "Old value was correct");
-				assert.equal(newValue, 'barfoo', "New value was correct");
-				count++;
-			}
-		});
-		mozel.watch({
-			path: 'foo.foo',
-			handler: (newValue, oldValue) => {
-				assert.equal((<FooMozel>oldValue).bar, 'foobar', "Old nested value was correct");
-				assert.equal((<FooMozel>newValue).bar, 'barfoo', "New nested value was correct");
-				count++;
-			}
-		})
-		mozel.watch({
-			path: 'bar',
-		 	handler: ()=> {
-				assert.ok(false, "Incorrect watched notified");
-				count++;
-			}
-		});
-		mozel.watch({
-			path: 'foo',
-			deep: true,
-			handler: ()=> {
-				assert.ok(true, "Deep watcher notified");
-				count++;
-			}
-		});
-		mozel.watch({
-			path: 'bar',
-			deep: true,
-			handler: ()=>{
-				assert.ok(false, "Incorrect deep watcher notified.");
-				count++;
-			}
-		});
-
-		if(!mozel.foo) return;
-		mozel.foo.setData({foo: {bar: 'barfoo'}}, true);
-
-		assert.equal(count, 3, "Correct number of handlers called");
-	});
-	it("notifies about changes to collections", () => {
-		class Foo extends Mozel {
-			@collection(Number)
-			bars!:Collection<number>
-		}
-		const foo = Foo.create<Foo>({
-			bars: [1,2,3]
-		});
-
-		let count = 0;
-		foo.watch({
-			path: 'bars',
-			handler(newValue, oldValue) {
-				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				assert.deepEqual(value.toArray(), [4,5,6]);
-				assert.deepEqual(old.toArray(), [1,2,3])
-				count++;
-			}
-		})
-		foo.setData({bars: [4,5,6]}, true);
-		assert.equal(count, 1, "Correct number of watchers called.");
-	});
-	it("notifies about additions/removals to/from Collection ", () => {
-		class Foo extends Mozel {
-			@collection(Number)
-			bars!:Collection<number>
-		}
-		const foo = Foo.create<Foo>({
-			bars: [1,2,3]
-		});
-
-		let count = 0;
-		foo.watch({
-			path: 'bars',
-			handler(newValue, oldValue) {
-				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				assert.deepEqual(value.toArray(), [1,2,3,4]);
-				assert.deepEqual(old.toArray(), [1,2,3]);
-				count++;
-			},
-			deep: true // is necessary to keep a clone of the old value
-		})
-		foo.bars.add(4);
-		assert.equal(count, 1, "Correct number of watchers called.");
-	});
-	it("notifies about changes to any item in Collection ", () => {
-		class Bar extends Mozel {
-			@property(Number)
-			bar?:number;
-		}
-		class Foo extends Mozel {
-			@collection(Bar)
-			bars!:Collection<Bar>
-		}
-		const foo = Foo.create<Foo>({
-			bars: [{bar: 1},{bar: 2}]
-		});
-
-		let count = 0;
-		foo.watch({
-			path: 'bars',
-			handler(newValue, oldValue) {
-				const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				const newBar = value.get(1);
-				const oldBar = old.get(1);
-				assert.exists(newBar);
-				assert.exists(oldBar);
-				if(newBar && oldBar) {
-					assert.equal(newBar.bar, 3);
-					assert.equal(oldBar.bar, 2);
+			let count = 0;
+			mozel.watch({
+				path: 'foo.foo.bar',
+				handler: (newValue, oldValue) => {
+					assert.equal(oldValue, 'foobar', "Old value was correct");
+					assert.equal(newValue, 'barfoo', "New value was correct");
+					count++;
 				}
-				count++;
-			},
-			deep: true // is necessary to keep a clone of the old value
+			});
+			mozel.watch({
+				path: 'foo.foo',
+				handler: (newValue, oldValue) => {
+					assert.equal((<FooMozel>oldValue).bar, 'foobar', "Old nested value was correct");
+					assert.equal((<FooMozel>newValue).bar, 'barfoo', "New nested value was correct");
+					count++;
+				}
+			})
+			mozel.watch({
+				path: 'bar',
+				handler: ()=> {
+					assert.ok(false, "Incorrect watched notified");
+					count++;
+				}
+			});
+			mozel.watch({
+				path: 'foo',
+				deep: true,
+				handler: ()=> {
+					assert.ok(true, "Deep watcher notified");
+					count++;
+				}
+			});
+			mozel.watch({
+				path: 'bar',
+				deep: true,
+				handler: ()=>{
+					assert.ok(false, "Incorrect deep watcher notified.");
+					count++;
+				}
+			});
+
+			if(!mozel.foo) return;
+			mozel.foo.setData({foo: {bar: 'barfoo'}}, true);
+
+			assert.equal(count, 3, "Correct number of handlers called");
 		});
-		foo.watch({
-			path: 'bars.bar',
-			handler(newValue, oldValue) {
-				assert.equal(newValue, 3);
-				// currently not possible to get old value due to unknown path to object in array
-				count++;
+		it("notifies about changes to collections", () => {
+			class Foo extends Mozel {
+				@collection(Number)
+				bars!:Collection<number>
 			}
-		})
+			const foo = Foo.create<Foo>({
+				bars: [1,2,3]
+			});
 
-		// Change item
-		const bar = foo.bars.get(1);
-		if(bar) bar.bar = 3;
+			let count = 0;
+			foo.watch({
+				path: 'bars',
+				handler(newValue, oldValue) {
+					const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
+					const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+					assert.deepEqual(value.toArray(), [4,5,6]);
+					assert.deepEqual(old.toArray(), [1,2,3]);
+					count++;
+				}
+			})
+			foo.setData({bars: [4,5,6]}, true);
+			assert.equal(count, 1, "Correct number of watchers called.");
+		});
+		it("notifies about additions/removals to/from Collection ", () => {
+			class Foo extends Mozel {
+				@collection(Number)
+				bars!:Collection<number>
+			}
+			const foo = Foo.create<Foo>({
+				bars: [1,2,3]
+			});
 
-		assert.equal(count, 2, "Correct number of watchers called.");
+			let count = 0;
+			foo.watch({
+				path: 'bars',
+				handler(newValue, oldValue) {
+					const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
+					const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+					assert.deepEqual(value.toArray(), [1,2,3,4]);
+					assert.deepEqual(old.toArray(), [1,2,3]);
+					count++;
+				},
+				deep: true // is necessary to keep a clone of the old value
+			})
+			foo.bars.add(4);
+			assert.equal(count, 1, "Correct number of watchers called.");
+		});
+		it("notifies about changes to any item in Collection ", () => {
+			class Bar extends Mozel {
+				@property(Number)
+				bar?:number;
+			}
+			class Foo extends Mozel {
+				@collection(Bar)
+				bars!:Collection<Bar>
+			}
+			const foo = Foo.create<Foo>({
+				bars: [{bar: 1},{bar: 2}]
+			});
+
+			let count = 0;
+			foo.watch({
+				path: 'bars',
+				handler(newValue, oldValue) {
+					const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
+					const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+					const newBar = value.get(1);
+					const oldBar = old.get(1);
+					assert.exists(newBar);
+					assert.exists(oldBar);
+					if(newBar && oldBar) {
+						assert.equal(newBar.bar, 3);
+						assert.equal(oldBar.bar, 2);
+					}
+					count++;
+				},
+				deep: true // is necessary to keep a clone of the old value
+			});
+			foo.watch({
+				path: 'bars.*.bar',
+				handler(newValue, oldValue) {
+					assert.equal(newValue, 3);
+					// currently not possible to get old value due to unknown path to object in array
+					count++;
+				}
+			})
+
+			// Change item
+			const bar = foo.bars.get(1);
+			if(bar) bar.bar = 3;
+
+			assert.equal(count, 2, "Correct number of watchers called.");
+		});
 	});
 });

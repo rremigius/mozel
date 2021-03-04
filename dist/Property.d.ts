@@ -74,7 +74,8 @@ export default class Property {
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
     set(value: PropertyInput, init?: boolean): boolean;
-    notifyChange(newValue: PropertyValue, oldValue: PropertyValue): void;
+    notifyBeforeChange(): void;
+    notifyChange(): void;
     setErrorValue(value: any): void;
     applyDefault(): void;
     generateDefaultValue(): false | "" | 0 | Mozel | (() => void);

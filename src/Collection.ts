@@ -2,7 +2,7 @@ import Mozel, {Data, isData} from './Mozel';
 import Property, {isComplexValue, isMozelClass, MozelClass, PropertyValue} from './Property';
 
 import {Class, isSubClass, primitive} from 'validation-kit';
-import {forEach, isPlainObject, isString, map, isMatch} from 'lodash';
+import {forEach, isPlainObject, isString, map, isMatch, clone} from 'lodash';
 
 import Templater from "./Templater";
 import Log from 'log-control';
@@ -12,8 +12,9 @@ const log = Log.instance("mozel/collection")
 export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
 
-type AddedListener<T> = (item:T)=>void;
-type RemovedListener<T> = (item:T, index?:number)=>void;
+type AddedListener<T> = (item:T, batch:BatchInfo)=>void;
+type RemovedListener<T> = (item:T, index:number, batch:BatchInfo)=>void;
+type BatchInfo = {index:number, total:number};
 
 export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
@@ -121,23 +122,26 @@ export default class Collection<T extends Mozel|primitive> {
 
 	/**
 	 * Add an item to the Collection.
-	 * @param item							The item to add.
+	 * @param item					The item to add.
 	 * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize a Mozel based on the given data.
+	 * @param {BatchInfo} [batch]	Provide batch information for the listeners. Defaults to {index: 0, total:1};
 	 */
-	add(item:T|object, init = false) {
+	add(item:T|object, init = false, batch?:BatchInfo) {
+		if(!batch) batch = {index: 0, total:1};
+
 		let final = this.revise(item, init);
 		if(!final) {
 			log.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
 			return this;
 		}
-		this.beforeAddedListeners.forEach(listener => listener(<T>final));
+		this.notifyBeforeAdd(final, batch);
 
 		if(isComplexValue(final)) {
 			final.setParent(this.parent, this.relation);
 		}
 		this.list.push(<T>final);
 
-		this.addedListeners.forEach(listener => listener(<T>final));
+		this.notifyAdded(final, batch);
 		return this;
 	}
 
@@ -147,8 +151,8 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize Mozels based on the given data.
 	 */
 	addItems(items:Array<object|T>, init = false) {
-		forEach(items, (item:object|T) => {
-			this.add(item, init);
+		items.forEach((item:object|T, index) => {
+			this.add(item, init, {index, total: items.length});
 		});
 		return this;
 	}
@@ -156,19 +160,22 @@ export default class Collection<T extends Mozel|primitive> {
 	/**
 	 * Removes the item at the given index from the list. Returns the item.
 	 * @param {number} index			The index to remove.
-	 * @param {boolean} [track]		If set to false, the item will not be kept in the `removed` list.
+	 * @param {boolean} [track]			If set to `true`, item will be kept in `removed` list.
+	 * @param {boolean} [batch]			Provide batch information for change listeners. Defaults to {index: 0, total: 1}.
 	 */
-	removeIndex(index:number, track=true) {
+	removeIndex(index:number, track= false, batch?:BatchInfo) {
+		if(!batch) batch = {index: 0, total:1};
+
 		let item = this.list[index];
 
-		this.beforeRemovedListeners.forEach(listener => listener(item, index));
+		this.notifyBeforeRemove(item, index, batch);
 
 		this.list.splice(index, 1);
 		if(track) {
 			this.removed.push(item);
 		}
 
-		this.removedListeners.forEach(listener => listener(item, index));
+		this.notifyRemoved(item, index, batch);
 		return item;
 	}
 
@@ -185,6 +192,18 @@ export default class Collection<T extends Mozel|primitive> {
 				this.removeIndex(i, track);
 			}
 		}
+		return this;
+	}
+
+	setData(items:Array<object|T>, init = false) {
+		const oldCount = this.list.length;
+		const batch = {index: 0, total: oldCount + items.length};
+
+		this.clear(batch);
+
+		items.forEach((item:object|T, index) => {
+			this.add(item, init, {index: oldCount + index, total: batch.total});
+		});
 		return this;
 	}
 
@@ -210,8 +229,27 @@ export default class Collection<T extends Mozel|primitive> {
 		return this.list.length;
 	}
 
-	clear() {
+	/**
+	 * Clear all items from the list.
+	 * @param {BatchInfo} [batch]		If clear operation is part of a larger batch of operations, this sets the batch info.
+	 */
+	clear(batch?:BatchInfo) {
+		const start = batch ? clone(batch) : {index: 0, total: this.list.length};
+		const items = this.list.slice();
+
+		// Notify before change
+		items.forEach((item, index) => {
+			// TS: forEach is synchronous and we don't change batch to undefined.
+			this.notifyBeforeRemove(item, index, {index: start.index + index, total: start.total});
+		});
+
+		// Clear the list
 		this.list = [];
+
+		// Notify after change
+		items.forEach((item, index) => {
+			this.notifyRemoved(item, index, {index: start.index + index, total: start.total});
+		});
 		return this;
 	}
 
@@ -308,6 +346,22 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 	}
 
+	notifyBeforeRemove(item:T, index:number, batch:BatchInfo) {
+		this.beforeRemovedListeners.forEach(listener => listener(item, index, batch));
+	}
+
+	notifyRemoved(item:T, index:number, batch:BatchInfo) {
+		this.removedListeners.forEach(listener => listener(item, index, batch));
+	}
+
+	notifyBeforeAdd(item:T, batch:BatchInfo) {
+		this.beforeAddedListeners.forEach(listener => listener(item, batch));
+	}
+
+	notifyAdded(item:T, batch:BatchInfo) {
+		this.addedListeners.forEach(listener => listener(item, batch));
+	}
+
 	beforeAdd(callback:AddedListener<T>) {
 		this.beforeAddedListeners.push(callback);
 	}
@@ -315,7 +369,7 @@ export default class Collection<T extends Mozel|primitive> {
 		this.addedListeners.push(callback);
 	}
 
-	beforeRemoveod(callback:RemovedListener<T>) {
+	beforeRemoved(callback:RemovedListener<T>) {
 		this.beforeRemovedListeners.push(callback);
 	}
 	onRemoved(callback:RemovedListener<T>) {

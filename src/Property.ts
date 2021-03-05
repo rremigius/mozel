@@ -228,10 +228,18 @@ export default class Property {
 
 		// If value is Collection, should listen to changes in Collection
 		if(value instanceof Collection) {
-			value.beforeAdd(() => this.notifyBeforeChange());
-			value.onAdded(() => this.notifyChange());
-			value.beforeRemoveod(() => this.notifyBeforeChange());
-			value.onRemoved(() => this.notifyChange());
+			value.beforeAdd((item, batch) => {
+				if(batch.index === 0) this.notifyBeforeChange() ;// notify before first
+			});
+			value.onAdded((item, batch) => {
+				if(batch.index >= batch.total-1) this.notifyChange(); // notify after last
+			});
+			value.beforeRemoved((item, index, batch) => {
+				if(batch.index === 0) this.notifyBeforeChange(); // notify before first
+			});
+			value.onRemoved((item, index, batch) => {
+				if(batch.index >= batch.total-1) this.notifyChange(); // notify after last
+			});
 		}
 
 		this.notifyChange();

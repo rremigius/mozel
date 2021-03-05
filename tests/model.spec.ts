@@ -7,7 +7,7 @@ import {Container, injectable} from "inversify";
 import mozelContainer from "../src/inversify";
 import MozelFactory from "../src/MozelFactory";
 import {check, instanceOf} from "validation-kit";
-import {get} from 'lodash';
+import {get, set} from 'lodash';
 
 describe('Mozel', () => {
 	describe(".export", () => {
@@ -435,26 +435,23 @@ describe('Mozel', () => {
 		});
 	});
 	describe(".watch", () => {
-		it('notifies changes to watchers and deep watchers.', ()=>{
-			class FooMozel extends Mozel {
-				@property(FooMozel)
-				foo?:FooMozel;
+		class Foo extends Mozel {
+			@property(Foo)
+			foo?:Foo;
 
-				@property(String)
-				bar?:string;
-			}
-
-			const mozel = FooMozel.create<FooMozel>({
+			@property(String)
+			bar?:string;
+		}
+		it('notifies changes to path', ()=>{
+			const mozel = Foo.create<Foo>({
 				foo: {
-					foo: {
-						bar: 'foobar'
-					}
+					bar: 'foobar'
 				}
 			});
 
 			let count = 0;
 			mozel.watch({
-				path: 'foo.foo.bar',
+				path: 'foo.bar',
 				handler: (newValue, oldValue) => {
 					assert.equal(oldValue, 'foobar', "Old value was correct");
 					assert.equal(newValue, 'barfoo', "New value was correct");
@@ -463,17 +460,19 @@ describe('Mozel', () => {
 			});
 			mozel.watch({
 				path: 'foo.foo',
-				handler: (newValue, oldValue) => {
-					assert.equal((<FooMozel>oldValue).bar, 'foobar', "Old nested value was correct");
-					assert.equal((<FooMozel>newValue).bar, 'barfoo', "New nested value was correct");
+				handler: ()=>{
+					assert.ok(false, "Incorrect deep watcher notified.");
 					count++;
 				}
-			})
-			mozel.watch({
-				path: 'bar',
-				handler: ()=> {
-					assert.ok(false, "Incorrect watched notified");
-					count++;
+			});
+			set(mozel, 'foo.bar', 'barfoo');
+			assert.equal(count, 1, "Correct number of callbacks");
+		});
+		it("with `deep:true` notifies changes to child of path", () => {
+			let count = 0;
+			const mozel = Foo.create<Foo>({
+				foo: {
+					bar: 'foobar'
 				}
 			});
 			mozel.watch({
@@ -493,11 +492,9 @@ describe('Mozel', () => {
 				}
 			});
 
-			if(!mozel.foo) return;
-			mozel.foo.setData({foo: {bar: 'barfoo'}}, true);
-
-			assert.equal(count, 3, "Correct number of handlers called");
-		});
+			set(mozel, 'foo.bar', 'barfoo');
+			assert.equal(count, 1, "Correct number of callbacks");
+		})
 		it("notifies about changes to collections", () => {
 			class Foo extends Mozel {
 				@collection(Number)
@@ -510,15 +507,16 @@ describe('Mozel', () => {
 			let count = 0;
 			foo.watch({
 				path: 'bars',
+				deep: true,
 				handler(newValue, oldValue) {
 					const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
 					const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-					assert.deepEqual(value.toArray(), [4,5,6]);
-					assert.deepEqual(old.toArray(), [1,2,3]);
+					assert.deepEqual(value.toArray(), [4,5,6], "newValue");
+					assert.deepEqual(old.toArray(), [1,2,3], "oldValue");
 					count++;
 				}
 			})
-			foo.setData({bars: [4,5,6]}, true);
+			foo.bars.setData([4,5,6]);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
 		it("notifies about additions/removals to/from Collection ", () => {
@@ -590,6 +588,38 @@ describe('Mozel', () => {
 			if(bar) bar.bar = 3;
 
 			assert.equal(count, 2, "Correct number of watchers called.");
+		});
+		it("notifies about new values when parent is replaced", () => {
+			class Foo extends Mozel {
+				@property(String)
+				bar?:string;
+				@property(Foo)
+				foo?:Foo;
+			}
+
+			const root = Foo.create<Foo>({
+				bar: "0",
+				foo: {
+					bar: "1",
+					foo: { bar: "2" }
+				}
+			});
+
+			let count = 0;
+			root.watch({
+				path: 'foo.foo.name',
+				handler(newValue, oldValue) {
+					assert.equal(newValue, 3);
+					assert.equal(oldValue, 2);
+					count++;
+				}
+			})
+			root.foo = Foo.create<Foo>({
+				foo: {
+					bar: "3"
+				}
+			});
+			assert.equal(count, 1, "Correct number of callbacks made.");
 		});
 	});
 });

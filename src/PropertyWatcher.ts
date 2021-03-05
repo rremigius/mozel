@@ -1,42 +1,60 @@
-import {isComplexValue, PropertyType, PropertyValue} from "./Property";
+import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
+import Collection from "./Collection";
+import Log from "./log";
 
-export type PropertyWatcherOptions<T extends PropertyValue> = {
+const log = Log.instance("watcher");
+
+export type PropertyWatcherOptions = {
 	path:string,
-	handler:PropertyChangeHandler<T>
+	handler:PropertyChangeHandler
 	immediate?:boolean,
 	deep?:boolean
 }
 
-export type PropertyChangeHandler<T extends PropertyValue> = (newValue:T, oldValue:T, parent:Mozel)=>void;
+export type PropertyChangeHandler = (newValue:PropertyValue, oldValue:PropertyValue, path:string)=>void;
 
-export default class PropertyWatcher<T extends PropertyValue> {
+export default class PropertyWatcher {
+	readonly mozel:Mozel;
 	readonly path: string;
 	readonly immediate?: boolean;
 	readonly deep?: boolean;
-	private readonly handler: PropertyChangeHandler<T>
+	private readonly handler: PropertyChangeHandler
 
-	private currentValue?: T;
+	private currentValues:Record<string, PropertyValue> = {};
 
-	constructor(options:PropertyWatcherOptions<T>) {
+	constructor(mozel:Mozel, options:PropertyWatcherOptions) {
+		this.mozel = mozel;
 		this.path = options.path;
 		this.handler = options.handler;
 		this.immediate = options.immediate;
 		this.deep = options.deep;
-	}
 
-	execute(newValue:T, parent:Mozel) {
-		// TS: currentValue is allowed to be undefined
-		this.handler(newValue, <T>this.currentValue, parent);
-	}
-
-	setCurrentValue(value:T) {
-		if(this.deep && isComplexValue(value)) {
-			// TS: if value was a Mozel but T wasn't, then we should not be here.
-			this.currentValue = <T>value.cloneDeep();
-			return;
+		if (this.immediate) {
+			this.execute(this.path);
 		}
-		this.currentValue = value;
+	}
+
+	execute(path:string) {
+		const appliedPath = this.applyMatchedPath(path);
+		const values = this.mozel.getPathValues(appliedPath);
+		for(let valuePath in values) {
+			const value = values[valuePath];
+			this.handler(value, this.currentValues[valuePath], valuePath);
+			this.currentValues[valuePath] = value;
+		}
+	}
+
+	updateValues(path:string) {
+		const appliedPath = this.applyMatchedPath(path);
+		const values = this.mozel.getPathValues(appliedPath);
+		for(let path in values) {
+			let value = values[path];
+			if(this.deep && isComplexValue(value)) {
+				value = value.cloneDeep();
+			}
+			this.currentValues[path] = value;
+		}
 	}
 
 	matches(path:string) {

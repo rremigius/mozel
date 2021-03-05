@@ -253,6 +253,37 @@ export default class Collection<T extends Mozel|primitive> {
 		return this;
 	}
 
+	getPathValues(path:string|string[], startingPath:string[] = []) {
+		if(isString(path)) {
+			path = path.split('.');
+		}
+		if(!isMozelClass(this.getType()) || path.length === 0) {
+			return {};
+		}
+
+		// Select the items of which to get the rest of the path of
+		const step = path[0];
+		let items;
+		if(step === '*') {
+			items = this.list.map((item, index) => ({item, index}));
+		} else {
+			const index = parseInt(step);
+			if(isNaN(index)) return {}; // we don't have non-number indices
+			items = [{item: this.list[index], index}];
+		}
+
+		let values = {};
+		items.forEach(({item, index}) => {
+			if(item instanceof Mozel) {
+				values = {
+					...values,
+					...item.getPathValues(path.slice(1), [...startingPath, index.toString()])
+				}
+			}
+		});
+		return values;
+	}
+
 	find(specs:Data|T) {
 		for(let i in this.list) {
 			if(this.matches(specs, this.list[i])) {

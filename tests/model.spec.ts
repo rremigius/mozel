@@ -422,6 +422,53 @@ describe('Mozel', () => {
 		});
 		assert.equal(foo.foo, expected);
 	});
+	describe(".getPathValues", () => {
+		it("returns all values at paths matching the given pattern", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo;
+				@property(Foo)
+				bar?:Foo;
+			}
+			const foo = Foo.create<Foo>({
+				foo: {
+					name: 'foo',
+					foo: {
+						name: 'foofoo'
+					},
+					bar: {
+						name: 'foobar'
+					}
+				}
+			});
+			assert.deepEqual(foo.getPathValues("foo.*.name"), {
+				"foo.foo.name": "foofoo",
+				"foo.bar.name": "foobar"
+			});
+		});
+		it("returns all values at matching paths including collections", ()=> {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@collection(Foo)
+				foos!:Collection<Foo>;
+			}
+			const foo = Foo.create<Foo>({
+				foos: [
+					{name: 'foo1'},
+					{name: 'foo2'},
+					{name: 'foo3'}
+				]
+			});
+			assert.deepEqual(foo.getPathValues('foos.*.name'), {
+				"foos.0.name": 'foo1',
+				"foos.1.name": 'foo2',
+				"foos.2.name": 'foo3'
+			});
+		});
+	});
 	describe(".getWatchers", () => {
 		it("returns all watchers matching the given path", () => {
 			let mozel = new Mozel();
@@ -494,7 +541,74 @@ describe('Mozel', () => {
 
 			set(mozel, 'foo.bar', 'barfoo');
 			assert.equal(count, 1, "Correct number of callbacks");
-		})
+		});
+		it("notifies about new values when parent is replaced", () => {
+			const root = Foo.create<Foo>({
+				bar: "a",
+				foo: {
+					bar: "b",
+					foo: { bar: "c" }
+				}
+			});
+
+			let count = 0;
+			root.watch({
+				path: 'foo.foo.bar',
+				handler(newValue, oldValue) {
+					assert.equal(newValue, "x");
+					assert.equal(oldValue, "c");
+					count++;
+				}
+			})
+			root.foo = Foo.create<Foo>({
+				foo: {
+					bar: "x"
+				}
+			});
+			assert.equal(count, 1, "Correct number of callbacks made.");
+		});
+		it("with wildcard path notifies about changes to each of the matching paths", () => {
+			class Tree extends Mozel {
+				@property(String)
+				name!:string;
+				@property(Tree)
+				left?:Tree;
+				@property(Tree)
+				right?:Tree;
+			}
+			const tree = Tree.create<Tree>({
+				name: 'root',
+				left: {
+					name: 'l',
+					left: {
+						name: 'll',
+					},
+					right: {
+						name: 'lr'
+					}
+				}
+			});
+			tree.watch({
+				path: 'left.*.name',
+				handler(newValue, oldValue, path) {
+					if(path === 'left.left.name') {
+						assert.equal(newValue, 'll2');
+					} else if (path == 'left.right.name') {
+						assert.equal(newValue, 'lr2');
+					} else {
+						assert.ok(false, "oldValue");
+					}
+				}
+			});
+			tree.left = Tree.create<Tree>({
+				left: {
+					name: 'll2'
+				},
+				right: {
+					name: 'lr2'
+				}
+			});
+		});
 		it("notifies about changes to collections", () => {
 			class Foo extends Mozel {
 				@collection(Number)
@@ -575,9 +689,11 @@ describe('Mozel', () => {
 				deep: true // is necessary to keep a clone of the old value
 			});
 			foo.watch({
-				path: 'bars.*.bar',
-				handler(newValue, oldValue) {
+				path: 'bars.1.bar',
+				handler(newValue, oldValue, path) {
+					assert.equal(path, 'bars.1.bar');
 					assert.equal(newValue, 3);
+					assert.equal(oldValue, 2);
 					// currently not possible to get old value due to unknown path to object in array
 					count++;
 				}
@@ -588,38 +704,6 @@ describe('Mozel', () => {
 			if(bar) bar.bar = 3;
 
 			assert.equal(count, 2, "Correct number of watchers called.");
-		});
-		it("notifies about new values when parent is replaced", () => {
-			class Foo extends Mozel {
-				@property(String)
-				bar?:string;
-				@property(Foo)
-				foo?:Foo;
-			}
-
-			const root = Foo.create<Foo>({
-				bar: "0",
-				foo: {
-					bar: "1",
-					foo: { bar: "2" }
-				}
-			});
-
-			let count = 0;
-			root.watch({
-				path: 'foo.foo.name',
-				handler(newValue, oldValue) {
-					assert.equal(newValue, 3);
-					assert.equal(oldValue, 2);
-					count++;
-				}
-			})
-			root.foo = Foo.create<Foo>({
-				foo: {
-					bar: "3"
-				}
-			});
-			assert.equal(count, 1, "Correct number of callbacks made.");
 		});
 	});
 });

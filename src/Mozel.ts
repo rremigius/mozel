@@ -13,7 +13,7 @@ import Property, {
 } from './Property';
 import Collection, {CollectionOptions, CollectionType} from './Collection';
 
-import {find, forEach, isPlainObject, isString, get} from 'lodash';
+import {find, forEach, isPlainObject, isString, get, concat} from 'lodash';
 
 import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
@@ -132,7 +132,7 @@ export default class Mozel {
 	private parentLock: boolean = false;
 	private relation: string | null = null;
 
-	private readonly watchers: PropertyWatcher<PropertyValue>[];
+	private readonly watchers: PropertyWatcher[];
 
 	@property(Alphanumeric)
 	id?: alphanumeric;
@@ -402,6 +402,39 @@ export default class Mozel {
 		return undefined;
 	}
 
+	getPathValues(path:string|string[], startingPath:string[]=[]):Record<string,PropertyValue> {
+		if(isString(path)) {
+			path = path.split('.');
+		}
+		if(path.length === 0) return {};
+
+		const step = path[0];
+		const properties = step === '*' ? Object.keys(this.properties) : [step];
+		if(path.length === 1) {
+			let values:Record<string, PropertyValue> = {};
+			for(let name of properties) {
+				values = {
+					...values,
+					[concat(startingPath, path).join('.')]: this.get(name)
+				}
+			}
+			return values;
+		}
+		// Path length > 1
+		let values:Record<string, PropertyValue> = {};
+		for(let name of properties) {
+			const value = this.get(name);
+			if(!isComplexValue(value)) {
+				continue; // cannot continue on this path
+			}
+			values = {
+				...values,
+				...value.getPathValues(path.slice(1), [...startingPath, name])
+			}
+		}
+		return values;
+	}
+
 	/**
 	 * Sets all registered properties from the given data.
 	 * @param {object} data			The data to set into the mozel.
@@ -415,40 +448,13 @@ export default class Mozel {
 		});
 	}
 
-	watch(options: PropertyWatcherOptions<any>) {
-		const watcher = new PropertyWatcher(options);
+	watch(options: PropertyWatcherOptions) {
+		const watcher = new PropertyWatcher(this, options);
 		this.watchers.push(watcher);
-		if (watcher.immediate) {
-			const newValue = this.getWatcherValue(watcher, watcher.path);
-			const parent = this.getWatcherValueParent(watcher, watcher.path);
-			watcher.execute(newValue, parent);
-		}
 	}
 
 	getWatchers(path:string) {
 		return this.watchers.filter(watcher => watcher.matches(path));
-	}
-
-	getWatcherValue(watcher:PropertyWatcher<any>, matchedPath:string) {
-		const path = watcher.applyMatchedPath(matchedPath);
-		return this.getPath(path);
-	}
-
-	getWatcherValueParent(watcher:PropertyWatcher<any>, matchedPath:string):Mozel {
-		const path = watcher.applyMatchedPath(matchedPath);
-		const parentPath = path.split('.').slice(0, -1);
-		if(parentPath.length === 0) {
-			return this;
-		}
-		const parent = this.getPath(parentPath);
-		if(parent instanceof Collection) {
-			return parent.parent;
-		}
-		if(!(parent instanceof Mozel)) {
-			log.error("Unexpected parent for watcher value:", parent);
-			throw new Error("Unexpected parent for watcher value.");
-		}
-		return parent;
 	}
 
 	getCollectionMozelPath(mozel:Mozel, path:string[]) {
@@ -470,8 +476,7 @@ export default class Mozel {
 		}
 		const pathString = path.join('.');
 		this.getWatchers(pathString).forEach(watcher => {
-			const currentValue = this.getWatcherValue(watcher, pathString);
-			watcher.setCurrentValue(currentValue);
+			watcher.updateValues(pathString)
 		});
 		if(this.parent && this.relation) {
 			this.parent.propertyBeforeChange([this.relation, ...path], this);
@@ -484,9 +489,7 @@ export default class Mozel {
 		}
 		const pathString = path.join('.');
 		this.getWatchers(pathString).forEach(watcher => {
-			const newValue = this.getWatcherValue(watcher, pathString);
-			const parent = this.getWatcherValueParent(watcher, pathString);
-			watcher.execute(newValue, parent);
+			watcher.execute(pathString);
 		});
 		if (this.parent && this.relation) {
 			this.parent.propertyChanged([this.relation, ...path], this);

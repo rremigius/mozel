@@ -3,7 +3,7 @@ import GenericMozel from "../src/GenericMozel";
 
 describe('GenericMozel', () => {
 	it('.create defines properties based on the given data.', () => {
-		let obj = GenericMozel.create({
+		let obj = GenericMozel.$create({
 			foo: 'bar'
 		});
 		assert.ok(obj.hasProperty('foo'), "Property 'foo' defined");

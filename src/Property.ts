@@ -135,7 +135,7 @@ export default class Property {
 
 	set default(value:PropertyValue) {
 		if(!this.checkType(value)) {
-			log.error(`Default for ${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`, value);
+			log.error(`Default for ${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`, value);
 			return;
 		}
 		this._default = value;
@@ -163,7 +163,7 @@ export default class Property {
 		}
 		if(isMozelClass(this.type) && this.value instanceof Mozel) {
 			// Replace placeholder mozel with the resolved reference
-			let mozel = this.value.resolveReference();
+			let mozel = this.value.$resolveReference();
 			if(!mozel) {
 				log.error(`No Mozel found with GID ${this.value.gid}`);
 			} else if (!this.checkType(mozel)) {
@@ -187,13 +187,13 @@ export default class Property {
 		if(!isComplexValue(this.value)) {
 			return;
 		}
-		this.value.resolveReferences();
+		this.value.$resolveReferences();
 	}
 
 	isDefault():boolean {
 		// Mozel and Collection pointer can be default but nested properties may have changed
 		if(isComplexValue(this._value) && this._value === this._default) {
-			return this._value.isDefault();
+			return this._value.$isDefault();
 		}
 		return this._value === this._default;
 	}
@@ -223,7 +223,7 @@ export default class Property {
 
 		// If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
 		if (!this._reference && isComplexValue(value)) {
-			value.setParent(this.parent, this.name);
+			value.$setParent(this.parent, this.name);
 		}
 
 		// If value is Collection, should listen to changes in Collection
@@ -255,7 +255,7 @@ export default class Property {
 			if(init && this.tryInit(value)) {
 				return true;
 			}
-			if(this.parent.isStrict()) {
+			if(this.parent.$isStrict()) {
 				return false;
 			}
 			this.setErrorValue(value);
@@ -267,16 +267,16 @@ export default class Property {
 
 	notifyBeforeChange() {
 		if(!this.parent) return;
-		this.parent.propertyBeforeChange([this.name]);
+		this.parent.$notifyPropertyBeforeChange([this.name]);
 	}
 
 	notifyChange() {
 		if(!this.parent) return;
-		this.parent.propertyChanged([this.name]);
+		this.parent.$notifyPropertyChanged([this.name]);
 	}
 
 	setErrorValue(value:any) {
-		let err = new Error(`${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`);
+		let err = new Error(`${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`);
 		this.error = err;
 		log.error(err.message, "Received: ", value);
 	}
@@ -297,7 +297,7 @@ export default class Property {
 		// Apply
 		this.value = this.default;
 		if(this.value instanceof Mozel) {
-			this.value.applyDefaults();
+			this.value.$applyDefaults();
 		}
 		this._isDefault = true;
 	}
@@ -313,7 +313,7 @@ export default class Property {
 			if(this.isReference) {
 				throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
 			}
-			return this.parent.create(this.type);
+			return this.parent.$create(this.type);
 		}
 		switch(this.type) {
 		case Number: return 0;
@@ -349,7 +349,7 @@ export default class Property {
 		// Init Mozel
 		if(this.type && isMozelClass(this.type) && isPlainObject(value)) {
 			// Create mozel and try to set again, without type check
-			let mozel = this.parent.create(this.type, value, false, this.isReference);
+			let mozel = this.parent.$create(this.type, value, false, this.isReference);
 			this._set(mozel);
 			return true;
 		}

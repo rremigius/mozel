@@ -171,11 +171,11 @@ let person = Person.create({
    name: 'James',
    dogs: [{name: 'Bobby'}, {name: 'Baxter'}]
 });
-let exported = person.export();
+let exported = person.$export();
 let imported = Person.create(exported);
 
 console.log(person.name, imported.name); // both 'James'
-console.log(person.dog.get(1).name); // both 'Baxter'
+console.log(person.dogs.get(1).name); // both 'Baxter'
 ```
 
 ### Change watching
@@ -209,19 +209,19 @@ let james = Person.create<Person>({
 
 // Watchers
 
-james.watch({ // watcher A
+james.$watch({ // watcher A
     path: 'dog.toy.state',
     handler(newState, oldState) { /*...*/ }
 });
-james.watch({ // watcher B
+james.$watch({ // watcher B
     path: 'dog.toy',
     handler(newToy, oldToy) { /*...*/ }
 });
-james.watch({ // watcher C
+james.$watch({ // watcher C
     path: 'dog',
     handler(newDog, oldDog) { /*...*/ }
 })
-james.watch({ // watcher D
+james.$watch({ // watcher D
     path: 'dog',
     handler(newDog, oldDog) { /*...*/ },
     deep: true
@@ -252,7 +252,7 @@ class Dog extends Mozel {
 let dog = Dog.create({
    toys: [{name: 'ball'}, {name: 'stick'}] 
 });
-dog.watch('toys.*.name', (newName, oldName, path) => {
+dog.$watch('toys.*.name', (newName, oldName, path) => {
     // do something if the name of any toy changes
     // `path` argument will provide the actual path that changed
 });

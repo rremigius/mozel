@@ -50,7 +50,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 
 	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
 		const mozels = data.map(item => this.create<T>(ExpectedClass, item));
-		mozels.forEach(item => item.resolveReferences());
+		mozels.forEach(item => item.$resolveReferences());
 		return mozels;
 	}
 
@@ -102,7 +102,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 		mozel.isReference = asReference;
 
 		if(data) {
-			mozel.setData(data, true);
+			mozel.$setData(data, true);
 		}
 
 		// Register
@@ -114,7 +114,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 		}
 
 		if(root && !mozel.isReference) {
-			mozel.resolveReferences();
+			mozel.$resolveReferences();
 		}
 
 		return mozel;

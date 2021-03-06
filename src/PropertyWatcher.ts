@@ -37,7 +37,7 @@ export default class PropertyWatcher {
 
 	execute(path:string) {
 		const appliedPath = this.applyMatchedPath(path);
-		const values = this.mozel.getPathValues(appliedPath);
+		const values = this.mozel.$pathPattern(appliedPath);
 		for(let valuePath in values) {
 			const value = values[valuePath];
 			this.handler(value, this.currentValues[valuePath], valuePath);
@@ -47,11 +47,11 @@ export default class PropertyWatcher {
 
 	updateValues(path:string) {
 		const appliedPath = this.applyMatchedPath(path);
-		const values = this.mozel.getPathValues(appliedPath);
+		const values = this.mozel.$pathPattern(appliedPath);
 		for(let path in values) {
 			let value = values[path];
 			if(this.deep && isComplexValue(value)) {
-				value = value.cloneDeep();
+				value = value.$cloneDeep();
 			}
 			this.currentValues[path] = value;
 		}

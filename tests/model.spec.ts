@@ -694,7 +694,6 @@ describe('Mozel', () => {
 					assert.equal(path, 'bars.1.bar');
 					assert.equal(newValue, 3);
 					assert.equal(oldValue, 2);
-					// currently not possible to get old value due to unknown path to object in array
 					count++;
 				}
 			})

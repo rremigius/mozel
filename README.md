@@ -252,8 +252,9 @@ class Dog extends Mozel {
 let dog = Dog.create({
    toys: [{name: 'ball'}, {name: 'stick'}] 
 });
-dog.watch('toys.*.name', (newName, oldName, toy) => {
+dog.watch('toys.*.name', (newName, oldName, path) => {
     // do something if the name of any toy changes
+    // `path` argument will provide the actual path that changed
 });
 ```
 

@@ -402,20 +402,25 @@ export default class Mozel {
 		return undefined;
 	}
 
-	getPathValues(path:string|string[], startingPath:string[]=[]):Record<string,PropertyValue> {
-		if(isString(path)) {
-			path = path.split('.');
+	/**
+	 * Gets all path values mathing the given path pattern.
+	 * @param {string|string[]} pathPattern	Path pattern to match. May include wildcards ('*').
+	 * @param {string[]} startingPath		Path to prepend to the resulting paths. Used for recursion.
+	 */
+	getPathValues(pathPattern:string|string[], startingPath:string[]=[]):Record<string,PropertyValue> {
+		if(isString(pathPattern)) {
+			pathPattern = pathPattern.split('.');
 		}
-		if(path.length === 0) return {};
+		if(pathPattern.length === 0) return {};
 
-		const step = path[0];
+		const step = pathPattern[0];
 		const properties = step === '*' ? Object.keys(this.properties) : [step];
-		if(path.length === 1) {
+		if(pathPattern.length === 1) {
 			let values:Record<string, PropertyValue> = {};
 			for(let name of properties) {
 				values = {
 					...values,
-					[concat(startingPath, path).join('.')]: this.get(name)
+					[concat(startingPath, pathPattern).join('.')]: this.get(name)
 				}
 			}
 			return values;
@@ -429,7 +434,7 @@ export default class Mozel {
 			}
 			values = {
 				...values,
-				...value.getPathValues(path.slice(1), [...startingPath, name])
+				...value.getPathValues(pathPattern.slice(1), [...startingPath, name])
 			}
 		}
 		return values;
@@ -448,31 +453,58 @@ export default class Mozel {
 		});
 	}
 
+	/**
+	 * Watch changes to the given path.
+	 * @param {PropertyWatcherOptions} options
+	 */
 	watch(options: PropertyWatcherOptions) {
 		const watcher = new PropertyWatcher(this, options);
 		this.watchers.push(watcher);
 	}
 
+	/**
+	 * Get watchers matching the given path.
+	 * @param {string} path
+	 */
 	getWatchers(path:string) {
 		return this.watchers.filter(watcher => watcher.matches(path));
 	}
 
-	getCollectionMozelPath(mozel:Mozel, path:string[]) {
+	/**
+	 * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to
+	 * the given path.
+	 *
+	 * @param {Mozel} submozel	Direct submozel.
+	 * @param {string[]} path	Path to add the collection index to.
+	 * @return {string[]} 		New path including collection index (does not modify given path).
+	 */
+	maybeAddCollectionIndex(submozel:Mozel, path:string[]) {
 		// Property changed in submozel
 		let relation = path[0];
 		const property = this.getProperty(relation);
 		if(!(property.value instanceof Collection)) {
 			return path;
 		}
-		const index = property.value.indexOf(mozel);
+		const index = property.value.indexOf(submozel);
 
 		// Put the relation with index in front of the path
 		return [relation, index.toString(), ...path.slice(1)];
 	}
 
-	propertyBeforeChange(path:string[], mozel?:Mozel) {
-		if(mozel) {
-			path = this.getCollectionMozelPath(mozel, path);
+	/**
+	 * Notify that a property is about to change. Will set the current value for any relevant watchers, so they can
+	 * compare the new value to the old value, and provide the old value to the handler.
+	 *
+	 * This just-in-time approach has the slight advantage that we don't have to keep copies of values that will
+	 * never change.
+	 *
+	 * @param {string[]} path		The path at which the change occurred.
+	 * @param {Mozel} [submozel] 	The direct submozel reporting the change.
+	 */
+	propertyBeforeChange(path:string[], submozel?:Mozel) {
+		if(submozel) {
+			// If submozel is part of a collection, we should add its index in the collection to the path
+			path = this.maybeAddCollectionIndex(submozel, path);
 		}
 		const pathString = path.join('.');
 		this.getWatchers(pathString).forEach(watcher => {
@@ -483,9 +515,14 @@ export default class Mozel {
 		}
 	}
 
-	propertyChanged(path: string[], mozel?:Mozel) {
-		if(mozel) {
-			path = this.getCollectionMozelPath(mozel, path);
+	/**
+	 * Notify that a property has changed. Will activate relevant watchers.
+	 * @param {string[]} path		Path at which the property changed.
+	 * @param {Mozel} [submozel]	The direct submozel reporting the change.
+	 */
+	propertyChanged(path: string[], submozel?:Mozel) {
+		if(submozel) {
+			path = this.maybeAddCollectionIndex(submozel, path);
 		}
 		const pathString = path.join('.');
 		this.getWatchers(pathString).forEach(watcher => {
@@ -500,7 +537,7 @@ export default class Mozel {
 	 * Resolves the given reference, or its own if no data is provided and it's marked as one.
 	 * @param ref
 	 */
-	resolveReference<Mozel>(ref?: { gid: alphanumeric }) {
+	resolveReference(ref?: { gid: alphanumeric }) {
 		if (!this.registry) return;
 
 		if (!ref) {
@@ -524,12 +561,18 @@ export default class Mozel {
 		});
 	}
 
+	/**
+	 * Applies all defined defaults to the properties.
+	 */
 	applyDefaults() {
 		forEach(this.properties, (property: Property) => {
 			property.applyDefault();
 		});
 	}
 
+	/**
+	 * Check if any property has received a different value than its default.
+	 */
 	isDefault() {
 		return !!find(this.properties, (property: Property) => {
 			return !property.isDefault();
@@ -617,6 +660,9 @@ export default class Mozel {
 		return exported;
 	}
 
+	/**
+	 * Creates a deep clone of the mozel.
+	 */
 	cloneDeep<T extends Mozel>() {
 		return this.static.create(this.export() as MozelData<T>);
 	}
@@ -624,7 +670,7 @@ export default class Mozel {
 	/**
 	 * Renders string templates in all properties of the Mozel, recursively.
 	 * @param {Templater|object} templater	A Templater to use to render the templates, or a data object to fill in the values.
-	 * 																			If a data object is provided, a new Templater will be instantiated with that data object.
+	 * If a data object is provided, a new Templater will be instantiated with that data object.
 	 */
 	renderTemplates(templater: Templater | Data) {
 		if (!(templater instanceof Templater)) {

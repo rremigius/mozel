@@ -302,11 +302,11 @@ describe('Mozel', () => {
 		bar.baz = 456;
 
 		assert.equal(bar.xyz, 123, "Primitive default set correctly");
-		assert.ok(bar.getProperty('xyz').isDefault(), "Primitive default is marked as default");
+		assert.ok(bar.property('xyz').isDefault(), "Primitive default is marked as default");
 		assert.equal(bar.foo && bar.foo.qux, 'abc', "Nested mozel default set correctly");
-		assert.ok(bar.foo && bar.foo.getProperty('qux').isDefault(), "Nested mozel marked as default");
+		assert.ok(bar.foo && bar.foo.property('qux').isDefault(), "Nested mozel marked as default");
 		assert.equal(bar.baz, 456, "Preset value not overwritten by default.");
-		assert.notOk(bar.getProperty('baz').isDefault(), "Overridden value not marked as default");
+		assert.notOk(bar.property('baz').isDefault(), "Overridden value not marked as default");
 		assert.instanceOf(bar.abc, Collection, "Collections are instantiated by default");
 	});
 
@@ -703,6 +703,49 @@ describe('Mozel', () => {
 			if(bar) bar.bar = 3;
 
 			assert.equal(count, 2, "Correct number of watchers called.");
+		});
+	});
+	describe(".setStrict(false)", () => {
+		class Foo extends Mozel {
+			@property(String)
+			name?:string;
+			@property(Foo)
+			foo?:Foo
+			@collection(Foo)
+			foos!:Collection<Foo>;
+		}
+		// TS: setting as `any` because we'll make it not-strict
+		const mozel = <any>Foo.create<Foo>({
+			name: 'foo',
+			foo: {
+				name: 'foofoo'
+			},
+			foos: [{name:'foos1'}, {name: 'foos2'}]
+		});
+		mozel.setStrict(false);
+		mozel.name = 123;
+		mozel.foo.foo = 'nofoo';
+		mozel.foos.setData([1, {name: 'foos3'}], true);
+
+		it("disables rejection of mismatching values", () => {
+			assert.equal(mozel.name, 123);
+			assert.equal(mozel.foo.foo, 'nofoo');
+		});
+		it("provides errors for invalid values on the properties", () => {
+			assert.instanceOf(mozel.property('name').error, Error);
+			assert.equal(mozel.foo.property('name').error, undefined);
+		});
+		it("errors can be retrieved using getErrors()", () => {
+			assert.instanceOf(mozel.foo.getErrors()['foo'], Error);
+			assert.deepEqual(Object.keys(mozel.foo.getErrors()), ['foo']);
+			assert.deepEqual(Object.keys(mozel.foos.getErrors()), ['0']);
+			assert.instanceOf(mozel.foos.getErrors()['0'], Error);
+		});
+		it("all errors can be retrieved recursively using getErrors(true)", () => {
+			const deepErrors = mozel.getErrors(true);
+			assert.instanceOf(deepErrors['name'], Error);
+			assert.instanceOf(deepErrors['foos.0'], Error);
+			assert.instanceOf(deepErrors['foo.foo'], Error);
 		});
 	});
 });

@@ -255,10 +255,13 @@ export default class Property {
 			if(init && this.tryInit(value)) {
 				return true;
 			}
+			if(this.parent.isStrict()) {
+				return false;
+			}
 			this.setErrorValue(value);
-			return false;
 		}
-		this._set(value);
+		// TS: we did the type checking. If the Model is not strict, we allow non-checked types.
+		this._set(<PropertyValue>value);
 		return true;
 	}
 

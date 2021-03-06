@@ -1,7 +1,7 @@
 import Mozel, {Data, isData} from './Mozel';
 import Property, {isComplexValue, isMozelClass, MozelClass, PropertyValue} from './Property';
 
-import {Class, isSubClass, primitive} from 'validation-kit';
+import {Class, primitive} from 'validation-kit';
 import {forEach, isPlainObject, isString, map, isMatch, clone} from 'lodash';
 
 import Templater from "./Templater";
@@ -22,6 +22,11 @@ export default class Collection<T extends Mozel|primitive> {
 	private readonly type?:CollectionType;
 	private list:T[];
 	private readonly removed:T[];
+
+	/**
+	 * Type errors of items in the collection.
+	 */
+	public errors:Record<string, Error> = {};
 
 	parent:Mozel;
 	relation:string;
@@ -131,8 +136,14 @@ export default class Collection<T extends Mozel|primitive> {
 
 		let final = this.revise(item, init);
 		if(!final) {
-			log.error(`Item is not (convertable to) ${this.getTypeName()}`, item);
-			return this;
+			const message = `Item is not (convertable to) ${this.getTypeName()}`;
+			log.error(message, item);
+			if(this.parent.isStrict()) {
+				return this;
+			}
+			this.errors[this.list.length] = new Error(message);
+			// TS: for non-strict models, we disable allow non-typesafe values
+			final = <T>item;
 		}
 		this.notifyBeforeAdd(final, batch);
 
@@ -171,6 +182,7 @@ export default class Collection<T extends Mozel|primitive> {
 		this.notifyBeforeRemove(item, index, batch);
 
 		this.list.splice(index, 1);
+		delete this.errors[index];
 		if(track) {
 			this.removed.push(item);
 		}
@@ -205,6 +217,21 @@ export default class Collection<T extends Mozel|primitive> {
 			this.add(item, init, {index: oldCount + index, total: batch.total});
 		});
 		return this;
+	}
+
+	getErrors(deep?:boolean):Record<string, Error> {
+		const errors = {...this.errors};
+		if(deep) {
+			this.list.forEach((item, index) => {
+				if(item instanceof Mozel) {
+					const subErrors = item.getErrors();
+					forEach(subErrors, (error, path) => {
+						errors[`${index}.${path}`] = error;
+					});
+				}
+			});
+		}
+		return errors;
 	}
 
 	/**
@@ -245,6 +272,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Clear the list
 		this.list = [];
+		this.errors = {};
 
 		// Notify after change
 		items.forEach((item, index) => {

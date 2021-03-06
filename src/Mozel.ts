@@ -13,7 +13,7 @@ import Property, {
 } from './Property';
 import Collection, {CollectionOptions, CollectionType} from './Collection';
 
-import {find, forEach, isPlainObject, isString, get, concat} from 'lodash';
+import {concat, find, forEach, get, isPlainObject, isString} from 'lodash';
 
 import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
@@ -22,7 +22,7 @@ import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import {alphanumeric, primitive} from 'validation-kit';
 
-import Log, {LogLevel} from "log-control";
+import {LogLevel} from "log-control";
 import log from "./log";
 import PropertyWatcher, {PropertyWatcherOptions} from "./PropertyWatcher";
 
@@ -131,6 +131,7 @@ export default class Mozel {
 	private parent: Mozel | null = null;
 	private parentLock: boolean = false;
 	private relation: string | null = null;
+	private strict?: boolean;
 
 	private readonly watchers: PropertyWatcher[];
 
@@ -379,7 +380,7 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	getProperty(property: string) {
+	property(property: string) {
 		return this.properties[property];
 	}
 
@@ -481,7 +482,7 @@ export default class Mozel {
 	maybeAddCollectionIndex(submozel:Mozel, path:string[]) {
 		// Property changed in submozel
 		let relation = path[0];
-		const property = this.getProperty(relation);
+		const property = this.property(relation);
 		if(!(property.value instanceof Collection)) {
 			return path;
 		}
@@ -665,6 +666,44 @@ export default class Mozel {
 	 */
 	cloneDeep<T extends Mozel>() {
 		return this.static.create(this.export() as MozelData<T>);
+	}
+
+	/**
+	 * Can disable strict type checking, so properties can have invalid values.
+	 * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
+	 * @param strict
+	 */
+	setStrict(strict:boolean) {
+		this.strict = strict;
+	}
+
+	isStrict():boolean {
+		if(this.strict === undefined && this.parent) {
+			return this.parent.isStrict();
+		}
+		return this.strict !== false;
+	}
+
+	/**
+	 * Returns validation errors in the Mozel
+	 * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.
+	 * 							Defaults to `false`, returning only errors of direct properties.
+	 */
+	getErrors(deep?:boolean) {
+		const errors:Record<string, Error> = {};
+		for(let name in this.properties) {
+			const property = this.properties[name];
+			if(property.error) {
+				errors[name] = property.error;
+			}
+			if(deep && isComplexValue(property.value)) {
+				const subErrors = property.value.getErrors(true);
+				for(let path in subErrors) {
+					errors[`${name}.${path}`] = subErrors[path];
+				}
+			}
+		}
+		return errors;
 	}
 
 	/**

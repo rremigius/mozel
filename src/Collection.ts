@@ -95,7 +95,7 @@ export default class Collection<T extends Mozel|primitive> {
 		if(!final) {
 			const message = `Item is not (convertable to) ${this.getTypeName()}`;
 			log.error(message, item);
-			if(this.parent.$isStrict()) {
+			if(this.parent.$strict) {
 				return this;
 			}
 			this._errors[this.list.length] = new Error(message);
@@ -444,19 +444,24 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 	$pathPattern = this.pathPattern;
 
-	errors(deep?:boolean):Record<string, Error> {
-		const errors = {...this._errors};
-		if(deep) {
-			this.list.forEach((item, index) => {
-				if(item instanceof Mozel) {
-					const subErrors = item.$errors();
-					forEach(subErrors, (error, path) => {
-						errors[`${index}.${path}`] = error;
-					});
-				}
-			});
-		}
+	get errors() {
+		return {...this._errors};
+	}
+	get $errors() {
+		return this.errors;
+	}
+
+	errorsDeep() {
+		const errors = this.errors;
+		this.list.forEach((item, index) => {
+			if(item instanceof Mozel) {
+				const subErrors = item.$errorsDeep();
+				forEach(subErrors, (error, path) => {
+					errors[`${index}.${path}`] = error;
+				});
+			}
+		});
 		return errors;
 	}
-	$errors = this.errors;
+	$errorsDeep = this.errorsDeep;
 }

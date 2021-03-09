@@ -5,7 +5,7 @@ import Mozel, {collection} from "../src/Mozel";
 import Collection from "../src/Collection";
 
 describe("Collection", () => {
-	describe(".onAdded", () => {
+	describe("onAdded", () => {
 		it("adds a listener that will be called when an item is added", () => {
 			class FooMozel extends Mozel {
 				@collection(FooMozel)
@@ -23,7 +23,7 @@ describe("Collection", () => {
 			assert.equal(assertions, 1, "Right number of listeners called");
 		});
 	});
-	describe(".onRemoved", () => {
+	describe("onRemoved", () => {
 		it("adds a listener that will be called when an item is removed", () => {
 			class FooMozel extends Mozel {
 				@collection(FooMozel)

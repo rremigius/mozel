@@ -691,13 +691,14 @@ export default class Mozel {
 	 * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
 	 * @param strict
 	 */
-	$setStrict(strict:boolean) {
+	set $strict(strict:boolean) {
 		this.strict = strict;
 	}
 
-	$isStrict():boolean {
+	get $strict():boolean {
+		// Get
 		if(this.strict === undefined && this.parent) {
-			return this.parent.$isStrict();
+			return this.parent.$strict;
 		}
 		return this.strict !== false;
 	}
@@ -707,16 +708,24 @@ export default class Mozel {
 	 * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.
 	 * 							Defaults to `false`, returning only errors of direct properties.
 	 */
-	$errors(deep?:boolean) {
+	get $errors() {
 		const errors:Record<string, Error> = {};
 		for(let name in this.properties) {
 			const property = this.properties[name];
 			if(property.error) {
 				errors[name] = property.error;
 			}
-			if(deep && isComplexValue(property.value)) {
-				const subErrors = property.value.$errors(true);
-				for(let path in subErrors) {
+		}
+		return errors;
+	}
+
+	$errorsDeep() {
+		const errors = this.$errors;
+		for(let name in this.properties) {
+			const property = this.properties[name];
+			if (isComplexValue(property.value)) {
+				const subErrors = property.value.$errorsDeep();
+				for (let path in subErrors) {
 					errors[`${name}.${path}`] = subErrors[path];
 				}
 			}

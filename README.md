@@ -66,9 +66,34 @@ console.log(person.name); // James
 console.log(person.nicknames.toArray()); // ['Johnny', 'Jack']
 ```
 
-Only predefined and valid property values will be accepted.
+Only valid values will be accepted:
 
-### Properties and nested Mozels
+```typescript
+person.name = 123;
+console.log(person.name); // still 'James'
+```
+
+### Type definitions
+
+In Typescript, each property has runtime type definition, as well as a Typescript type definition. These should always
+match for the mozel to be considered type-safe.
+
+**Examples**:
+
+| Runtime definition                | Typescript definition         | Description
+|:--                                | :--                           |:--
+| `@property(String)`               | `foo?:string`                 | Optional string
+| `@property(Number)`               | `foo?:number`                 | Optional number
+| `@property(Alphanumeric)`         | `foo?:alphanumeric`           | Optional string or number
+| `@property(MyMozel)`              | `foo?:MyMozel`                | Optional instanceof MyMozel
+| `@collection(String)`             | `foo!:Collection<string>`     | Collection of strings*
+| `@collection(MyMozel)`            | `foo!:Collection<MyMozel>`    | Collection of MyMozels*
+| `@property(String, {required})`   | `foo!:string`                 | Required string, defaults to emtpy string
+| `@property(String, {required, default: "foo"})`   | `foo!:string` | Required string, defaults to `"foo"`lass
+
+\* Collections are always defined at initialization, even if empty. It is therefore safe to place the `!` in the Typescript definition.
+
+### Nested Mozels
 
 Properties can be either primitive, or other Mozels. 
 Nested Mozels can be instantiated entirely by providing nested data to the `create` method, or partially by providing
@@ -270,6 +295,24 @@ A watcher can be configured with the following properties:
 - `deep`: (boolean) If set to `true`, will respond to changes deeper than the given path. Will make a deep clone to provide the old value.
 - `immediate`: (boolean) If set to `true`, will call the handler immediately with the current value.
 
+### Non-strict mode
+
+Mozels can be set to non-strict mode, in which they will accept invalid property values and will report errors where
+the values are invalid. Note that, in that case, the mozel will *not* be considered type-safe, even though Typescript
+cannot report the type errors. Runtime type checking should always be performed if non-strict mozel properties are used.
+
+```typescript
+let james = Person.create({
+    name: 'James',
+    dog: { name: 'Bobby' }
+});
+james.$strict = false;
+james.dog.name = 123;
+
+console.log(james.dog.$errors.name); // Error: Dog.name expects string.
+console.log(james.$errorsDeep()['dog.name']); // Error: Dog.name expects string.
+```
+
 ## Advanced
 
 ### ModelFactory
@@ -338,8 +381,8 @@ let data = [
 let factory = new MozelFactory();
 let people = factory.createSet(data);
 
-console.log(people[0].likes.get(2) === people[3]); // true (both frank)
-console.log(people[0].likes.get(2) === people[1].likes.get(2)); // true (both frank)
+console.log(people[0].likes.get(1) === people[3]); // true (both frank)
+console.log(people[0].likes.get(1) === people[1].likes.get(1)); // true (both frank)
 
 ```
 

@@ -255,7 +255,7 @@ export default class Property {
 			if(init && this.tryInit(value)) {
 				return true;
 			}
-			if(this.parent.$isStrict()) {
+			if(this.parent.$strict) {
 				return false;
 			}
 			this.setErrorValue(value);

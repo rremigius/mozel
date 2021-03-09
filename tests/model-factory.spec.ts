@@ -4,9 +4,11 @@ import MozelFactory from "../src/MozelFactory";
 import {it} from "mocha";
 import {Container} from "inversify";
 import {assert} from "chai";
+import mozelContainer from "../src/inversify";
+import {uniq} from "lodash";
 
 describe("MozelFactory", () => {
-	describe(".createSet", () => {
+	describe("createSet", () => {
 		it("resolves references within the set based on gid", () => {
 			const container = new Container({autoBindInjectable:true});
 			let factory = new MozelFactory(container);
@@ -26,11 +28,41 @@ describe("MozelFactory", () => {
 
 			let people = factory.createSet(Person, data);
 
-			console.log(people[0].likes.get(2) === people[3]); // true (both frank)
-			console.log(people[0].likes.get(2) === people[1].likes.get(2)); // true (both frank)
+			assert.equal(people[0].likes.get(1), people[3]); // true (both frank)
+			assert.equal(people[0].likes.get(1), people[1].likes.get(1)); // true (both frank)
 		})
 	});
-	describe(".create", () => {
+	describe("create", () => {
+		it('generates submozels based on _type property.', () => {
+			let container = new Container({autoBindInjectable:true});
+			container.parent = mozelContainer;
+
+			const factory = new MozelFactory(container);
+
+			@injectableMozel(container)
+			class FooMozel extends Mozel {}
+
+			@injectableMozel(container)
+			class SubFooMozel extends FooMozel {}
+
+			@injectableMozel(container)
+			class BarMozel extends Mozel {
+				@property(Mozel)
+				foo?:Mozel;
+				@collection(Mozel)
+				foos!:Collection<Mozel>;
+			}
+
+			// Instantiate mozel
+			const bar = factory.create(BarMozel, {
+				foo: {_type:'FooMozel'},
+				foos: [{_type:'FooMozel'}, {_type: 'SubFooMozel'}]
+			});
+
+			assert.instanceOf(bar.foo, FooMozel, "Created property submozel is of correct class");
+			assert.instanceOf(bar.foos.get(0), FooMozel, "Created collection submozel is of correct class");
+			assert.instanceOf(bar.foos.get(1), SubFooMozel, "Subclass was instantiated correctly")
+		});
 		it('resolves reference Properties from Registry.', ()=> {
 			const container = new Container({autoBindInjectable:true});
 
@@ -101,6 +133,29 @@ describe("MozelFactory", () => {
 
 			assert.instanceOf(roman, Roman, "Roman mozel instantiated correctly");
 			assert.instanceOf(egyptian, Egyptian, "Egyptian mozel instantiated correctly");
+		});
+		it('created with MozelFactory gets assigned a unique GID if it does not already have one.', () => {
+			const container = new Container({autoBindInjectable:true});
+
+			@injectableMozel(container)
+			class FooMozel extends Mozel {
+				@property(FooMozel)
+				foo?:FooMozel;
+			}
+			const factory = new MozelFactory(container);
+			const mozel1 = factory.create<FooMozel>(FooMozel);
+			const mozel2 = factory.create<FooMozel>(FooMozel, {
+				foo: {}
+			});
+			const mozel3 = factory.create<FooMozel>(FooMozel, {
+				gid: 'bar'
+			});
+
+			const fooGid = mozel2.foo && mozel2.foo.gid;
+			const gids = [mozel1.gid, mozel2.gid, mozel3.gid, fooGid];
+
+			assert.deepEqual(gids, uniq(gids), "All GIDs are unique");
+			assert.equal(mozel3.gid, 'bar');
 		});
 	})
 })

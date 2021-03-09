@@ -1,21 +1,22 @@
 import { PropertyValue } from "./Property";
 import Mozel from "./Mozel";
-export declare type PropertyWatcherOptions<T extends PropertyValue> = {
+export declare type PropertyWatcherOptions = {
     path: string;
-    handler: PropertyChangeHandler<T>;
+    handler: PropertyChangeHandler;
     immediate?: boolean;
     deep?: boolean;
 };
-export declare type PropertyChangeHandler<T extends PropertyValue> = (newValue: T, oldValue: T, parent: Mozel) => void;
-export default class PropertyWatcher<T extends PropertyValue> {
+export declare type PropertyChangeHandler = (newValue: PropertyValue, oldValue: PropertyValue, path: string) => void;
+export default class PropertyWatcher {
+    readonly mozel: Mozel;
     readonly path: string;
     readonly immediate?: boolean;
     readonly deep?: boolean;
     private readonly handler;
-    private currentValue?;
-    constructor(options: PropertyWatcherOptions<T>);
-    execute(newValue: T, parent: Mozel): void;
-    setCurrentValue(value: T): void;
+    private currentValues;
+    constructor(mozel: Mozel, options: PropertyWatcherOptions);
+    execute(path: string): void;
+    updateValues(path: string): void;
     matches(path: string): boolean;
     applyMatchedPath(matchedPath: string): string;
 }

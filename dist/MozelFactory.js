@@ -33,7 +33,7 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
     }
     createSet(ExpectedClass, data) {
         const mozels = data.map(item => this.create(ExpectedClass, item));
-        mozels.forEach(item => item.resolveReferences());
+        mozels.forEach(item => item.$resolveReferences());
         return mozels;
     }
     /**
@@ -81,7 +81,7 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         }
         mozel.isReference = asReference;
         if (data) {
-            mozel.setData(data, true);
+            mozel.$setData(data, true);
         }
         // Register
         if (!mozel.gid) {
@@ -91,7 +91,7 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
             this.registry.register(mozel);
         }
         if (root && !mozel.isReference) {
-            mozel.resolveReferences();
+            mozel.$resolveReferences();
         }
         return mozel;
     }

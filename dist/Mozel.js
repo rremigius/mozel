@@ -3,7 +3,7 @@ import { __decorate, __param } from "tslib";
 import "reflect-metadata";
 import Property, { Alphanumeric, isComplexValue, isMozelClass } from './Property';
 import Collection from './Collection';
-import { find, forEach, isPlainObject, isString, get } from 'lodash';
+import { concat, find, forEach, get, isPlainObject, isString } from 'lodash';
 import Templater from './Templater';
 import { inject, injectable, optional } from "inversify";
 import { injectableMozel } from "./inversify";
@@ -64,13 +64,13 @@ let Mozel = Mozel_1 = class Mozel {
         this.mozelFactory = mozelFactory;
         this.registry = registry;
         this.watchers = [];
-        this.define();
+        this.$define();
         // Check if subclass properly overrode defineData method.
         if (!('id' in this.properties)) {
-            log.warn(`Modl property 'id' was not defined in mozel ${this.getMozelName()}. Perhaps defineData did not call super?`);
+            log.warn(`Modl property 'id' was not defined in mozel ${this.$name()}. Perhaps defineData did not call super?`);
         }
-        this.applyDefaults();
-        this.init();
+        this.$applyDefaults();
+        this.$init();
     }
     static get type() {
         return this.name; // Try using class name (will not work ben uglified).
@@ -118,7 +118,7 @@ let Mozel = Mozel_1 = class Mozel {
         // Instantiate this class.
         const mozel = new this();
         if (data) {
-            mozel.setData(data, true);
+            mozel.$setData(data, true);
         }
         return mozel;
     }
@@ -148,8 +148,11 @@ let Mozel = Mozel_1 = class Mozel {
     get static() {
         return this.constructor;
     }
-    init() {
+    $init() {
     } // for override
+    get $properties() {
+        return this.properties;
+    }
     /**
      * Instantiate a Mozel based on the given class and the data.
      * @param Class
@@ -157,7 +160,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param root					If true, references will be resolved after creation.
      * @param asReference		If true, will not be registered.
      */
-    create(Class, data, root = false, asReference = false) {
+    $create(Class, data, root = false, asReference = false) {
         if (this.mozelFactory) {
             // Preferably, use DI-injected factory
             return this.mozelFactory.create(Class, data, root, asReference);
@@ -165,7 +168,7 @@ let Mozel = Mozel_1 = class Mozel {
         // Otherwise, just create an instance of this class.
         return Class.create(data);
     }
-    destroy() {
+    $destroy() {
         if (this.mozelFactory) {
             this.mozelFactory.destroy(this);
         }
@@ -176,7 +179,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {string} relation			The name of the parent-child relationship.
      * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
-    setParent(parent, relation, lock = true) {
+    $setParent(parent, relation, lock = true) {
         if (this.parentLock) {
             throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
         }
@@ -187,20 +190,32 @@ let Mozel = Mozel_1 = class Mozel {
     /**
      * Get the Mozel's parent.
      */
-    getParent() {
+    $getParent() {
+        return this.parent;
+    }
+    /**
+     * The Mozel's parent.
+     */
+    get $parent() {
         return this.parent;
     }
     /**
      * Get the Mozel's relation to its parent.
      */
-    getRelation() {
+    $getRelation() {
+        return this.relation;
+    }
+    /**
+     * The Mozel's relation to its parent.
+     */
+    get $relation() {
         return this.relation;
     }
     /**
      * @protected
      * For override. Any properties and collections of the mozel should be defined here.
      */
-    define() {
+    $define() {
         // To be called for each class on the prototype chain
         const _defineData = (Class) => {
             if (Class !== Mozel_1) {
@@ -209,10 +224,10 @@ let Mozel = Mozel_1 = class Mozel {
             }
             // Define class properties of this class
             forEach(Class.classPropertyDefinitions, (property) => {
-                this.defineProperty(property.name, property.type, property.options);
+                this.$defineProperty(property.name, property.type, property.options);
             });
             forEach(Class.classCollectionDefinitions, (collection) => {
-                this.defineCollection(collection.name, collection.type, collection.options);
+                this.$defineCollection(collection.name, collection.type, collection.options);
             });
         };
         _defineData(this.static);
@@ -226,18 +241,18 @@ let Mozel = Mozel_1 = class Mozel {
      * 																	Number, String, Alphanumeric, Boolean, (subclass of) Mozel, Collection or undefined.
      * @param {PropertyOptions} [options]
      */
-    defineProperty(name, type, options) {
+    $defineProperty(name, type, options) {
         let property = new Property(this, name, type, options);
         this.properties[name] = property;
         // Create getter/setter
         let currentValue = get(this, name);
         Object.defineProperty(this, name, {
-            get: () => this.get(name),
-            set: value => this.set(name, value)
+            get: () => this.$get(name),
+            set: value => this.$set(name, value)
         });
         // Preset value
         if (currentValue !== undefined) {
-            this.set(name, currentValue);
+            this.$set(name, currentValue);
         }
         return property;
     }
@@ -248,10 +263,10 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {CollectionOptions} [options]
      * @return {Collection}
      */
-    defineCollection(relation, type, options) {
+    $defineCollection(relation, type, options) {
         let collection = new Collection(this, relation, type);
         collection.isReference = (options && options.reference) === true;
-        this.defineProperty(relation, Collection, {
+        this.$defineProperty(relation, Collection, {
             required: true,
             default: collection
         });
@@ -263,9 +278,9 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {PropertyInput} value		The value to set on the property
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
-    set(property, value, init = false) {
+    $set(property, value, init = false) {
         if (!(property in this.properties)) {
-            throw new Error(`Could not set non-existing property '${property}' on ${this.getMozelName()}.`);
+            throw new Error(`Could not set non-existing property '${property}' on ${this.$name()}.`);
         }
         this.properties[property].set(value, init);
         return true;
@@ -274,9 +289,9 @@ let Mozel = Mozel_1 = class Mozel {
      * Get type-safe value of the given property.
      * @param {string} property
      */
-    get(property) {
+    $get(property) {
         if (!(property in this.properties)) {
-            throw new Error(`Could not get non-existing property '${property}' on ${this.getMozelName()}.`);
+            throw new Error(`Could not get non-existing property '${property}' on ${this.$name()}.`);
         }
         return this.properties[property].value;
     }
@@ -284,114 +299,155 @@ let Mozel = Mozel_1 = class Mozel {
      * Get the Property object with the given name.
      * @param property
      */
-    getProperty(property) {
+    $property(property) {
         return this.properties[property];
     }
     /**
      * Get value at given path (not type-safe).
      * @param path
      */
-    getPath(path) {
+    $path(path) {
         if (isString(path)) {
             path = path.split('.');
         }
         if (path.length === 0)
             return undefined;
-        const step = this.get(path[0]);
+        const step = this.$get(path[0]);
         if (path.length === 1)
             return step;
         if (isComplexValue(step)) {
-            return step.getPath(path.slice(1));
+            return step.$path(path.slice(1));
         }
         return undefined;
+    }
+    /**
+     * Gets all path values mathing the given path pattern.
+     * @param {string|string[]} pathPattern	Path pattern to match. May include wildcards ('*').
+     * @param {string[]} startingPath		Path to prepend to the resulting paths. Used for recursion.
+     */
+    $pathPattern(pathPattern, startingPath = []) {
+        if (isString(pathPattern)) {
+            pathPattern = pathPattern.split('.');
+        }
+        if (pathPattern.length === 0)
+            return {};
+        const step = pathPattern[0];
+        const properties = step === '*' ? Object.keys(this.properties) : [step];
+        if (pathPattern.length === 1) {
+            let values = {};
+            for (let name of properties) {
+                values = {
+                    ...values,
+                    [concat(startingPath, pathPattern).join('.')]: this.$get(name)
+                };
+            }
+            return values;
+        }
+        // Path length > 1
+        let values = {};
+        for (let name of properties) {
+            const value = this.$get(name);
+            if (!isComplexValue(value)) {
+                continue; // cannot continue on this path
+            }
+            values = {
+                ...values,
+                ...value.$pathPattern(pathPattern.slice(1), [...startingPath, name])
+            };
+        }
+        return values;
     }
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
      * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
      */
-    setData(data, init = false) {
+    $setData(data, init = false) {
         forEach(this.properties, (property, key) => {
             if (key in data) {
-                this.set(key, data[key], init);
+                this.$set(key, data[key], init);
             }
         });
     }
-    watch(options) {
-        const watcher = new PropertyWatcher(options);
+    /**
+     * Watch changes to the given path.
+     * @param {PropertyWatcherOptions} options
+     */
+    $watch(options) {
+        const watcher = new PropertyWatcher(this, options);
         this.watchers.push(watcher);
-        if (watcher.immediate) {
-            const newValue = this.getWatcherValue(watcher, watcher.path);
-            const parent = this.getWatcherValueParent(watcher, watcher.path);
-            watcher.execute(newValue, parent);
-        }
     }
-    getWatchers(path) {
+    /**
+     * Get watchers matching the given path.
+     * @param {string} path
+     */
+    $watchers(path) {
         return this.watchers.filter(watcher => watcher.matches(path));
     }
-    getWatcherValue(watcher, matchedPath) {
-        const path = watcher.applyMatchedPath(matchedPath);
-        return this.getPath(path);
-    }
-    getWatcherValueParent(watcher, matchedPath) {
-        const path = watcher.applyMatchedPath(matchedPath);
-        const parentPath = path.split('.').slice(0, -1);
-        if (parentPath.length === 0) {
-            return this;
-        }
-        const parent = this.getPath(parentPath);
-        if (parent instanceof Collection) {
-            return parent.parent;
-        }
-        if (!(parent instanceof Mozel_1)) {
-            log.error("Unexpected parent for watcher value:", parent);
-            throw new Error("Unexpected parent for watcher value.");
-        }
-        return parent;
-    }
-    getCollectionMozelPath(mozel, path) {
+    /**
+     * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to
+     * the given path.
+     *
+     * @param {Mozel} submozel	Direct submozel.
+     * @param {string[]} path	Path to add the collection index to.
+     * @return {string[]} 		New path including collection index (does not modify given path).
+     */
+    $maybeAddCollectionIndex(submozel, path) {
         // Property changed in submozel
         let relation = path[0];
-        const property = this.getProperty(relation);
+        const property = this.$property(relation);
         if (!(property.value instanceof Collection)) {
             return path;
         }
-        const index = property.value.indexOf(mozel);
+        const index = property.value.indexOf(submozel);
         // Put the relation with index in front of the path
         return [relation, index.toString(), ...path.slice(1)];
     }
-    propertyBeforeChange(path, mozel) {
-        if (mozel) {
-            path = this.getCollectionMozelPath(mozel, path);
+    /**
+     * Notify that a property is about to change. Will set the current value for any relevant watchers, so they can
+     * compare the new value to the old value, and provide the old value to the handler.
+     *
+     * This just-in-time approach has the slight advantage that we don't have to keep copies of values that will
+     * never change.
+     *
+     * @param {string[]} path		The path at which the change occurred.
+     * @param {Mozel} [submozel] 	The direct submozel reporting the change.
+     */
+    $notifyPropertyBeforeChange(path, submozel) {
+        if (submozel) {
+            // If submozel is part of a collection, we should add its index in the collection to the path
+            path = this.$maybeAddCollectionIndex(submozel, path);
         }
         const pathString = path.join('.');
-        this.getWatchers(pathString).forEach(watcher => {
-            const currentValue = this.getWatcherValue(watcher, pathString);
-            watcher.setCurrentValue(currentValue);
+        this.$watchers(pathString).forEach(watcher => {
+            watcher.updateValues(pathString);
         });
         if (this.parent && this.relation) {
-            this.parent.propertyBeforeChange([this.relation, ...path], this);
+            this.parent.$notifyPropertyBeforeChange([this.relation, ...path], this);
         }
     }
-    propertyChanged(path, mozel) {
-        if (mozel) {
-            path = this.getCollectionMozelPath(mozel, path);
+    /**
+     * Notify that a property has changed. Will activate relevant watchers.
+     * @param {string[]} path		Path at which the property changed.
+     * @param {Mozel} [submozel]	The direct submozel reporting the change.
+     */
+    $notifyPropertyChanged(path, submozel) {
+        if (submozel) {
+            path = this.$maybeAddCollectionIndex(submozel, path);
         }
         const pathString = path.join('.');
-        this.getWatchers(pathString).forEach(watcher => {
-            const newValue = this.getWatcherValue(watcher, pathString);
-            const parent = this.getWatcherValueParent(watcher, pathString);
-            watcher.execute(newValue, parent);
+        this.$watchers(pathString).forEach(watcher => {
+            watcher.execute(pathString);
         });
         if (this.parent && this.relation) {
-            this.parent.propertyChanged([this.relation, ...path], this);
+            this.parent.$notifyPropertyChanged([this.relation, ...path], this);
         }
     }
     /**
      * Resolves the given reference, or its own if no data is provided and it's marked as one.
      * @param ref
      */
-    resolveReference(ref) {
+    $resolveReference(ref) {
         if (!this.registry)
             return;
         if (!ref) {
@@ -407,17 +463,23 @@ let Mozel = Mozel_1 = class Mozel {
     /**
      * Resolves all reference Properties and Collections
      */
-    resolveReferences() {
+    $resolveReferences() {
         forEach(this.properties, (property, key) => {
             property.resolveReferences();
         });
     }
-    applyDefaults() {
+    /**
+     * Applies all defined defaults to the properties.
+     */
+    $applyDefaults() {
         forEach(this.properties, (property) => {
             property.applyDefault();
         });
     }
-    isDefault() {
+    /**
+     * Check if any property has received a different value than its default.
+     */
+    $isDefault() {
         return !!find(this.properties, (property) => {
             return !property.isDefault();
         });
@@ -426,29 +488,22 @@ let Mozel = Mozel_1 = class Mozel {
      * Set only primitive properties from given data.
      * @param {Data} properties
      */
-    setPrimitiveProperties(properties) {
+    $setPrimitiveProperties(properties) {
         forEach(this.properties, (value, key) => {
-            if (!(key in properties) || !this.isPrimitiveProperty(key)) {
+            if (!(key in properties) || !this.$isPrimitiveProperty(key)) {
                 return;
             }
-            this.set(key, value);
+            this.$set(key, value);
         });
-    }
-    /**
-     * Checks if the Mozel has a property
-     * @param property
-     */
-    hasProperty(property) {
-        return property in this.properties;
     }
     /**
      * Get only primitive type properties.
      * @return {[key:string]:Primitive}
      */
-    getPrimitiveProperties() {
+    $getPrimitiveProperties() {
         let properties = {};
         forEach(this.properties, (property, key) => {
-            if (this.isPrimitiveProperty(key)) {
+            if (this.$isPrimitiveProperty(key)) {
                 properties[key] = this.properties[key].value;
             }
         });
@@ -458,10 +513,10 @@ let Mozel = Mozel_1 = class Mozel {
      * Get only complex type properties.
      * @return {[key:string]:ComplexValue}
      */
-    getComplexProperties() {
+    $getComplexProperties() {
         let relations = {};
         forEach(this.properties, (property, key) => {
-            if (!this.isPrimitiveProperty(key)) {
+            if (!this.$isPrimitiveProperty(key)) {
                 relations[key] = this.properties[key].value;
             }
         });
@@ -471,15 +526,22 @@ let Mozel = Mozel_1 = class Mozel {
      * Check if the given property is a primitive.
      * @param key
      */
-    isPrimitiveProperty(key) {
+    $isPrimitiveProperty(key) {
         let type = this.properties[key].type;
         return !isMozelClass(type);
+    }
+    /**
+     * Checks if the Mozel has a property
+     * @param property
+     */
+    $has(property) {
+        return property in this.properties;
     }
     /**
      * Export defined properties to a plain (nested) object.
      * @return {Data}
      */
-    export() {
+    $export() {
         let exported = {};
         if (this.static.hasOwnProperty('type')) {
             exported._type = this.static.type; // using parent's type confuses any factory trying to instantiate based on this export
@@ -487,22 +549,68 @@ let Mozel = Mozel_1 = class Mozel {
         forEach(this.properties, (property, name) => {
             let value = property.value;
             if (isComplexValue(value)) {
-                exported[name] = value.export();
+                exported[name] = value.$export();
                 return;
             }
             exported[name] = value;
         });
         return exported;
     }
-    cloneDeep() {
-        return this.static.create(this.export());
+    /**
+     * Creates a deep clone of the mozel.
+     */
+    $cloneDeep() {
+        return this.static.create(this.$export());
+    }
+    /**
+     * Can disable strict type checking, so properties can have invalid values.
+     * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
+     * @param strict
+     */
+    set $strict(strict) {
+        this.strict = strict;
+    }
+    get $strict() {
+        // Get
+        if (this.strict === undefined && this.parent) {
+            return this.parent.$strict;
+        }
+        return this.strict !== false;
+    }
+    /**
+     * Returns validation errors in the Mozel
+     * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.
+     * 							Defaults to `false`, returning only errors of direct properties.
+     */
+    get $errors() {
+        const errors = {};
+        for (let name in this.properties) {
+            const property = this.properties[name];
+            if (property.error) {
+                errors[name] = property.error;
+            }
+        }
+        return errors;
+    }
+    $errorsDeep() {
+        const errors = this.$errors;
+        for (let name in this.properties) {
+            const property = this.properties[name];
+            if (isComplexValue(property.value)) {
+                const subErrors = property.value.$errorsDeep();
+                for (let path in subErrors) {
+                    errors[`${name}.${path}`] = subErrors[path];
+                }
+            }
+        }
+        return errors;
     }
     /**
      * Renders string templates in all properties of the Mozel, recursively.
      * @param {Templater|object} templater	A Templater to use to render the templates, or a data object to fill in the values.
-     * 																			If a data object is provided, a new Templater will be instantiated with that data object.
+     * If a data object is provided, a new Templater will be instantiated with that data object.
      */
-    renderTemplates(templater) {
+    $renderTemplates(templater) {
         if (!(templater instanceof Templater)) {
             // Instantiate new Templater with given data.
             templater = new Templater(templater);
@@ -510,25 +618,25 @@ let Mozel = Mozel_1 = class Mozel {
         forEach(this.properties, (property, key) => {
             let value = property.value;
             if (isComplexValue(value)) {
-                value.renderTemplates(templater);
+                value.$renderTemplates(templater);
                 return;
             }
             if (isString(value)) {
                 // Render template on string and set new value
-                this.set(key, templater.render(value));
+                this.$set(key, templater.render(value));
                 return;
             }
         });
     }
     // For override
-    getMozelName() {
+    $name() {
         return this.static.type;
     }
-    getMozelPlural() {
-        return this.getMozelName() + 's';
+    $plural() {
+        return this.$name() + 's';
     }
-    getURIPart() {
-        return this.getMozelPlural().toLowerCase();
+    $uriPart() {
+        return this.$plural().toLowerCase();
     }
 };
 Mozel._classPropertyDefinitions = [];

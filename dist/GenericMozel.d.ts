@@ -20,8 +20,8 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
      * @param value
      * @param {boolean} [init]			Allow intialization of Mozels and Collections.
      */
-    set(property: string, value: any, init?: boolean): boolean;
-    setData(data: Data): void;
+    $set(property: string, value: any, init?: boolean): boolean;
+    $setData(data: Data): void;
     exportGeneric(): {
         [x: string]: import("./Property").PropertyValue;
     };

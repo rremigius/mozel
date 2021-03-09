@@ -7,7 +7,7 @@ import { injectableMozel } from "./inversify";
 import MozelFactoryInterface from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import { alphanumeric, primitive } from 'validation-kit';
-import Log, { LogLevel } from "log-control";
+import { LogLevel } from "log-control";
 import PropertyWatcher, { PropertyWatcherOptions } from "./PropertyWatcher";
 export declare type Data = {
     [key: string]: any;
@@ -69,7 +69,7 @@ export default class Mozel {
     /**
      * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
      */
-    static get log(): Log;
+    static get log(): import("log-control").default;
     static injectable(container: Container): void;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
@@ -79,6 +79,7 @@ export default class Mozel {
     private parent;
     private parentLock;
     private relation;
+    private strict?;
     private readonly watchers;
     id?: alphanumeric;
     gid: alphanumeric;
@@ -115,7 +116,8 @@ export default class Mozel {
     protected static get classCollectionDefinitions(): CollectionDefinition[];
     constructor(mozelFactory?: MozelFactoryInterface, registry?: Registry<Mozel>);
     get static(): typeof Mozel;
-    init(): void;
+    $init(): void;
+    get $properties(): Record<string, Property>;
     /**
      * Instantiate a Mozel based on the given class and the data.
      * @param Class
@@ -123,28 +125,36 @@ export default class Mozel {
      * @param root					If true, references will be resolved after creation.
      * @param asReference		If true, will not be registered.
      */
-    create(Class: MozelClass, data?: Data, root?: boolean, asReference?: boolean): Mozel;
-    destroy(): void;
+    $create(Class: MozelClass, data?: Data, root?: boolean, asReference?: boolean): Mozel;
+    $destroy(): void;
     /**
      * Set the Mozel's parent Mozel.
      * @param {Mozel} parent			The parent this Mozel is a child of.
      * @param {string} relation			The name of the parent-child relationship.
      * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
-    setParent(parent: Mozel, relation: string, lock?: boolean): void;
+    $setParent(parent: Mozel, relation: string, lock?: boolean): void;
     /**
      * Get the Mozel's parent.
      */
-    getParent(): Mozel | null;
+    $getParent(): Mozel | null;
+    /**
+     * The Mozel's parent.
+     */
+    get $parent(): Mozel | null;
     /**
      * Get the Mozel's relation to its parent.
      */
-    getRelation(): string | null;
+    $getRelation(): string | null;
+    /**
+     * The Mozel's relation to its parent.
+     */
+    get $relation(): string | null;
     /**
      * @protected
      * For override. Any properties and collections of the mozel should be defined here.
      */
-    define(): void;
+    $define(): void;
     /**
      * Defines a property to be part of the Mozel's data. Only defined properties will be exported and imported
      * to and from plain objects and arrays. A getter and setter will be created, overwriting the original property.
@@ -154,7 +164,7 @@ export default class Mozel {
      * 																	Number, String, Alphanumeric, Boolean, (subclass of) Mozel, Collection or undefined.
      * @param {PropertyOptions} [options]
      */
-    defineProperty(name: string, type?: PropertyType, options?: PropertyOptions): Property;
+    $defineProperty(name: string, type?: PropertyType, options?: PropertyOptions): Property;
     /**
      * Defines a property and instantiates it as a Collection.
      * @param {string} relation       				The relation name.
@@ -162,97 +172,155 @@ export default class Mozel {
      * @param {CollectionOptions} [options]
      * @return {Collection}
      */
-    defineCollection(relation: string, type?: CollectionType, options?: CollectionOptions): Collection<primitive | Mozel>;
+    $defineCollection(relation: string, type?: CollectionType, options?: CollectionOptions): Collection<primitive | Mozel>;
     /**
      * Set value with type checking.
      * @param {string} property				The name of the property
      * @param {PropertyInput} value		The value to set on the property
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
-    set(property: string, value: PropertyInput, init?: boolean): boolean;
+    $set(property: string, value: PropertyInput, init?: boolean): boolean;
     /**
      * Get type-safe value of the given property.
      * @param {string} property
      */
-    get(property: string): PropertyValue;
+    $get(property: string): PropertyValue;
     /**
      * Get the Property object with the given name.
      * @param property
      */
-    getProperty(property: string): Property;
+    $property(property: string): Property;
     /**
      * Get value at given path (not type-safe).
      * @param path
      */
-    getPath(path: string | string[]): PropertyValue;
+    $path(path: string | string[]): PropertyValue;
+    /**
+     * Gets all path values mathing the given path pattern.
+     * @param {string|string[]} pathPattern	Path pattern to match. May include wildcards ('*').
+     * @param {string[]} startingPath		Path to prepend to the resulting paths. Used for recursion.
+     */
+    $pathPattern(pathPattern: string | string[], startingPath?: string[]): Record<string, PropertyValue>;
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
      * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
      */
-    setData(data: Data, init?: boolean): void;
-    watch(options: PropertyWatcherOptions<any>): void;
-    getWatchers(path: string): PropertyWatcher<PropertyValue>[];
-    getWatcherValue(watcher: PropertyWatcher<any>, matchedPath: string): PropertyValue;
-    getWatcherValueParent(watcher: PropertyWatcher<any>, matchedPath: string): Mozel;
-    getCollectionMozelPath(mozel: Mozel, path: string[]): string[];
-    propertyBeforeChange(path: string[], mozel?: Mozel): void;
-    propertyChanged(path: string[], mozel?: Mozel): void;
+    $setData(data: Data, init?: boolean): void;
+    /**
+     * Watch changes to the given path.
+     * @param {PropertyWatcherOptions} options
+     */
+    $watch(options: PropertyWatcherOptions): void;
+    /**
+     * Get watchers matching the given path.
+     * @param {string} path
+     */
+    $watchers(path: string): PropertyWatcher[];
+    /**
+     * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to
+     * the given path.
+     *
+     * @param {Mozel} submozel	Direct submozel.
+     * @param {string[]} path	Path to add the collection index to.
+     * @return {string[]} 		New path including collection index (does not modify given path).
+     */
+    private $maybeAddCollectionIndex;
+    /**
+     * Notify that a property is about to change. Will set the current value for any relevant watchers, so they can
+     * compare the new value to the old value, and provide the old value to the handler.
+     *
+     * This just-in-time approach has the slight advantage that we don't have to keep copies of values that will
+     * never change.
+     *
+     * @param {string[]} path		The path at which the change occurred.
+     * @param {Mozel} [submozel] 	The direct submozel reporting the change.
+     */
+    $notifyPropertyBeforeChange(path: string[], submozel?: Mozel): void;
+    /**
+     * Notify that a property has changed. Will activate relevant watchers.
+     * @param {string[]} path		Path at which the property changed.
+     * @param {Mozel} [submozel]	The direct submozel reporting the change.
+     */
+    $notifyPropertyChanged(path: string[], submozel?: Mozel): void;
     /**
      * Resolves the given reference, or its own if no data is provided and it's marked as one.
      * @param ref
      */
-    resolveReference<Mozel>(ref?: {
+    $resolveReference(ref?: {
         gid: alphanumeric;
     }): Mozel | undefined;
     /**
      * Resolves all reference Properties and Collections
      */
-    resolveReferences(): void;
-    applyDefaults(): void;
-    isDefault(): boolean;
+    $resolveReferences(): void;
+    /**
+     * Applies all defined defaults to the properties.
+     */
+    $applyDefaults(): void;
+    /**
+     * Check if any property has received a different value than its default.
+     */
+    $isDefault(): boolean;
     /**
      * Set only primitive properties from given data.
      * @param {Data} properties
      */
-    setPrimitiveProperties(properties: Data): void;
-    /**
-     * Checks if the Mozel has a property
-     * @param property
-     */
-    hasProperty(property: string): boolean;
+    $setPrimitiveProperties(properties: Data): void;
     /**
      * Get only primitive type properties.
      * @return {[key:string]:Primitive}
      */
-    getPrimitiveProperties(): {
+    $getPrimitiveProperties(): {
         [key: string]: primitive;
     };
     /**
      * Get only complex type properties.
      * @return {[key:string]:ComplexValue}
      */
-    getComplexProperties(): {
+    $getComplexProperties(): {
         [key: string]: ComplexValue;
     };
     /**
      * Check if the given property is a primitive.
      * @param key
      */
-    isPrimitiveProperty(key: string): boolean;
+    $isPrimitiveProperty(key: string): boolean;
+    /**
+     * Checks if the Mozel has a property
+     * @param property
+     */
+    $has(property: string): boolean;
     /**
      * Export defined properties to a plain (nested) object.
      * @return {Data}
      */
-    export(): Data;
-    cloneDeep<T extends Mozel>(): T;
+    $export(): Data;
+    /**
+     * Creates a deep clone of the mozel.
+     */
+    $cloneDeep<T extends Mozel>(): T;
+    /**
+     * Can disable strict type checking, so properties can have invalid values.
+     * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
+     * @param strict
+     */
+    set $strict(strict: boolean);
+    get $strict(): boolean;
+    /**
+     * Returns validation errors in the Mozel
+     * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.
+     * 							Defaults to `false`, returning only errors of direct properties.
+     */
+    get $errors(): Record<string, Error>;
+    $errorsDeep(): Record<string, Error>;
     /**
      * Renders string templates in all properties of the Mozel, recursively.
      * @param {Templater|object} templater	A Templater to use to render the templates, or a data object to fill in the values.
-     * 																			If a data object is provided, a new Templater will be instantiated with that data object.
+     * If a data object is provided, a new Templater will be instantiated with that data object.
      */
-    renderTemplates(templater: Templater | Data): void;
-    getMozelName(): string;
-    getMozelPlural(): string;
-    getURIPart(): string;
+    $renderTemplates(templater: Templater | Data): void;
+    $name(): string;
+    $plural(): string;
+    $uriPart(): string;
 }

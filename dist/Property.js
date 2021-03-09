@@ -100,7 +100,7 @@ let Property = Property_1 = class Property {
     }
     set default(value) {
         if (!this.checkType(value)) {
-            log.error(`Default for ${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`, value);
+            log.error(`Default for ${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`, value);
             return;
         }
         this._default = value;
@@ -125,7 +125,7 @@ let Property = Property_1 = class Property {
         }
         if (isMozelClass(this.type) && this.value instanceof Mozel) {
             // Replace placeholder mozel with the resolved reference
-            let mozel = this.value.resolveReference();
+            let mozel = this.value.$resolveReference();
             if (!mozel) {
                 log.error(`No Mozel found with GID ${this.value.gid}`);
             }
@@ -149,12 +149,12 @@ let Property = Property_1 = class Property {
         if (!isComplexValue(this.value)) {
             return;
         }
-        this.value.resolveReferences();
+        this.value.$resolveReferences();
     }
     isDefault() {
         // Mozel and Collection pointer can be default but nested properties may have changed
         if (isComplexValue(this._value) && this._value === this._default) {
-            return this._value.isDefault();
+            return this._value.$isDefault();
         }
         return this._value === this._default;
     }
@@ -179,14 +179,26 @@ let Property = Property_1 = class Property {
         this._isDefault = false;
         // If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
         if (!this._reference && isComplexValue(value)) {
-            value.setParent(this.parent, this.name);
+            value.$setParent(this.parent, this.name);
         }
         // If value is Collection, should listen to changes in Collection
         if (value instanceof Collection) {
-            value.beforeAdd(() => this.notifyBeforeChange());
-            value.onAdded(() => this.notifyChange());
-            value.beforeRemoveod(() => this.notifyBeforeChange());
-            value.onRemoved(() => this.notifyChange());
+            value.beforeAdd((item, batch) => {
+                if (batch.index === 0)
+                    this.notifyBeforeChange(); // notify before first
+            });
+            value.onAdded((item, batch) => {
+                if (batch.index >= batch.total - 1)
+                    this.notifyChange(); // notify after last
+            });
+            value.beforeRemoved((item, index, batch) => {
+                if (batch.index === 0)
+                    this.notifyBeforeChange(); // notify before first
+            });
+            value.onRemoved((item, index, batch) => {
+                if (batch.index >= batch.total - 1)
+                    this.notifyChange(); // notify after last
+            });
         }
         this.notifyChange();
     }
@@ -201,24 +213,27 @@ let Property = Property_1 = class Property {
             if (init && this.tryInit(value)) {
                 return true;
             }
+            if (this.parent.$strict) {
+                return false;
+            }
             this.setErrorValue(value);
-            return false;
         }
+        // TS: we did the type checking. If the Model is not strict, we allow non-checked types.
         this._set(value);
         return true;
     }
     notifyBeforeChange() {
         if (!this.parent)
             return;
-        this.parent.propertyBeforeChange([this.name]);
+        this.parent.$notifyPropertyBeforeChange([this.name]);
     }
     notifyChange() {
         if (!this.parent)
             return;
-        this.parent.propertyChanged([this.name]);
+        this.parent.$notifyPropertyChanged([this.name]);
     }
     setErrorValue(value) {
-        let err = new Error(`${this.parent.getMozelName()}.${this.name} expects ${this.getTypeName()}.`);
+        let err = new Error(`${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`);
         this.error = err;
         log.error(err.message, "Received: ", value);
     }
@@ -238,7 +253,7 @@ let Property = Property_1 = class Property {
         // Apply
         this.value = this.default;
         if (this.value instanceof Mozel) {
-            this.value.applyDefaults();
+            this.value.$applyDefaults();
         }
         this._isDefault = true;
     }
@@ -252,7 +267,7 @@ let Property = Property_1 = class Property {
             if (this.isReference) {
                 throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
             }
-            return this.parent.create(this.type);
+            return this.parent.$create(this.type);
         }
         switch (this.type) {
             case Number: return 0;
@@ -284,7 +299,7 @@ let Property = Property_1 = class Property {
         // Init Mozel
         if (this.type && isMozelClass(this.type) && isPlainObject(value)) {
             // Create mozel and try to set again, without type check
-            let mozel = this.parent.create(this.type, value, false, this.isReference);
+            let mozel = this.parent.$create(this.type, value, false, this.isReference);
             this._set(mozel);
             return true;
         }

@@ -1,22 +1,37 @@
 import { isComplexValue } from "./Property";
+import Log from "./log";
+const log = Log.instance("watcher");
 export default class PropertyWatcher {
-    constructor(options) {
+    constructor(mozel, options) {
+        this.currentValues = {};
+        this.mozel = mozel;
         this.path = options.path;
         this.handler = options.handler;
         this.immediate = options.immediate;
         this.deep = options.deep;
-    }
-    execute(newValue, parent) {
-        // TS: currentValue is allowed to be undefined
-        this.handler(newValue, this.currentValue, parent);
-    }
-    setCurrentValue(value) {
-        if (this.deep && isComplexValue(value)) {
-            // TS: if value was a Mozel but T wasn't, then we should not be here.
-            this.currentValue = value.cloneDeep();
-            return;
+        if (this.immediate) {
+            this.execute(this.path);
         }
-        this.currentValue = value;
+    }
+    execute(path) {
+        const appliedPath = this.applyMatchedPath(path);
+        const values = this.mozel.$pathPattern(appliedPath);
+        for (let valuePath in values) {
+            const value = values[valuePath];
+            this.handler(value, this.currentValues[valuePath], valuePath);
+            this.currentValues[valuePath] = value;
+        }
+    }
+    updateValues(path) {
+        const appliedPath = this.applyMatchedPath(path);
+        const values = this.mozel.$pathPattern(appliedPath);
+        for (let path in values) {
+            let value = values[path];
+            if (this.deep && isComplexValue(value)) {
+                value = value.$cloneDeep();
+            }
+            this.currentValues[path] = value;
+        }
     }
     matches(path) {
         // Exact path at which we're watching changes

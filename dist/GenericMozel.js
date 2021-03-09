@@ -26,7 +26,7 @@ export default class GenericMozel extends Mozel {
                 }
                 // After initialization, initialize Property for every property set.
                 if (this.initProperty(name)) {
-                    this.set(name, value);
+                    this.$set(name, value);
                     return true;
                 }
                 // Unable to initialize Property
@@ -45,7 +45,7 @@ export default class GenericMozel extends Mozel {
             mozel.initProperty(key);
         }
         // Try again, with defined properties
-        mozel.setData(data);
+        mozel.$setData(data);
         return mozel;
     }
     /**
@@ -54,11 +54,11 @@ export default class GenericMozel extends Mozel {
      * @param value
      * @param {boolean} [init]			Allow intialization of Mozels and Collections.
      */
-    set(property, value, init) {
+    $set(property, value, init) {
         this.initProperty(property);
-        return super.set(property, value, init);
+        return super.$set(property, value, init);
     }
-    setData(data) {
+    $setData(data) {
         forEach(data, (value, key) => {
             this[key] = value; // will trigger the Proxy setter
         });
@@ -76,10 +76,10 @@ export default class GenericMozel extends Mozel {
     initProperty(name) {
         if (!(name in this)) {
             // Also keep a local copy so we know which ones were created generically
-            this.genericProperties[name] = this.defineProperty(name);
+            this.genericProperties[name] = this.$defineProperty(name);
             return true;
         }
-        else if (this.hasProperty(name)) {
+        else if (this.$has(name)) {
             return true;
         }
         return false;

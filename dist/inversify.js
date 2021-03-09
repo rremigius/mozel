@@ -15,7 +15,6 @@ function bindMozelType(Target, container) {
     }
     else {
         type = Target.name;
-        log.warn(`No 'type' getter defined for ${Target.name}. Using class name, which is not always reliable.`);
     }
     container.bind(Mozel).to(Target).whenTargetNamed(type);
 }

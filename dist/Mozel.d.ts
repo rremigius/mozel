@@ -135,17 +135,9 @@ export default class Mozel {
      */
     $setParent(parent: Mozel, relation: string, lock?: boolean): void;
     /**
-     * Get the Mozel's parent.
-     */
-    $getParent(): Mozel | null;
-    /**
      * The Mozel's parent.
      */
     get $parent(): Mozel | null;
-    /**
-     * Get the Mozel's relation to its parent.
-     */
-    $getRelation(): string | null;
     /**
      * The Mozel's relation to its parent.
      */

@@ -188,22 +188,10 @@ let Mozel = Mozel_1 = class Mozel {
         this.parentLock = lock;
     }
     /**
-     * Get the Mozel's parent.
-     */
-    $getParent() {
-        return this.parent;
-    }
-    /**
      * The Mozel's parent.
      */
     get $parent() {
         return this.parent;
-    }
-    /**
-     * Get the Mozel's relation to its parent.
-     */
-    $getRelation() {
-        return this.relation;
     }
     /**
      * The Mozel's relation to its parent.

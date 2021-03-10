@@ -291,7 +291,7 @@ A watcher can be configured with the following properties:
 - `handler`: (function, required): The handler to call when a value changes. Takes three arguments:
     - `newValue`: the new value
     - `oldValue`: the value before the change
-    - `mozel`: the Mozel of the changed property
+    - `path`: the path that changed
 - `deep`: (boolean) If set to `true`, will respond to changes deeper than the given path. Will make a deep clone to provide the old value.
 - `immediate`: (boolean) If set to `true`, will call the handler immediately with the current value.
 

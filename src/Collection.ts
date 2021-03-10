@@ -15,6 +15,7 @@ export type CollectionOptions = {reference?:boolean};
 type AddedListener<T> = (item:T, batch:BatchInfo)=>void;
 type RemovedListener<T> = (item:T, index:number, batch:BatchInfo)=>void;
 type BatchInfo = {index:number, total:number};
+type CollectionItem = Mozel|primitive;
 
 export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
@@ -32,10 +33,10 @@ export default class Collection<T extends Mozel|primitive> {
 	relation:string;
 	isReference:boolean = false;
 
-	beforeAddedListeners:AddedListener<T>[] = [];
-	beforeRemovedListeners:RemovedListener<T>[] = [];
-	addedListeners:AddedListener<T>[] = [];
-	removedListeners:RemovedListener<T>[] = [];
+	beforeAddedListeners:AddedListener<CollectionItem>[] = [];
+	beforeRemovedListeners:RemovedListener<CollectionItem>[] = [];
+	addedListeners:AddedListener<CollectionItem>[] = [];
+	removedListeners:RemovedListener<CollectionItem>[] = [];
 
 	constructor(parent:Mozel, relation:string, type?:CollectionType, list:T[] = []) {
 		this.type = type;
@@ -266,17 +267,17 @@ export default class Collection<T extends Mozel|primitive> {
 		this.addedListeners.forEach(listener => listener(item, batch));
 	}
 
-	beforeAdd(callback:AddedListener<T>) {
+	beforeAdd(callback:AddedListener<CollectionItem>) {
 		this.beforeAddedListeners.push(callback);
 	}
-	onAdded(callback:AddedListener<T>) {
+	onAdded(callback:AddedListener<CollectionItem>) {
 		this.addedListeners.push(callback);
 	}
 
-	beforeRemoved(callback:RemovedListener<T>) {
+	beforeRemoved(callback:RemovedListener<CollectionItem>) {
 		this.beforeRemovedListeners.push(callback);
 	}
-	onRemoved(callback:RemovedListener<T>) {
+	onRemoved(callback:RemovedListener<CollectionItem>) {
 		this.removedListeners.push(callback);
 	}
 

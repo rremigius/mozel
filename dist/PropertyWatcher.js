@@ -1,4 +1,5 @@
 import { isComplexValue } from "./Property";
+import Mozel from "./Mozel";
 import Log from "./log";
 const log = Log.instance("watcher");
 export default class PropertyWatcher {
@@ -28,7 +29,7 @@ export default class PropertyWatcher {
         for (let path in values) {
             let value = values[path];
             if (this.deep && isComplexValue(value)) {
-                value = value.$cloneDeep();
+                value = value instanceof Mozel ? value.$cloneDeep() : value.cloneDeep();
             }
             this.currentValues[path] = value;
         }

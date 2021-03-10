@@ -401,7 +401,10 @@ export default class Mozel {
 		const step = this.$get(path[0]);
 		if(path.length === 1) return step;
 
-		if(isComplexValue(step)) {
+		if(step instanceof Collection) {
+			return step.path(path.slice(1));
+		}
+		if(step instanceof Mozel) {
 			return step.$path(path.slice(1));
 		}
 		return undefined;
@@ -437,9 +440,12 @@ export default class Mozel {
 			if(!isComplexValue(value)) {
 				continue; // cannot continue on this path
 			}
+			const subValues = value instanceof Mozel
+				? value.$pathPattern(pathPattern.slice(1), [...startingPath, name])
+				: value.pathPattern(pathPattern.slice(1), [...startingPath, name])
 			values = {
 				...values,
-				...value.$pathPattern(pathPattern.slice(1), [...startingPath, name])
+				...subValues
 			}
 		}
 		return values;
@@ -656,7 +662,7 @@ export default class Mozel {
 		forEach(this.properties, (property: Property, name: string) => {
 			let value = property.value;
 			if (isComplexValue(value)) {
-				exported[name] = value.$export();
+				exported[name] = value instanceof Mozel ? value.$export() : value.export();
 				return;
 			}
 			exported[name] = value;
@@ -710,7 +716,7 @@ export default class Mozel {
 		for(let name in this.properties) {
 			const property = this.properties[name];
 			if (isComplexValue(property.value)) {
-				const subErrors = property.value.$errorsDeep();
+				const subErrors = property.value instanceof Mozel ? property.value.$errorsDeep() : property.value.errorsDeep();
 				for (let path in subErrors) {
 					errors[`${name}.${path}`] = subErrors[path];
 				}
@@ -732,9 +738,12 @@ export default class Mozel {
 
 		forEach(this.properties, (property: Property, key: string) => {
 			let value = property.value;
-			if (isComplexValue(value)) {
+			if(value instanceof Mozel) {
 				value.$renderTemplates(templater);
 				return;
+			}
+			if(value instanceof Collection) {
+				value.renderTemplates(templater);
 			}
 			if (isString(value)) {
 				// Render template on string and set new value

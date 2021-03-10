@@ -607,7 +607,7 @@ describe('Mozel', () => {
 					count++;
 				}
 			})
-			foo.bars.$setData([4,5,6]);
+			foo.bars.setData([4,5,6]);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
 		it("notifies about additions/removals to/from Collection ", () => {

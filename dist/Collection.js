@@ -1,5 +1,5 @@
 import Mozel, { isData } from './Mozel';
-import Property, { isComplexValue, isMozelClass } from './Property';
+import Property, { isMozelClass } from './Property';
 import { forEach, isPlainObject, isString, map, isMatch, clone } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
@@ -15,16 +15,6 @@ export default class Collection {
         this.beforeRemovedListeners = [];
         this.addedListeners = [];
         this.removedListeners = [];
-        this.$setData = this.setData;
-        this.$setParent = this.setParent;
-        this.$isDefault = this.isDefault;
-        this.$resolveReferences = this.resolveReferences;
-        this.$cloneDeep = this.cloneDeep;
-        this.$renderTemplates = this.renderTemplates;
-        this.$path = this.path;
-        this.$export = this.export;
-        this.$pathPattern = this.pathPattern;
-        this.$errorsDeep = this.errorsDeep;
         this.type = type;
         this.parent = parent;
         this.relation = relation;
@@ -84,7 +74,7 @@ export default class Collection {
             final = item;
         }
         this.notifyBeforeAdd(final, batch);
-        if (isComplexValue(final)) {
+        if (final instanceof Mozel) {
             final.$setParent(this.parent, this.relation);
         }
         this.list.push(final);
@@ -328,7 +318,7 @@ export default class Collection {
             return item;
         }
         // More steps to go
-        if (!isComplexValue(item)) {
+        if (!(item instanceof Mozel)) {
             // Cannot continue path on primitive value
             return undefined;
         }

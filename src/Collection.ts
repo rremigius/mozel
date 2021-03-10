@@ -105,7 +105,7 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 		this.notifyBeforeAdd(final, batch);
 
-		if(isComplexValue(final)) {
+		if(final instanceof Mozel) {
 			final.$setParent(this.parent, this.relation);
 		}
 		this.list.push(<T>final);
@@ -289,23 +289,20 @@ export default class Collection<T extends Mozel|primitive> {
 
 		this.clear(batch);
 
-		items.forEach((item:object|T, index) => {
+		items.forEach((item: object | T, index) => {
 			this.add(item, init, {index: oldCount + index, total: batch.total});
 		});
 		return this;
 	}
-	$setData = this.setData;
 
 	setParent(parent:Mozel){
 		this.parent = parent;
 	}
-	$setParent = this.setParent;
 
 	isDefault() {
 		// Very simple check, as we don't have a default option for Collections yet
 		return this.length === 0;
 	}
-	$isDefault = this.isDefault;
 
 	resolveReferences() {
 		if(!isMozelClass(this.type)) {
@@ -345,7 +342,6 @@ export default class Collection<T extends Mozel|primitive> {
 			}
 		}
 	}
-	$resolveReferences = this.resolveReferences;
 
 	cloneDeep() {
 		let list = this.toArray();
@@ -359,7 +355,6 @@ export default class Collection<T extends Mozel|primitive> {
 
 		return new Collection<T>(this.parent, this.relation, this.type, list);
 	}
-	$cloneDeep = this.cloneDeep;
 
 	renderTemplates(templater:Templater|Data) {
 		if(!(templater instanceof Templater)) {
@@ -379,7 +374,6 @@ export default class Collection<T extends Mozel|primitive> {
 			}
 		}
 	}
-	$renderTemplates = this.renderTemplates;
 
 	path(path:string|string[]):PropertyValue {
 		if(isString(path)) {
@@ -395,13 +389,12 @@ export default class Collection<T extends Mozel|primitive> {
 			return item;
 		}
 		// More steps to go
-		if(!isComplexValue(item)) {
+		if(!(item instanceof Mozel)) {
 			// Cannot continue path on primitive value
 			return undefined;
 		}
 		return item.$path(path.slice(1));
 	}
-	$path = this.path;
 
 	export():(Data|primitive)[] {
 		return map(this.list, (item:T) => {
@@ -411,7 +404,6 @@ export default class Collection<T extends Mozel|primitive> {
 			return item;
 		});
 	}
-	$export = this.export;
 
 	pathPattern(path:string|string[], startingPath:string[] = []) {
 		if(isString(path)) {
@@ -443,7 +435,6 @@ export default class Collection<T extends Mozel|primitive> {
 		});
 		return values;
 	}
-	$pathPattern = this.pathPattern;
 
 	get errors() {
 		return {...this._errors};
@@ -464,5 +455,4 @@ export default class Collection<T extends Mozel|primitive> {
 		});
 		return errors;
 	}
-	$errorsDeep = this.errorsDeep;
 }

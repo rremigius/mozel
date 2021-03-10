@@ -184,16 +184,20 @@ export default class Property {
 		if(this.isReference) {
 			return this.resolveReference();
 		}
-		if(!isComplexValue(this.value)) {
+		if(this.value instanceof Mozel) {
+			this.value.$resolveReferences();
 			return;
 		}
-		this.value.$resolveReferences();
+		if(this.value instanceof Collection) {
+			this.value.resolveReferences();
+			return;
+		}
 	}
 
 	isDefault():boolean {
 		// Mozel and Collection pointer can be default but nested properties may have changed
 		if(isComplexValue(this._value) && this._value === this._default) {
-			return this._value.$isDefault();
+			return this._value instanceof Mozel ? this._value.$isDefault() : this._value.isDefault();
 		}
 		return this._value === this._default;
 	}
@@ -222,8 +226,13 @@ export default class Property {
 		this._isDefault = false;
 
 		// If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
-		if (!this._reference && isComplexValue(value)) {
-			value.$setParent(this.parent, this.name);
+		if (!this._reference) {
+			if(value instanceof Mozel) {
+				value.$setParent(this.parent, this.name);
+			}
+			if(value instanceof Collection) {
+				value.setParent(this.parent);
+			}
 		}
 
 		// If value is Collection, should listen to changes in Collection

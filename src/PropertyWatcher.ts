@@ -51,7 +51,7 @@ export default class PropertyWatcher {
 		for(let path in values) {
 			let value = values[path];
 			if(this.deep && isComplexValue(value)) {
-				value = value.$cloneDeep();
+				value = value instanceof Mozel ? value.$cloneDeep() : value.cloneDeep();
 			}
 			this.currentValues[path] = value;
 		}

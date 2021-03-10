@@ -15,7 +15,7 @@ describe("Collection", () => {
 			let bar = FooMozel.create<FooMozel>();
 
 			let assertions = 0;
-			foo.other.onAdded((item:FooMozel) => {
+			foo.other.onAdded(item => {
 				assert.ok(item instanceof FooMozel);
 				assertions++;
 			});
@@ -33,7 +33,7 @@ describe("Collection", () => {
 			let bar = FooMozel.create<FooMozel>();
 
 			let assertions = 0;
-			foo.other.onRemoved((item:FooMozel) => {
+			foo.other.onRemoved(item => {
 				assert.ok(item instanceof FooMozel);
 				assertions++;
 			});

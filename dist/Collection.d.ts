@@ -100,23 +100,14 @@ export default class Collection<T extends Mozel | primitive> {
     beforeRemoved(callback: RemovedListener<CollectionItem>): void;
     onRemoved(callback: RemovedListener<CollectionItem>): void;
     setData(items: Array<object | T>, init?: boolean): this;
-    $setData: (items: Array<object | T>, init?: boolean) => this;
     setParent(parent: Mozel): void;
-    $setParent: (parent: Mozel) => void;
     isDefault(): boolean;
-    $isDefault: () => boolean;
     resolveReferences(): void;
-    $resolveReferences: () => void;
     cloneDeep(): Collection<T>;
-    $cloneDeep: () => Collection<T>;
     renderTemplates(templater: Templater | Data): void;
-    $renderTemplates: (templater: Templater | Data) => void;
     path(path: string | string[]): PropertyValue;
-    $path: (path: string | string[]) => PropertyValue;
     export(): (Data | primitive)[];
-    $export: () => (Data | primitive)[];
     pathPattern(path: string | string[], startingPath?: string[]): {};
-    $pathPattern: (path: string | string[], startingPath?: string[]) => {};
     get errors(): {
         [x: string]: Error;
     };
@@ -124,9 +115,6 @@ export default class Collection<T extends Mozel | primitive> {
         [x: string]: Error;
     };
     errorsDeep(): {
-        [x: string]: Error;
-    };
-    $errorsDeep: () => {
         [x: string]: Error;
     };
 }

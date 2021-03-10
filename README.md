@@ -325,19 +325,19 @@ between sub-Mozels and 3) inject Mozel dependencies.
 ```typescript
 // Definitions
 
-@injectableMozel()
+@injectable()
 class Person extends Mozel {
     @collection(Dog)
 	dogs!:Collection<Dog>;
 }
 
-@injectableMozel()
+@injectable()
 class Dog extends Mozel {}
 
-@injectableMozel()
+@injectable()
 class Pug extends Dog {}
 
-@injectableMozel()
+@injectable()
 class StBernard extends Dog {}
 
 // Instances
@@ -351,8 +351,8 @@ console.log(james.dogs.get(0) instanceof Pug); // true
 console.log(james.dogs.get(1) instanceof StBernard); // true
 ```
 
-Both the MozelFactory and the decorator `@injectableMozel` use a default dependency injection container.
-All `injectableMozel`s will be added to that container and registered as candidates for instantiation,
+Both the MozelFactory and the decorator `@injectable` use a default dependency injection container.
+All `injectable`s will be added to that container and registered as candidates for instantiation,
 based on the `_type` property of the initialisation data.
 
 #### References between sub-Mozels
@@ -363,7 +363,7 @@ make references rather than nested Mozels.
 ```typescript
 // Definitions
 
-@injectableMozel()
+@injectable()
 class Person extends Mozel {
     @collection(Person, {reference})
     likes!:Collection<Person>;
@@ -397,14 +397,14 @@ let egyptFactory = new MozelFactory(egypt);
 
 // Definitions
 
-@injectableMozel(rome)
+@injectable(rome)
 class Roman extends Mozel {
     static get type() {
         return 'Person';
     }
 }
 
-@injectableMozel(egypt)
+@injectable(egypt)
 class Egyptian extends Mozel {
     static get type() {
         return 'Person'

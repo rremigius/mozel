@@ -276,24 +276,10 @@ export default class Mozel {
 	}
 
 	/**
-	 * Get the Mozel's parent.
-	 */
-	$getParent() {
-		return this.parent;
-	}
-
-	/**
 	 * The Mozel's parent.
 	 */
 	get $parent() {
 		return this.parent;
-	}
-
-	/**
-	 * Get the Mozel's relation to its parent.
-	 */
-	$getRelation() {
-		return this.relation;
 	}
 
 	/**

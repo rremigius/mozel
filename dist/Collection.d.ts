@@ -12,6 +12,7 @@ declare type BatchInfo = {
     index: number;
     total: number;
 };
+declare type CollectionItem = Mozel | primitive;
 export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
     private readonly type?;
@@ -24,10 +25,10 @@ export default class Collection<T extends Mozel | primitive> {
     parent: Mozel;
     relation: string;
     isReference: boolean;
-    beforeAddedListeners: AddedListener<T>[];
-    beforeRemovedListeners: RemovedListener<T>[];
-    addedListeners: AddedListener<T>[];
-    removedListeners: RemovedListener<T>[];
+    beforeAddedListeners: AddedListener<CollectionItem>[];
+    beforeRemovedListeners: RemovedListener<CollectionItem>[];
+    addedListeners: AddedListener<CollectionItem>[];
+    removedListeners: RemovedListener<CollectionItem>[];
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
     getTypeName(): string;
     getType(): CollectionType | undefined;
@@ -94,10 +95,10 @@ export default class Collection<T extends Mozel | primitive> {
     notifyRemoved(item: T, index: number, batch: BatchInfo): void;
     notifyBeforeAdd(item: T, batch: BatchInfo): void;
     notifyAdded(item: T, batch: BatchInfo): void;
-    beforeAdd(callback: AddedListener<T>): void;
-    onAdded(callback: AddedListener<T>): void;
-    beforeRemoved(callback: RemovedListener<T>): void;
-    onRemoved(callback: RemovedListener<T>): void;
+    beforeAdd(callback: AddedListener<CollectionItem>): void;
+    onAdded(callback: AddedListener<CollectionItem>): void;
+    beforeRemoved(callback: RemovedListener<CollectionItem>): void;
+    onRemoved(callback: RemovedListener<CollectionItem>): void;
     setData(items: Array<object | T>, init?: boolean): this;
     $setData: (items: Array<object | T>, init?: boolean) => this;
     setParent(parent: Mozel): void;

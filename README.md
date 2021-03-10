@@ -89,7 +89,7 @@ match for the mozel to be considered type-safe.
 | `@collection(String)`             | `foo!:Collection<string>`     | Collection of strings*
 | `@collection(MyMozel)`            | `foo!:Collection<MyMozel>`    | Collection of MyMozels*
 | `@property(String, {required})`   | `foo!:string`                 | Required string, defaults to emtpy string
-| `@property(String, {required, default: "foo"})`   | `foo!:string` | Required string, defaults to `"foo"`lass
+| `@property(String, {required, default: "foo"})`   | `foo!:string` | Required string, defaults to `"foo"`
 
 \* Collections are always defined at initialization, even if empty. It is therefore safe to place the `!` in the Typescript definition.
 

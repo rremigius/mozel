@@ -36,14 +36,19 @@ export type MozelConstructor<T extends Mozel> = {
 
 // Types for Mozel creation by plain object
 export type PropertyKeys<T extends Mozel> = { [K in keyof T]: T[K] extends PropertyValue ? K : never }[keyof T];
-export type CollectionData<T> = T extends Mozel ? MozelData<T>[] : T extends primitive ? T[] | Collection<T> : never;
+export type CollectionData<T> =
+	T extends Mozel
+		? MozelData<T>[]|T[]
+		: T extends primitive
+			? T[] | Collection<T>
+			: never;
 export type PropertyData<T> =
 	T extends PropertyValue
 		? T extends Mozel
-		? MozelData<T>
-		: T extends Collection<infer C>
-			? CollectionData<C>
-			: T
+			? MozelData<T>
+			: T extends Collection<infer C>
+				? CollectionData<C>
+				: T
 		: false; // not a PropertyValue
 export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
 	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };

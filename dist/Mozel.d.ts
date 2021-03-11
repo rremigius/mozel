@@ -19,7 +19,7 @@ export declare type MozelConstructor<T extends Mozel> = {
 export declare type PropertyKeys<T extends Mozel> = {
     [K in keyof T]: T[K] extends PropertyValue ? K : never;
 }[keyof T];
-export declare type CollectionData<T> = T extends Mozel ? MozelData<T>[] : T extends primitive ? T[] | Collection<T> : never;
+export declare type CollectionData<T> = T extends Mozel ? MozelData<T>[] | T[] : T extends primitive ? T[] | Collection<T> : never;
 export declare type PropertyData<T> = T extends PropertyValue ? T extends Mozel ? MozelData<T> : T extends Collection<infer C> ? CollectionData<C> : T : false;
 export declare type MozelData<T extends Mozel> = T extends {
     MozelDataType: any;

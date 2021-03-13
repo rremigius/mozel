@@ -1,4 +1,4 @@
-import Mozel, { Data } from './Mozel';
+import Mozel, { Data, MozelData } from './Mozel';
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
@@ -11,7 +11,7 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
         [I in keyof K]?: K[I];
     };
     private genericProperties;
-    static create<T extends Mozel>(data?: Data): T;
+    static create<T extends Mozel>(data?: MozelData<T>): T;
     initialized: boolean;
     constructor();
     /**

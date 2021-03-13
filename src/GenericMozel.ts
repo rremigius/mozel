@@ -15,7 +15,7 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
 
 	private genericProperties:Record<string,Property> = {};
 
-	static create<T extends Mozel>(data?:Data):T {
+	static create<T extends Mozel>(data?:MozelData<T>):T {
 		// Cannot use `K` in static method unfortunately
 		let mozel = <GenericMozel<any>><unknown>super.create(data);
 		if(!data) {

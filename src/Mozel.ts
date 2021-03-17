@@ -109,7 +109,7 @@ export const reference = true;
 export default class Mozel {
 	public _type?: string; // just for MozelData typing
 	static get type() {
-		return this.name; // Try using class name (will not work ben uglified).
+		return this.name; // Try using class name (will not work when uglified).
 	};
 
 	/**
@@ -454,6 +454,17 @@ export default class Mozel {
 			}
 		}
 		return values;
+	}
+
+	$getPath():string {
+		return this.$getPathArray().join('.');
+	}
+
+	$getPathArray():string[] {
+		if(!this.parent || !this.relation) {
+			return [];
+		}
+		return [...this.parent.$getPathArray(), this.relation];
 	}
 
 	/**

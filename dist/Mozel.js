@@ -73,7 +73,7 @@ let Mozel = Mozel_1 = class Mozel {
         this.$init();
     }
     static get type() {
-        return this.name; // Try using class name (will not work ben uglified).
+        return this.name; // Try using class name (will not work when uglified).
     }
     ;
     /**
@@ -350,6 +350,15 @@ let Mozel = Mozel_1 = class Mozel {
             };
         }
         return values;
+    }
+    $getPath() {
+        return this.$getPathArray().join('.');
+    }
+    $getPathArray() {
+        if (!this.parent || !this.relation) {
+            return [];
+        }
+        return [...this.parent.$getPathArray(), this.relation];
     }
     /**
      * Sets all registered properties from the given data.

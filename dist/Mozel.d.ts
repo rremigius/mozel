@@ -199,6 +199,8 @@ export default class Mozel {
     $pathPattern(pathPattern: string | string[], startingPath?: string[]): Record<string, PropertyValue>;
     $getPath(): string;
     $getPathArray(): string[];
+    $getPathFrom(mozel: Mozel): string;
+    $getPathArrayFrom(mozel: Mozel): string[];
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.

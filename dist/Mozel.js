@@ -364,6 +364,16 @@ let Mozel = Mozel_1 = class Mozel {
         }
         return [...this.parent.$getPathArray(), this.relation];
     }
+    $getPathFrom(mozel) {
+        return this.$getPathArrayFrom(mozel).join('.');
+    }
+    $getPathArrayFrom(mozel) {
+        if (this === mozel)
+            return [];
+        if (!this.parent || !this.relation)
+            throw new Error("No path from given Mozel found.");
+        return [...this.$getPathArrayFrom(mozel), this.relation];
+    }
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.

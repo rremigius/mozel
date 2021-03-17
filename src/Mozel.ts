@@ -396,7 +396,7 @@ export default class Mozel {
 	/**
 	 * Alias of $property
 	 */
-	$<K extends PropertyKeys<this> & string>(property:K) {
+	$p<K extends PropertyKeys<this> & string>(property:K) {
 		return this.$property(property);
 	}
 

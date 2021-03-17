@@ -293,7 +293,7 @@ let Mozel = Mozel_1 = class Mozel {
     /**
      * Alias of $property
      */
-    $(property) {
+    $p(property) {
         return this.$property(property);
     }
     /**

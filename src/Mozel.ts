@@ -396,7 +396,9 @@ export default class Mozel {
 	/**
 	 * Alias of $property
 	 */
-	$ = this.$property;
+	$<K extends PropertyKeys<this> & string>(property:K) {
+		return this.$property(property);
+	}
 
 	/**
 	 * Get value at given path (not type-safe).

@@ -394,6 +394,11 @@ export default class Mozel {
 	}
 
 	/**
+	 * Alias of $property
+	 */
+	$ = this.$property;
+
+	/**
 	 * Get value at given path (not type-safe).
 	 * @param path
 	 */

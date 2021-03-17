@@ -181,7 +181,7 @@ export default class Mozel {
      * Get the Property object with the given name.
      * @param property
      */
-    $property(property: string): Property;
+    $property<K extends PropertyKeys<this> & string>(property: K): Property;
     /**
      * Get value at given path (not type-safe).
      * @param path

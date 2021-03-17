@@ -399,6 +399,9 @@ let Mozel = Mozel_1 = class Mozel {
         // Property changed in submozel
         let relation = path[0];
         const property = this.$property(relation);
+        if (!property) {
+            throw new Error(`Path does not exist on ${this.constructor.name}: ${path}`);
+        }
         if (!(property.value instanceof Collection)) {
             return path;
         }

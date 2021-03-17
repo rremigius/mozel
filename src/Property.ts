@@ -14,9 +14,9 @@ const log = logRoot.instance("property");
 export type MozelClass = typeof Mozel;
 export type ComplexValue = Mozel|Collection<any>;
 export type ComplexType = MozelClass|Collection<any>;
-export type PropertyValue = primitive|Function|ComplexValue|undefined;
+export type PropertyValue = primitive|ComplexValue|undefined;
 export type PropertyInput = PropertyValue|object|any[];
-export type PropertyType = MozelClass|Class|Function|Collection<any>|undefined;
+export type PropertyType = MozelClass|Class|Collection<any>|undefined;
 export type PrimitiveObject = Record<string,primitive|undefined|null>;
 
 export type PropertyValueFactory = ()=>PropertyValue;
@@ -52,7 +52,7 @@ export function isPrimitiveObject(object:any): object is PrimitiveObject {
  */
 @injectable()
 export default class Property {
-	public static AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean, Function];
+	public static AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean];
 
 	static checkType(value:any, type?:PropertyType, required=false):value is PropertyValue {
 		if(isNil(value) && !required) {
@@ -327,7 +327,6 @@ export default class Property {
 		switch(this.type) {
 		case Number: return 0;
 		case Boolean: return false;
-		case Function: return ()=>{};
 		case Alphanumeric:
 		case String:
 		default: return '';

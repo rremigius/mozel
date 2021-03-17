@@ -67,20 +67,6 @@ describe('Mozel', () => {
 		const mozel = new FooMozel();
 		assert.equal(mozel.foo, 2, "Default applied correctly");
 	});
-	it('property can be a function.', ()=> {
-		class FooMozel extends Mozel {
-			@property(Function)
-			foo?:()=>void;
-		}
-		let foo = new FooMozel();
-		foo.foo = ()=>{};
-
-		let expected = ()=>{};
-		foo = FooMozel.create({
-			foo:expected
-		});
-		assert.equal(foo.foo, expected);
-	});
 
 	describe("(static) create", () => {
 		it('initializes Mozel with properties from argument, based on properties defined in .defineData with .defineProperty().', () => {
@@ -240,15 +226,15 @@ describe('Mozel', () => {
 		it("applies defaults for Properties recursively.", () => {
 			class FooMozel extends Mozel {
 				@property(String, {default: 'abc'})
-				qux?:String;
+				qux?:string;
 			}
 			class BarMozel extends Mozel {
 				@property(FooMozel, {default: new FooMozel()})
 				foo?:FooMozel;
 				@property(Number, {default:123})
-				xyz?:Number;
+				xyz?:number;
 				@property(Number, {default: 789})
-				baz?:Number;
+				baz?:number;
 				@collection(Number)
 				abc!:Collection<number>
 			}

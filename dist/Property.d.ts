@@ -4,9 +4,9 @@ import Mozel from "./Mozel";
 export declare type MozelClass = typeof Mozel;
 export declare type ComplexValue = Mozel | Collection<any>;
 export declare type ComplexType = MozelClass | Collection<any>;
-export declare type PropertyValue = primitive | Function | ComplexValue | undefined;
+export declare type PropertyValue = primitive | ComplexValue | undefined;
 export declare type PropertyInput = PropertyValue | object | any[];
-export declare type PropertyType = MozelClass | Class | Function | Collection<any> | undefined;
+export declare type PropertyType = MozelClass | Class | Collection<any> | undefined;
 export declare type PrimitiveObject = Record<string, primitive | undefined | null>;
 export declare type PropertyValueFactory = () => PropertyValue;
 export declare type PropertyOptions = {
@@ -28,7 +28,7 @@ export declare function isPrimitiveObject(object: any): object is PrimitiveObjec
  * Runtime type-safe property.
  */
 export default class Property {
-    static AcceptedNonComplexTypes: (FunctionConstructor | StringConstructor | BooleanConstructor | NumberConstructor | typeof Alphanumeric)[];
+    static AcceptedNonComplexTypes: (StringConstructor | BooleanConstructor | NumberConstructor | typeof Alphanumeric)[];
     static checkType(value: any, type?: PropertyType, required?: boolean): value is PropertyValue;
     name: string;
     type?: PropertyType;
@@ -78,7 +78,7 @@ export default class Property {
     notifyChange(): void;
     setErrorValue(value: any): void;
     applyDefault(): void;
-    generateDefaultValue(): false | "" | 0 | Mozel | (() => void);
+    generateDefaultValue(): false | "" | 0 | Mozel;
     getTypeName(): string;
     /**
      * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections

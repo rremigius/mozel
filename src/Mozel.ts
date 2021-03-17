@@ -389,7 +389,7 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	$property(property: string) {
+	$property<K extends PropertyKeys<this> & string>(property:K) {
 		return this.properties[property];
 	}
 
@@ -508,7 +508,10 @@ export default class Mozel {
 	private $maybeAddCollectionIndex(submozel:Mozel, path:string[]) {
 		// Property changed in submozel
 		let relation = path[0];
-		const property = this.$property(relation);
+		const property = this.$property(relation as any);
+		if(!property) {
+			throw new Error(`Path does not exist on ${this.constructor.name}: ${path}`);
+		}
 		if(!(property.value instanceof Collection)) {
 			return path;
 		}

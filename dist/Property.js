@@ -281,7 +281,6 @@ let Property = Property_1 = class Property {
         switch (this.type) {
             case Number: return 0;
             case Boolean: return false;
-            case Function: return () => { };
             case Alphanumeric:
             case String:
             default: return '';
@@ -315,7 +314,7 @@ let Property = Property_1 = class Property {
         return false;
     }
 };
-Property.AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean, Function];
+Property.AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean];
 Property = Property_1 = __decorate([
     injectable()
 ], Property);

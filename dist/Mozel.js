@@ -374,7 +374,7 @@ let Mozel = Mozel_1 = class Mozel {
             return [];
         if (!this.parent || !this.relation)
             throw new Error("No path from given Mozel found.");
-        return [...this.$getPathArrayFrom(mozel), this.relation];
+        return [...this.parent.$getPathArrayFrom(mozel), this.relation];
     }
     /**
      * Sets all registered properties from the given data.

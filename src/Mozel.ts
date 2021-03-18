@@ -483,7 +483,7 @@ export default class Mozel {
 
 		if(!this.parent || !this.relation) throw new Error("No path from given Mozel found.");
 
-		return [...this.$getPathArrayFrom(mozel), this.relation];
+		return [...this.parent.$getPathArrayFrom(mozel), this.relation];
 	}
 
 	/**

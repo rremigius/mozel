@@ -86,5 +86,5 @@ export default class Property {
      * @param value
      */
     tryInit(value: any): boolean;
-    getPathFrom(mozel: Mozel): string[];
+    getPathFrom(mozel: Mozel): string;
 }

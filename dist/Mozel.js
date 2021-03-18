@@ -305,7 +305,7 @@ let Mozel = Mozel_1 = class Mozel {
             path = path.split('.');
         }
         if (path.length === 0)
-            return undefined;
+            return this;
         const step = this.$get(path[0]);
         if (path.length === 1)
             return step;

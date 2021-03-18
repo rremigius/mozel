@@ -408,7 +408,7 @@ export default class Mozel {
 		if(isString(path)) {
 			path = path.split('.');
 		}
-		if(path.length === 0) return undefined;
+		if(path.length === 0) return this;
 
 		const step = this.$get(path[0]);
 		if(path.length === 1) return step;

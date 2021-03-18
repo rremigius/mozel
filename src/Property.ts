@@ -366,6 +366,6 @@ export default class Property {
 	}
 
 	getPathFrom(mozel:Mozel) {
-		return this.parent.$getPathFrom(mozel);
+		return [...this.parent.$getPathFrom(mozel), this.name];
 	}
 }

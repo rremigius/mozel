@@ -314,7 +314,7 @@ let Property = Property_1 = class Property {
         return false;
     }
     getPathFrom(mozel) {
-        return this.parent.$getPathFrom(mozel);
+        return [...this.parent.$getPathFrom(mozel), this.name];
     }
 };
 Property.AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean];

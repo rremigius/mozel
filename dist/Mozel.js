@@ -61,6 +61,10 @@ let Mozel = Mozel_1 = class Mozel {
         this.relation = null;
         this.gid = 0; // a non-database ID that can be used to reference other mozels
         this.isReference = false;
+        /**
+         * Alias of $property
+         */
+        this.$ = this.$property;
         this.mozelFactory = mozelFactory;
         this.registry = registry;
         this.watchers = [];
@@ -289,12 +293,6 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $property(property) {
         return this.properties[property];
-    }
-    /**
-     * Alias of $property
-     */
-    $p(property) {
-        return this.$property(property);
     }
     /**
      * Get value at given path (not type-safe).

@@ -2,7 +2,7 @@ import Mozel, {Data, isData} from './Mozel';
 import Property, {isComplexValue, isMozelClass, MozelClass, PropertyValue} from './Property';
 
 import {Class, primitive} from 'validation-kit';
-import {forEach, isPlainObject, isString, map, isMatch, clone} from 'lodash';
+import {forEach, isPlainObject, isString, map, isMatch, clone, remove} from 'lodash';
 
 import Templater from "./Templater";
 import Log from 'log-control';
@@ -273,12 +273,18 @@ export default class Collection<T extends Mozel|primitive> {
 	onAdded(callback:AddedListener<CollectionItem>) {
 		this.addedListeners.push(callback);
 	}
+	removeAddedListener(callback:AddedListener<CollectionItem>) {
+		remove(this.addedListeners, item => item === callback);
+	}
 
 	beforeRemoved(callback:RemovedListener<CollectionItem>) {
 		this.beforeRemovedListeners.push(callback);
 	}
 	onRemoved(callback:RemovedListener<CollectionItem>) {
 		this.removedListeners.push(callback);
+	}
+	removeRemovedListener(callback:RemovedListener<CollectionItem>) {
+		remove(this.removedListeners, item => item === callback);
 	}
 
 	// COMPLEX VALUE METHODS

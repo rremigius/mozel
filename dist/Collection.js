@@ -1,6 +1,6 @@
 import Mozel, { isData } from './Mozel';
 import Property, { isMozelClass } from './Property';
-import { forEach, isPlainObject, isString, map, isMatch, clone } from 'lodash';
+import { forEach, isPlainObject, isString, map, isMatch, clone, remove } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
 const log = Log.instance("mozel/collection");
@@ -217,11 +217,17 @@ export default class Collection {
     onAdded(callback) {
         this.addedListeners.push(callback);
     }
+    removeAddedListener(callback) {
+        remove(this.addedListeners, item => item === callback);
+    }
     beforeRemoved(callback) {
         this.beforeRemovedListeners.push(callback);
     }
     onRemoved(callback) {
         this.removedListeners.push(callback);
+    }
+    removeRemovedListener(callback) {
+        remove(this.removedListeners, item => item === callback);
     }
     // COMPLEX VALUE METHODS
     setData(items, init = false) {

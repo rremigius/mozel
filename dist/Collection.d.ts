@@ -97,8 +97,10 @@ export default class Collection<T extends Mozel | primitive> {
     notifyAdded(item: T, batch: BatchInfo): void;
     beforeAdd(callback: AddedListener<CollectionItem>): void;
     onAdded(callback: AddedListener<CollectionItem>): void;
+    removeAddedListener(callback: AddedListener<CollectionItem>): void;
     beforeRemoved(callback: RemovedListener<CollectionItem>): void;
     onRemoved(callback: RemovedListener<CollectionItem>): void;
+    removeRemovedListener(callback: RemovedListener<CollectionItem>): void;
     setData(items: Array<object | T>, init?: boolean): this;
     setParent(parent: Mozel): void;
     isDefault(): boolean;

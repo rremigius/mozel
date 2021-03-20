@@ -11,7 +11,8 @@ export {
 	reference,
 	required,
 	immediate,
-	LogLevel
+	LogLevel,
+	PropertyKeys
 } from './Mozel';
 
 export { default as Collection } from "./Collection"

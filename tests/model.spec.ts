@@ -709,6 +709,30 @@ describe('Mozel', () => {
 			assert.instanceOf(deepErrors['name'], Error);
 			assert.instanceOf(deepErrors['foos.0'], Error);
 			assert.instanceOf(deepErrors['foo.foo'], Error);
+
+		});
+	});
+	describe("$setParent", () => {
+		it("disconnects the Mozel from its current parent", () => {
+			class Foo extends Mozel {
+				@property(String, {required})
+				name!:string;
+				@property(Foo)
+				foo?:Foo;
+			}
+			const subfoo = Foo.create<Foo>();
+			const foo1 = Foo.create<Foo>({
+				foo: subfoo
+			});
+			const foo2 = Foo.create<Foo>();
+
+			assert.equal(foo1.foo, subfoo, "Foo1 has subfoo");
+			assert.equal(foo2.foo, undefined, "No subfoo set on foo2");
+
+			foo2.foo = foo1.foo; // Assign subfoo to new parent
+
+			assert.equal(foo1.foo, undefined, 'No subfoo set on foo1 after tranfer');
+			assert.equal(foo2.foo, subfoo, "Foo2 has subfoo");
 		});
 	});
 });

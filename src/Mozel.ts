@@ -20,7 +20,7 @@ import {Container, inject, injectable, optional} from "inversify";
 import {injectableMozel} from "./inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import Registry from "./Registry";
-import {alphanumeric, primitive} from 'validation-kit';
+import {alphanumeric, isSubClass, primitive} from 'validation-kit';
 
 import {LogLevel} from "log-control";
 import log from "./log";
@@ -53,6 +53,8 @@ export type PropertyData<T> =
 		: false; // not a PropertyValue
 export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
 	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
+
+type MozelSchema<T extends Mozel> = { [K in keyof T]-?: T[K] extends Mozel|undefined ? MozelSchema<Exclude<T[K], undefined>> : string }
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
 type CollectionDefinition = { name: string, type?: CollectionType, options?: CollectionOptions };
@@ -124,13 +126,36 @@ export default class Mozel {
 		return log;
 	}
 
+	static $schema<M extends Mozel>(startingPath:string|string[] = []):MozelSchema<M> {
+		return new Proxy(this, {
+			get(target, key) {
+				if(isString(startingPath)) startingPath = startingPath.split('.');
+
+				// Path
+				if(key === '$') return startingPath.join('.');
+
+				if(!isString(key) || !(key in target.classPropertyDefinitions)) {
+					throw new Error(`Mozel path does not exist: ${[...startingPath, key]}`)
+				}
+				const def = target.classPropertyDefinitions[key];
+				if(isSubClass(def.type, Mozel)) {
+					const SubType = def.type as typeof Mozel;
+					return SubType.$schema([...startingPath, key]);
+				}
+			}
+		}) as unknown as MozelSchema<M>;
+	}
+	static $<M extends Mozel>(startingPath:string|string[] = []):MozelSchema<M> {
+		return this.$schema(startingPath);
+	}
+
 	static injectable(container:Container) {
 		// Non-typescript alternative for decorator
 		injectableMozel(container)(this);
 	}
 
-	private static _classPropertyDefinitions: (PropertyDefinition)[] = [];
-	private static _classCollectionDefinitions: (CollectionDefinition)[] = [];
+	private static _classPropertyDefinitions: Record<string, PropertyDefinition> = {};
+	private static _classCollectionDefinitions: Record<string, CollectionDefinition> = {};
 
 	// Injected properties
 	private readonly mozelFactory?: MozelFactoryInterface;
@@ -162,7 +187,7 @@ export default class Mozel {
 		return this.defineClassProperty(name, runtimeType, options);
 	}
 	static defineClassProperty(name: string, runtimeType?: PropertyType, options?: PropertyOptions) {
-		this.classPropertyDefinitions.push({name, type: runtimeType, options});
+		this.classPropertyDefinitions[name] = {name, type: runtimeType, options};
 	}
 
 	/**
@@ -175,7 +200,7 @@ export default class Mozel {
 		return this.defineClassCollection(name, runtimeType, options);
 	}
 	static defineClassCollection(name: string, runtimeType?: CollectionType, options?: CollectionOptions) {
-		this.classCollectionDefinitions.push({name, type: runtimeType, options});
+		this.classCollectionDefinitions[name] = {name, type: runtimeType, options};
 	}
 
 	/**
@@ -201,7 +226,7 @@ export default class Mozel {
 	protected static get classPropertyDefinitions() {
 		// Override _classPropertyDefinitions so this class has its own set and it will not add its properties to its parent
 		if (!this.hasOwnProperty('_classPropertyDefinitions')) {
-			this._classPropertyDefinitions = [];
+			this._classPropertyDefinitions = {};
 		}
 		return this._classPropertyDefinitions;
 	}
@@ -212,7 +237,7 @@ export default class Mozel {
 	protected static get classCollectionDefinitions() {
 		// Override _classPropertyDefinitions so this class has its own set and it will not add its properties to its parent
 		if (!this.hasOwnProperty('_classCollectionDefinitions')) {
-			this._classCollectionDefinitions = [];
+			this._classCollectionDefinitions = {};
 		}
 		return this._classCollectionDefinitions;
 	}

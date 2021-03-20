@@ -735,4 +735,17 @@ describe('Mozel', () => {
 			assert.equal(foo2.foo, subfoo, "Foo2 has subfoo");
 		});
 	});
+	describe("$schema/$", () => {
+		it("provides a path for each step down the hierarchy", () => {
+			class Tree extends Mozel {
+				@property(Tree)
+				left?:Tree;
+				@property(Tree)
+				right?:Tree;
+			}
+
+			assert.equal(Tree.$schema<Tree>().left.$, 'left');
+			assert.equal(Tree.$<Tree>().right.left.right.$, 'right.left.right');
+		});
+	});
 });

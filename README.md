@@ -171,6 +171,30 @@ console.log(james.dogs.get(0) instanceof Dog); // true
 console.log(james.dogs.map(dog => dog.name)); // ['Baxter', 'Bobby'] 
 ```
 
+### Transferral
+
+A Mozel can only have one parent (although multiple Mozels can reference it). If it is transferred from one parent 
+to another, the original parent's property is automatically set to undefined.
+
+```typescript
+let baxter = Dog.create({name: 'Baxter'});
+let james = Person.create({
+    dog: baxter
+})
+let lisa = Person.create();
+
+// James has the dog
+console.log(james.dog.name); // baxter
+console.log(lisa.dog); // undefined
+
+// Transfer to Lisa
+lisa.dog = baxter;
+
+// Lisa has the dog; James no longer has a dog
+console.log(james.dog); // undefined
+console.log(lisa.dog.name); // baxter
+```
+
 ### Import/export
 
 The import/export feature makes it easy to transmit a Mozel as plain object data or JSON to another system, and have it

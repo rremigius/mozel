@@ -134,6 +134,7 @@ export default class Mozel {
      * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
     $setParent(parent: Mozel, relation: string, lock?: boolean): void;
+    $remove(child: Mozel, includeReferences?: boolean): void;
     /**
      * The Mozel's parent.
      */

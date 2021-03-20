@@ -183,13 +183,29 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {string} relation			The name of the parent-child relationship.
      * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
-    $setParent(parent, relation, lock = true) {
+    $setParent(parent, relation, lock = false) {
         if (this.parentLock) {
             throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
+        }
+        if (this.parent) {
+            this.parent.$remove(this);
         }
         this.parent = parent;
         this.relation = relation;
         this.parentLock = lock;
+    }
+    $remove(child, includeReferences = false) {
+        for (let key in this.$properties) {
+            const property = this.$properties[key];
+            if (!includeReferences && property.isReference)
+                continue;
+            if (property.type === Collection) {
+                property.value.remove(child);
+            }
+            else if (property.value === child) {
+                property.set(undefined);
+            }
+        }
     }
     /**
      * The Mozel's parent.

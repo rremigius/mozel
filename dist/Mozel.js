@@ -12,6 +12,7 @@ import Registry from "./Registry";
 import { LogLevel } from "log-control";
 import log from "./log";
 import PropertyWatcher from "./PropertyWatcher";
+import MozelFactory from "./MozelFactory";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
 export { injectableMozel };
@@ -80,6 +81,9 @@ let Mozel = Mozel_1 = class Mozel {
         return this.name; // Try using class name (will not work when uglified).
     }
     ;
+    static createFactory() {
+        return new MozelFactory();
+    }
     /**
      * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
      */

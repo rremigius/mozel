@@ -9,6 +9,7 @@ import Registry from "./Registry";
 import { alphanumeric, primitive } from 'validation-kit';
 import { LogLevel } from "log-control";
 import PropertyWatcher, { PropertyWatcherOptions } from "./PropertyWatcher";
+import MozelFactory from "./MozelFactory";
 export declare type Data = {
     [key: string]: any;
 };
@@ -66,6 +67,7 @@ export declare const reference = true;
 export default class Mozel {
     _type?: string;
     static get type(): string;
+    static createFactory(): MozelFactory;
     /**
      * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
      */

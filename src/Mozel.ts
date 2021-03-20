@@ -25,6 +25,7 @@ import {alphanumeric, primitive} from 'validation-kit';
 import {LogLevel} from "log-control";
 import log from "./log";
 import PropertyWatcher, {PropertyWatcherOptions} from "./PropertyWatcher";
+import MozelFactory from "./MozelFactory";
 
 // TYPES
 
@@ -111,6 +112,10 @@ export default class Mozel {
 	static get type() {
 		return this.name; // Try using class name (will not work when uglified).
 	};
+
+	static createFactory() {
+		return new MozelFactory();
+	}
 
 	/**
 	 * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.

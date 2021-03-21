@@ -54,7 +54,14 @@ export type PropertyData<T> =
 export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
 	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
 
-type MozelSchema<T extends Mozel> = { [K in keyof T]-?: T[K] extends Mozel|undefined ? MozelSchema<Exclude<T[K], undefined>> : string }
+type MozelSchema<T extends Mozel> = { [K in keyof T]-?: T[K] extends Mozel|undefined ? MozelSchema<Exclude<T[K], undefined>> : never } & {
+	$:string; // path
+	$path:string; // path
+	$pathArray:string[];
+	$type:PropertyType;
+	$reference:boolean;
+	$required:boolean;
+}
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
 type CollectionDefinition = { name: string, type?: CollectionType, options?: CollectionOptions };
@@ -126,27 +133,35 @@ export default class Mozel {
 		return log;
 	}
 
-	static $schema<M extends Mozel>(startingPath:string|string[] = []):MozelSchema<M> {
+	static $schema<M extends Mozel>(definition?:PropertyDefinition, startingPath:string|string[] = []):MozelSchema<M> {
 		return new Proxy(this, {
 			get(target, key) {
-				if(isString(startingPath)) startingPath = startingPath.split('.');
+				const currentPath = isString(startingPath) ? startingPath.split('.') : startingPath;
+				if(!definition) {
+					// Default starting 'definition'
+					definition = {name: '', type: target, options: {required: false, reference: false}}
+				}
 
 				// Path
-				if(key === '$') return startingPath.join('.');
+				if(key === '$' || key === '$path') return currentPath.join('.');
+				if(key === '$type') return definition.type;
+				if(key === '$pathArray') return currentPath;
+				if(key === '$reference') return definition.options && definition.options.reference;
+				if(key === '$required') return definition.options && definition.options.required;
 
 				if(!isString(key) || !(key in target.classPropertyDefinitions)) {
-					throw new Error(`Mozel path does not exist: ${[...startingPath, key]}`)
+					throw new Error(`Mozel path does not exist: ${[...currentPath, key]}`)
 				}
 				const def = target.classPropertyDefinitions[key];
 				if(isSubClass(def.type, Mozel)) {
 					const SubType = def.type as typeof Mozel;
-					return SubType.$schema([...startingPath, key]);
+					return SubType.$schema(def, [...startingPath, def.name]);
 				}
 			}
 		}) as unknown as MozelSchema<M>;
 	}
-	static $<M extends Mozel>(startingPath:string|string[] = []):MozelSchema<M> {
-		return this.$schema(startingPath);
+	static $<M extends Mozel>(definition?:PropertyDefinition, startingPath:string|string[] = []):MozelSchema<M> {
+		return this.$schema(definition, startingPath);
 	}
 
 	static injectable(container:Container) {

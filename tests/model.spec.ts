@@ -744,8 +744,9 @@ describe('Mozel', () => {
 				right?:Tree;
 			}
 
-			assert.equal(Tree.$schema<Tree>().left.$, 'left');
+			assert.equal(Tree.$schema<Tree>().left.$path, 'left');
 			assert.equal(Tree.$<Tree>().right.left.right.$, 'right.left.right');
+			assert.equal(Tree.$<Tree>().right.left.$type, Tree);
 		});
 	});
 });

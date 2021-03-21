@@ -27,9 +27,7 @@ export declare type MozelData<T extends Mozel> = T extends {
 } ? T['MozelDataType'] : {
     [K in PropertyKeys<T>]?: PropertyData<T[K]>;
 };
-declare type MozelSchema<T extends Mozel> = {
-    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : never;
-} & {
+declare type PropertySchema = {
     $: string;
     $path: string;
     $pathArray: string[];
@@ -37,6 +35,9 @@ declare type MozelSchema<T extends Mozel> = {
     $reference: boolean;
     $required: boolean;
 };
+declare type MozelSchema<T extends Mozel> = {
+    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : PropertySchema;
+} & PropertySchema;
 declare type PropertyDefinition = {
     name: string;
     type?: PropertyType;

@@ -9,6 +9,7 @@ import { inject, injectable, optional } from "inversify";
 import { injectableMozel } from "./inversify";
 import { MozelFactoryType } from "./MozelFactoryInterface";
 import Registry from "./Registry";
+import { isSubClass } from 'validation-kit';
 import { LogLevel } from "log-control";
 import log from "./log";
 import PropertyWatcher from "./PropertyWatcher";
@@ -90,6 +91,39 @@ let Mozel = Mozel_1 = class Mozel {
     static get log() {
         return log;
     }
+    static $schema(definition, startingPath = []) {
+        return new Proxy(this, {
+            get(target, key) {
+                const currentPath = isString(startingPath) ? startingPath.split('.') : startingPath;
+                if (!definition) {
+                    // Default starting 'definition'
+                    definition = { name: '', type: target, options: { required: false, reference: false } };
+                }
+                // Path
+                if (key === '$' || key === '$path')
+                    return currentPath.join('.');
+                if (key === '$type')
+                    return definition.type;
+                if (key === '$pathArray')
+                    return currentPath;
+                if (key === '$reference')
+                    return definition.options && definition.options.reference;
+                if (key === '$required')
+                    return definition.options && definition.options.required;
+                if (!isString(key) || !(key in target.classPropertyDefinitions)) {
+                    throw new Error(`Mozel path does not exist: ${[...currentPath, key]}`);
+                }
+                const def = target.classPropertyDefinitions[key];
+                if (isSubClass(def.type, Mozel_1)) {
+                    const SubType = def.type;
+                    return SubType.$schema(def, [...startingPath, def.name]);
+                }
+            }
+        });
+    }
+    static $(definition, startingPath = []) {
+        return this.$schema(definition, startingPath);
+    }
     static injectable(container) {
         // Non-typescript alternative for decorator
         injectableMozel(container)(this);
@@ -104,7 +138,7 @@ let Mozel = Mozel_1 = class Mozel {
         return this.defineClassProperty(name, runtimeType, options);
     }
     static defineClassProperty(name, runtimeType, options) {
-        this.classPropertyDefinitions.push({ name, type: runtimeType, options });
+        this.classPropertyDefinitions[name] = { name, type: runtimeType, options };
     }
     /**
      * Define a collection for the mozel.
@@ -116,7 +150,7 @@ let Mozel = Mozel_1 = class Mozel {
         return this.defineClassCollection(name, runtimeType, options);
     }
     static defineClassCollection(name, runtimeType, options) {
-        this.classCollectionDefinitions.push({ name, type: runtimeType, options });
+        this.classCollectionDefinitions[name] = { name, type: runtimeType, options };
     }
     /**
      * Instantiate a Mozel based on raw data.
@@ -139,7 +173,7 @@ let Mozel = Mozel_1 = class Mozel {
     static get classPropertyDefinitions() {
         // Override _classPropertyDefinitions so this class has its own set and it will not add its properties to its parent
         if (!this.hasOwnProperty('_classPropertyDefinitions')) {
-            this._classPropertyDefinitions = [];
+            this._classPropertyDefinitions = {};
         }
         return this._classPropertyDefinitions;
     }
@@ -149,7 +183,7 @@ let Mozel = Mozel_1 = class Mozel {
     static get classCollectionDefinitions() {
         // Override _classPropertyDefinitions so this class has its own set and it will not add its properties to its parent
         if (!this.hasOwnProperty('_classCollectionDefinitions')) {
-            this._classCollectionDefinitions = [];
+            this._classCollectionDefinitions = {};
         }
         return this._classCollectionDefinitions;
     }
@@ -682,8 +716,8 @@ let Mozel = Mozel_1 = class Mozel {
         return this.$plural().toLowerCase();
     }
 };
-Mozel._classPropertyDefinitions = [];
-Mozel._classCollectionDefinitions = [];
+Mozel._classPropertyDefinitions = {};
+Mozel._classCollectionDefinitions = {};
 __decorate([
     property(Alphanumeric)
 ], Mozel.prototype, "id", void 0);

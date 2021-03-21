@@ -27,6 +27,16 @@ export declare type MozelData<T extends Mozel> = T extends {
 } ? T['MozelDataType'] : {
     [K in PropertyKeys<T>]?: PropertyData<T[K]>;
 };
+declare type MozelSchema<T extends Mozel> = {
+    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : never;
+} & {
+    $: string;
+    $path: string;
+    $pathArray: string[];
+    $type: PropertyType;
+    $reference: boolean;
+    $required: boolean;
+};
 declare type PropertyDefinition = {
     name: string;
     type?: PropertyType;
@@ -72,6 +82,8 @@ export default class Mozel {
      * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
      */
     static get log(): import("log-control").default;
+    static $schema<M extends Mozel>(definition?: PropertyDefinition, startingPath?: string | string[]): MozelSchema<M>;
+    static $<M extends Mozel>(definition?: PropertyDefinition, startingPath?: string | string[]): MozelSchema<M>;
     static injectable(container: Container): void;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
@@ -111,11 +123,11 @@ export default class Mozel {
     /**
      * Definitions of Properties made at class level.
      */
-    protected static get classPropertyDefinitions(): PropertyDefinition[];
+    protected static get classPropertyDefinitions(): Record<string, PropertyDefinition>;
     /**
      * Definitions of Collections made at class level.
      */
-    protected static get classCollectionDefinitions(): CollectionDefinition[];
+    protected static get classCollectionDefinitions(): Record<string, CollectionDefinition>;
     constructor(mozelFactory?: MozelFactoryInterface, registry?: Registry<Mozel>);
     get static(): typeof Mozel;
     $init(): void;

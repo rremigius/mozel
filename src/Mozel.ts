@@ -54,7 +54,7 @@ export type PropertyData<T> =
 export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
 	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
 
-export type Schema<T> = {
+export type PropertySchema = {
 	$:string; // path
 	$path:string; // path
 	$pathArray:string[];
@@ -62,24 +62,22 @@ export type Schema<T> = {
 	$reference:boolean;
 	$required:boolean;
 	$collection:boolean;
-} & {
-	[K in keyof T]-?:
-		T[K] extends Mozel|undefined
-			? MozelSchema<Exclude<T[K], undefined>>
-			: T[K] extends Collection<infer C>
-				? CollectionSchema<C>
-				: PropertySchema
 }
 
-export type PropertySchema = Schema<unknown>;
-
-export type CollectionSchema<C> = Schema<C> & (
+export type CollectionSchema<C> = PropertySchema & {$collection: true} & (
 	C extends Mozel
 		? Omit<MozelSchema<C>, '$collection'>
 		: PropertySchema
-) & {$collection: true};
+)
 
-export type MozelSchema<T extends Mozel> = Schema<T> & {$collection: false}
+export type MozelSchema<T extends Mozel> = PropertySchema & {$collection: false} & {
+	[K in keyof T]-?:
+	T[K] extends Mozel|undefined
+		? MozelSchema<Exclude<T[K], undefined>>
+		: T[K] extends Collection<infer C>
+			? CollectionSchema<C>
+			: PropertySchema
+}
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
 type CollectionDefinition = { name: string, type?: CollectionType, options?: CollectionOptions };
@@ -165,7 +163,7 @@ export default class Mozel {
 	 * @param {SchemaDefinition} [definition]	The definition from the parent's
 	 */
 	static $schema<M extends Mozel>(definition?:SchemaDefinition):MozelSchema<M> {
-		function schemaFromDefinition(definition:SchemaDefinition):Schema<unknown> {
+		function schemaFromDefinition(definition:SchemaDefinition):PropertySchema {
 			const pathArray = definition.path;
 			const path = pathArray.join('.');
 			return {

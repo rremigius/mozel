@@ -15,7 +15,7 @@ export {
 	PropertyKeys,
 	schema,
 	$s,
-	Schema,
+	PropertySchema,
 	MozelSchema,
 	CollectionSchema
 } from './Mozel';

@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $} from '../src/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $s, MozelSchema} from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
 import {injectable} from "inversify";
@@ -750,7 +750,7 @@ describe('Mozel', () => {
 			assert.equal(Tree.$<Tree>().branches.$type, Tree);
 			assert.equal(Tree.$<Tree>().branches.$collection, true);
 			assert.equal(schema(Tree).branches.left.right.$, 'branches.left.right');
-			assert.equal($(Tree).branches.left.right.$, 'branches.left.right');
+			assert.equal($s(Tree).branches.left.right.$, 'branches.left.right');
 		});
 	});
 });

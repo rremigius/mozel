@@ -130,7 +130,7 @@ export const reference = true;
 export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof Mozel):MozelSchema<M> {
 	return MozelClass.$schema<M>();
 }
-export const $ = schema;
+export const $s = schema; // shorter alias
 
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.

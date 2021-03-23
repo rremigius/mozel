@@ -82,7 +82,7 @@ export declare const immediate = true;
 export declare const deep = true;
 export declare const reference = true;
 export declare function schema<M extends Mozel>(MozelClass: MozelConstructor<M> & typeof Mozel): MozelSchema<M>;
-export declare const $: typeof schema;
+export declare const $s: typeof schema;
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */

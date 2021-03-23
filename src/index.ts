@@ -14,7 +14,7 @@ export {
 	LogLevel,
 	PropertyKeys,
 	schema,
-	$
+	$s
 } from './Mozel';
 
 export { default as Collection } from "./Collection"

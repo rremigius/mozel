@@ -55,7 +55,7 @@ export const reference = true;
 export function schema(MozelClass) {
     return MozelClass.$schema();
 }
-export const $ = schema;
+export const $s = schema; // shorter alias
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */

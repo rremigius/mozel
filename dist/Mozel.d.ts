@@ -36,8 +36,8 @@ declare type PropertySchema = {
     $required: boolean;
     $collection: boolean;
 };
-declare type CollectionSchema<C> = C extends Mozel ? MozelSchema<C> : PropertySchema;
-declare type MozelSchema<T extends Mozel> = {
+export declare type CollectionSchema<C> = C extends Mozel ? MozelSchema<C> : PropertySchema;
+export declare type MozelSchema<T extends Mozel> = {
     [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : T[K] extends Collection<infer C> ? CollectionSchema<C> : PropertySchema;
 } & PropertySchema;
 declare type PropertyDefinition = {

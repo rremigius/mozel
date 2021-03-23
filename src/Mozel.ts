@@ -54,7 +54,7 @@ export type PropertyData<T> =
 export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
 	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
 
-type PropertySchema = {
+export type PropertySchema = {
 	$:string; // path
 	$path:string; // path
 	$pathArray:string[];

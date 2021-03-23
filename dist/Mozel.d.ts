@@ -27,7 +27,7 @@ export declare type MozelData<T extends Mozel> = T extends {
 } ? T['MozelDataType'] : {
     [K in PropertyKeys<T>]?: PropertyData<T[K]>;
 };
-declare type PropertySchema = {
+export declare type PropertySchema = {
     $: string;
     $path: string;
     $pathArray: string[];

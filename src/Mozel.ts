@@ -64,12 +64,12 @@ type PropertySchema = {
 	$collection:boolean;
 }
 
-type CollectionSchema<C> =
+export type CollectionSchema<C> =
 	C extends Mozel
 		? MozelSchema<C>
 		: PropertySchema;
 
-type MozelSchema<T extends Mozel> = {
+export type MozelSchema<T extends Mozel> = {
 	[K in keyof T]-?:
 	T[K] extends Mozel|undefined
 		? MozelSchema<Exclude<T[K], undefined>>

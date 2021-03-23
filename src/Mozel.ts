@@ -61,17 +61,26 @@ type PropertySchema = {
 	$type:PropertyType;
 	$reference:boolean;
 	$required:boolean;
+	$collection:boolean;
 }
+
+type CollectionSchema<C> =
+	C extends Mozel
+		? MozelSchema<C>
+		: PropertySchema;
 
 type MozelSchema<T extends Mozel> = {
 	[K in keyof T]-?:
 	T[K] extends Mozel|undefined
 		? MozelSchema<Exclude<T[K], undefined>>
-		: PropertySchema
+		: T[K] extends Collection<infer C>
+			? CollectionSchema<C>
+			: PropertySchema
 } & PropertySchema
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
 type CollectionDefinition = { name: string, type?: CollectionType, options?: CollectionOptions };
+type SchemaDefinition = {type: PropertyType, reference:boolean, required:boolean, collection:boolean, path:string[]};
 
 // re-export for easy import together with Mozel
 export {Alphanumeric, alphanumeric, MozelClass};
@@ -118,6 +127,10 @@ export const immediate = true;
 export const deep = true;
 export const reference = true;
 
+export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof Mozel):MozelSchema<M> {
+	return MozelClass.$schema<M>();
+}
+export const $ = schema;
 
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
@@ -128,6 +141,10 @@ export default class Mozel {
 	static get type() {
 		return this.name; // Try using class name (will not work when uglified).
 	};
+
+	static test<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
+		return new ExpectedClass() as T;
+	}
 
 	static createFactory() {
 		return new MozelFactory();
@@ -140,35 +157,73 @@ export default class Mozel {
 		return log;
 	}
 
-	static $schema<M extends Mozel>(definition?:PropertyDefinition, startingPath:string|string[] = []):MozelSchema<M> {
+	/**
+	 * Get this Mozel's schema.
+	 * @param {SchemaDefinition} [definition]	The definition from the parent's
+	 */
+	static $schema<M extends Mozel>(definition?:SchemaDefinition):MozelSchema<M> {
+		function schemaFromDefinition(definition:SchemaDefinition):PropertySchema {
+			const pathArray = definition.path;
+			const path = pathArray.join('.');
+			return {
+				$type: definition.type,
+				$reference: definition.reference,
+				$required: definition.required,
+				$pathArray: pathArray,
+				$path: path,
+				$: path,
+				$collection: definition.collection
+			}
+		}
 		return new Proxy(this, {
 			get(target, key) {
-				const currentPath = isString(startingPath) ? startingPath.split('.') : startingPath;
+				// Current schema (based on parent definition, if provided)
 				if(!definition) {
 					// Default starting 'definition'
-					definition = {name: '', type: target, options: {required: false, reference: false}}
+					definition = {type: target, required: false, reference: false, collection: false, path: []};
 				}
 
-				// Path
-				if(key === '$' || key === '$path') return currentPath.join('.');
-				if(key === '$type') return definition.type;
-				if(key === '$pathArray') return currentPath;
-				if(key === '$reference') return definition.options && definition.options.reference;
-				if(key === '$required') return definition.options && definition.options.required;
-
-				if(!isString(key) || !(key in target.classPropertyDefinitions)) {
-					throw new Error(`Mozel path does not exist: ${[...currentPath, key]}`)
+				if(!isString(key)) {
+					return undefined;
 				}
-				const def = target.classPropertyDefinitions[key];
+
+				// For $-properties, return schema definition
+				if(key.substring(0,1) === '$') {
+					const schema = schemaFromDefinition(definition);
+					return (schema as any)[key];
+				}
+
+				// Try sub-properties
+				let def, collection = false;
+				if(key in target.classPropertyDefinitions) {
+					def = target.classPropertyDefinitions[key];
+				}
+				if(key in target.classCollectionDefinitions) {
+					def = target.classCollectionDefinitions[key];
+					collection = true;
+				}
+				if(!def) {
+					throw new Error(`Mozel path does not exist: ${[...definition.path, key]}`);
+				}
+				const subDefinition = {
+					type: def.type,
+					reference: get(def, 'options.required', false),
+					required: get(def, 'options.required', false),
+					collection: collection,
+					path: [...definition.path, key]
+				}
 				if(isSubClass(def.type, Mozel)) {
 					const SubType = def.type as typeof Mozel;
-					return SubType.$schema(def, [...startingPath, def.name]);
+					return SubType.$schema(subDefinition);
+				} else {
+					// Cannot go deeper because next level is not a Mozel
+					return schemaFromDefinition(subDefinition);
 				}
 			}
 		}) as unknown as MozelSchema<M>;
 	}
-	static $<M extends Mozel>(definition?:PropertyDefinition, startingPath:string|string[] = []):MozelSchema<M> {
-		return this.$schema(definition, startingPath);
+	static $<M extends Mozel>(definition?:SchemaDefinition):MozelSchema<M> {
+		return this.$schema(definition);
 	}
 
 	static injectable(container:Container) {

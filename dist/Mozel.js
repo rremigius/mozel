@@ -52,6 +52,10 @@ export const required = true;
 export const immediate = true;
 export const deep = true;
 export const reference = true;
+export function schema(MozelClass) {
+    return MozelClass.$schema();
+}
+export const $ = schema;
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */
@@ -82,6 +86,9 @@ let Mozel = Mozel_1 = class Mozel {
         return this.name; // Try using class name (will not work when uglified).
     }
     ;
+    static test(ExpectedClass, data) {
+        return new ExpectedClass();
+    }
     static createFactory() {
         return new MozelFactory();
     }
@@ -91,38 +98,71 @@ let Mozel = Mozel_1 = class Mozel {
     static get log() {
         return log;
     }
-    static $schema(definition, startingPath = []) {
+    /**
+     * Get this Mozel's schema.
+     * @param {SchemaDefinition} [definition]	The definition from the parent's
+     */
+    static $schema(definition) {
+        function schemaFromDefinition(definition) {
+            const pathArray = definition.path;
+            const path = pathArray.join('.');
+            return {
+                $type: definition.type,
+                $reference: definition.reference,
+                $required: definition.required,
+                $pathArray: pathArray,
+                $path: path,
+                $: path,
+                $collection: definition.collection
+            };
+        }
         return new Proxy(this, {
             get(target, key) {
-                const currentPath = isString(startingPath) ? startingPath.split('.') : startingPath;
+                // Current schema (based on parent definition, if provided)
                 if (!definition) {
                     // Default starting 'definition'
-                    definition = { name: '', type: target, options: { required: false, reference: false } };
+                    definition = { type: target, required: false, reference: false, collection: false, path: [] };
                 }
-                // Path
-                if (key === '$' || key === '$path')
-                    return currentPath.join('.');
-                if (key === '$type')
-                    return definition.type;
-                if (key === '$pathArray')
-                    return currentPath;
-                if (key === '$reference')
-                    return definition.options && definition.options.reference;
-                if (key === '$required')
-                    return definition.options && definition.options.required;
-                if (!isString(key) || !(key in target.classPropertyDefinitions)) {
-                    throw new Error(`Mozel path does not exist: ${[...currentPath, key]}`);
+                if (!isString(key)) {
+                    return undefined;
                 }
-                const def = target.classPropertyDefinitions[key];
+                // For $-properties, return schema definition
+                if (key.substring(0, 1) === '$') {
+                    const schema = schemaFromDefinition(definition);
+                    return schema[key];
+                }
+                // Try sub-properties
+                let def, collection = false;
+                if (key in target.classPropertyDefinitions) {
+                    def = target.classPropertyDefinitions[key];
+                }
+                if (key in target.classCollectionDefinitions) {
+                    def = target.classCollectionDefinitions[key];
+                    collection = true;
+                }
+                if (!def) {
+                    throw new Error(`Mozel path does not exist: ${[...definition.path, key]}`);
+                }
+                const subDefinition = {
+                    type: def.type,
+                    reference: get(def, 'options.required', false),
+                    required: get(def, 'options.required', false),
+                    collection: collection,
+                    path: [...definition.path, key]
+                };
                 if (isSubClass(def.type, Mozel_1)) {
                     const SubType = def.type;
-                    return SubType.$schema(def, [...startingPath, def.name]);
+                    return SubType.$schema(subDefinition);
+                }
+                else {
+                    // Cannot go deeper because next level is not a Mozel
+                    return schemaFromDefinition(subDefinition);
                 }
             }
         });
     }
-    static $(definition, startingPath = []) {
-        return this.$schema(definition, startingPath);
+    static $(definition) {
+        return this.$schema(definition);
     }
     static injectable(container) {
         // Non-typescript alternative for decorator

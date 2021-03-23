@@ -1,13 +1,10 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, injectableMozel, property, required} from '../src/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $} from '../src/Mozel';
 import Collection from '../src/Collection';
-import {forEach, includes, uniq} from 'lodash';
-import {Container, injectable} from "inversify";
-import mozelContainer from "../src/inversify";
-import MozelFactory from "../src/MozelFactory";
+import {forEach, get, includes, set} from 'lodash';
+import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";
-import {get, set} from 'lodash';
 
 const VALUES = {
 	string: 'abc',
@@ -742,11 +739,18 @@ describe('Mozel', () => {
 				left?:Tree;
 				@property(Tree)
 				right?:Tree;
+				@collection(Tree)
+				branches!:Collection<Tree>;
 			}
 
 			assert.equal(Tree.$schema<Tree>().left.$path, 'left');
 			assert.equal(Tree.$<Tree>().right.left.right.$, 'right.left.right');
 			assert.equal(Tree.$<Tree>().right.left.$type, Tree);
+			assert.equal(Tree.$<Tree>().branches.left.right.$, 'branches.left.right');
+			assert.equal(Tree.$<Tree>().branches.$type, Tree);
+			assert.equal(Tree.$<Tree>().branches.$collection, true);
+			assert.equal(schema(Tree).branches.left.right.$, 'branches.left.right');
+			assert.equal($(Tree).branches.left.right.$, 'branches.left.right');
 		});
 	});
 });

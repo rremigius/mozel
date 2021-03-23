@@ -34,9 +34,11 @@ declare type PropertySchema = {
     $type: PropertyType;
     $reference: boolean;
     $required: boolean;
+    $collection: boolean;
 };
+declare type CollectionSchema<C> = C extends Mozel ? MozelSchema<C> : PropertySchema;
 declare type MozelSchema<T extends Mozel> = {
-    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : PropertySchema;
+    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : T[K] extends Collection<infer C> ? CollectionSchema<C> : PropertySchema;
 } & PropertySchema;
 declare type PropertyDefinition = {
     name: string;
@@ -47,6 +49,13 @@ declare type CollectionDefinition = {
     name: string;
     type?: CollectionType;
     options?: CollectionOptions;
+};
+declare type SchemaDefinition = {
+    type: PropertyType;
+    reference: boolean;
+    required: boolean;
+    collection: boolean;
+    path: string[];
 };
 export { Alphanumeric, alphanumeric, MozelClass };
 export { injectableMozel };
@@ -72,19 +81,26 @@ export declare const required = true;
 export declare const immediate = true;
 export declare const deep = true;
 export declare const reference = true;
+export declare function schema<M extends Mozel>(MozelClass: MozelConstructor<M> & typeof Mozel): MozelSchema<M>;
+export declare const $: typeof schema;
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */
 export default class Mozel {
     _type?: string;
     static get type(): string;
+    static test<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>): T;
     static createFactory(): MozelFactory;
     /**
      * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
      */
     static get log(): import("log-control").default;
-    static $schema<M extends Mozel>(definition?: PropertyDefinition, startingPath?: string | string[]): MozelSchema<M>;
-    static $<M extends Mozel>(definition?: PropertyDefinition, startingPath?: string | string[]): MozelSchema<M>;
+    /**
+     * Get this Mozel's schema.
+     * @param {SchemaDefinition} [definition]	The definition from the parent's
+     */
+    static $schema<M extends Mozel>(definition?: SchemaDefinition): MozelSchema<M>;
+    static $<M extends Mozel>(definition?: SchemaDefinition): MozelSchema<M>;
     static injectable(container: Container): void;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;

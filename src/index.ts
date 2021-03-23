@@ -12,7 +12,9 @@ export {
 	required,
 	immediate,
 	LogLevel,
-	PropertyKeys
+	PropertyKeys,
+	schema,
+	$
 } from './Mozel';
 
 export { default as Collection } from "./Collection"

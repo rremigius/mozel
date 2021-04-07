@@ -349,24 +349,18 @@ between sub-Mozels and 3) inject Mozel dependencies.
 ```typescript
 // Definitions
 
-@injectable()
 class Person extends Mozel {
     @collection(Dog)
 	dogs!:Collection<Dog>;
 }
-
-@injectable()
 class Dog extends Mozel {}
-
-@injectable()
 class Pug extends Dog {}
-
-@injectable()
 class StBernard extends Dog {}
 
 // Instances
 
 let factory = new MozelFactory();
+factory.register(Dog, Pug, StBernard);
 let james = factory.create(Person, {
     dogs: [{_type: 'Pug'}, {_type: 'StBernard'}]
 });
@@ -374,10 +368,6 @@ let james = factory.create(Person, {
 console.log(james.dogs.get(0) instanceof Pug); // true
 console.log(james.dogs.get(1) instanceof StBernard); // true
 ```
-
-Both the MozelFactory and the decorator `@injectable` use a default dependency injection container.
-All `injectable`s will be added to that container and registered as candidates for instantiation,
-based on the `_type` property of the initialisation data.
 
 #### References between sub-Mozels
 
@@ -387,7 +377,6 @@ make references rather than nested Mozels.
 ```typescript
 // Definitions
 
-@injectable()
 class Person extends Mozel {
     @collection(Person, {reference})
     likes!:Collection<Person>;
@@ -403,6 +392,7 @@ let data = [
 ]
 
 let factory = new MozelFactory();
+factory.register(Person);
 let people = factory.createSet(data);
 
 console.log(people[0].likes.get(1) === people[3]); // true (both frank)
@@ -413,33 +403,30 @@ console.log(people[0].likes.get(1) === people[1].likes.get(1)); // true (both fr
 ### Mozel dependency injection
 
 ```typescript
-let rome = MozelFactory.createDependencyContainer();
-let romeFactory = new MozelFactory(rome);
-
-let egypt = MozelFactory.createDependencyContainer();
-let egyptFactory = new MozelFactory(egypt);
+let rome = new MozelFactory();
+let egypt = new MozelFactory();
 
 // Definitions
 
-@injectable(rome)
 class Roman extends Mozel {
     static get type() {
         return 'Person';
     }
 }
+rome.register(Roman);
 
-@injectable(egypt)
 class Egyptian extends Mozel {
     static get type() {
         return 'Person'
     }
 }
+egypt.register(Egyptian);
 
 // Instances
 
 let data = {_type: 'Person'};
-let roman = romeFactory.create(data);
-let egyptian = egyptFactory.create(data);
+let roman = rome.create(data);
+let egyptian = egypt.create(data);
 
 console.log(roman instanceof Roman); // true
 console.log(egyptian instanceof Egyptian); // true

@@ -5,9 +5,16 @@ import Mozel, { MozelConstructor, MozelData } from "./Mozel";
 import MozelFactoryInterface from "./MozelFactoryInterface";
 export default class MozelFactory implements MozelFactoryInterface {
     static createDependencyContainer(): Container;
-    readonly diContainer: Container;
+    readonly dependencies: Container;
+    readonly localDependencies: Container;
     readonly registry: Registry<Mozel>;
-    constructor(diContainer?: Container, mozelRegistry?: Registry<Mozel>);
+    constructor(dependencies?: Container, mozelRegistry?: Registry<Mozel>);
+    initDependencies(): void;
+    /**
+     * Registers the class to the default mozel DI Container, under the class name or static `type`.
+     * @param {MozelClass} MozelClass
+     */
+    register(MozelClass: (typeof Mozel) | (typeof Mozel)[]): void;
     ensureUniqueGID(gid: alphanumeric): alphanumeric;
     nextGID(): number;
     destroy(mozel: Mozel): void;

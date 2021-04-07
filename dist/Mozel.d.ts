@@ -2,8 +2,6 @@ import "reflect-metadata";
 import Property, { Alphanumeric, ComplexValue, MozelClass, PropertyInput, PropertyOptions, PropertyType, PropertyValue } from './Property';
 import Collection, { CollectionOptions, CollectionType } from './Collection';
 import Templater from './Templater';
-import { Container } from "inversify";
-import { injectableMozel } from "./inversify";
 import MozelFactoryInterface from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import { alphanumeric, primitive } from 'validation-kit';
@@ -62,7 +60,6 @@ declare type SchemaDefinition = {
     path: string[];
 };
 export { Alphanumeric, alphanumeric, MozelClass };
-export { injectableMozel };
 export { LogLevel };
 export declare function isData(value: any): value is Data;
 /**
@@ -105,7 +102,6 @@ export default class Mozel {
      */
     static $schema<M extends Mozel>(definition?: SchemaDefinition): MozelSchema<M>;
     static $<M extends Mozel>(definition?: SchemaDefinition): MozelSchema<M>;
-    static injectable(container: Container): void;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
     private readonly mozelFactory?;

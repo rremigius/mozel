@@ -6,7 +6,6 @@ import Collection from './Collection';
 import { concat, find, forEach, get, isPlainObject, isString } from 'lodash';
 import Templater from './Templater';
 import { inject, injectable, optional } from "inversify";
-import { injectableMozel } from "./inversify";
 import { MozelFactoryType } from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import { isSubClass } from 'validation-kit';
@@ -16,7 +15,6 @@ import PropertyWatcher from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
-export { injectableMozel };
 export { LogLevel };
 // TYPE GUARDS
 export function isData(value) {
@@ -163,10 +161,6 @@ let Mozel = Mozel_1 = class Mozel {
     }
     static $(definition) {
         return this.$schema(definition);
-    }
-    static injectable(container) {
-        // Non-typescript alternative for decorator
-        injectableMozel(container)(this);
     }
     /**
      * Define a property for the mozel.

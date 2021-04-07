@@ -6,4 +6,3 @@ export { default as MozelFactory } from "./MozelFactory";
 export { default as GenericMozel } from "./GenericMozel";
 export { default as Registry } from "./Registry";
 export { default as Template } from "./Templater";
-export { injectableMozel as injectable } from "./inversify";

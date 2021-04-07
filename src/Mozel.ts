@@ -17,7 +17,6 @@ import {concat, find, forEach, get, isPlainObject, isString} from 'lodash';
 
 import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
-import {injectableMozel} from "./inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import {alphanumeric, isSubClass, primitive} from 'validation-kit';
@@ -85,7 +84,6 @@ type SchemaDefinition = {type: PropertyType, reference:boolean, required:boolean
 
 // re-export for easy import together with Mozel
 export {Alphanumeric, alphanumeric, MozelClass};
-export {injectableMozel};
 export {LogLevel};
 
 // TYPE GUARDS
@@ -225,11 +223,6 @@ export default class Mozel {
 	}
 	static $<M extends Mozel>(definition?:SchemaDefinition):MozelSchema<M> {
 		return this.$schema(definition);
-	}
-
-	static injectable(container:Container) {
-		// Non-typescript alternative for decorator
-		injectableMozel(container)(this);
 	}
 
 	private static _classPropertyDefinitions: Record<string, PropertyDefinition> = {};

@@ -1,23 +1,20 @@
 import Collection from "../src/Collection";
-import Mozel, {collection, injectableMozel, property, reference} from "../src/Mozel";
+import Mozel, {collection, property, reference} from "../src/Mozel";
 import MozelFactory from "../src/MozelFactory";
 import {it} from "mocha";
-import {Container} from "inversify";
 import {assert} from "chai";
-import mozelContainer from "../src/inversify";
 import {uniq} from "lodash";
 
 describe("MozelFactory", () => {
 	describe("createSet", () => {
 		it("resolves references within the set based on gid", () => {
-			const container = new Container({autoBindInjectable:true});
-			let factory = new MozelFactory(container);
+			let factory = new MozelFactory();
 
-			@injectableMozel(container)
 			class Person extends Mozel {
 				@collection(Person, {reference})
 				likes!:Collection<Person>;
 			}
+			factory.register(Person);
 
 			let data = [
 				{gid: 'james', likes: [{gid: 'lisa'}, {gid: 'frank'}]},
@@ -34,24 +31,17 @@ describe("MozelFactory", () => {
 	});
 	describe("create", () => {
 		it('generates submozels based on _type property.', () => {
-			let container = new Container({autoBindInjectable:true});
-			container.parent = mozelContainer;
+			const factory = new MozelFactory();
 
-			const factory = new MozelFactory(container);
-
-			@injectableMozel(container)
 			class FooMozel extends Mozel {}
-
-			@injectableMozel(container)
 			class SubFooMozel extends FooMozel {}
-
-			@injectableMozel(container)
 			class BarMozel extends Mozel {
 				@property(Mozel)
 				foo?:Mozel;
 				@collection(Mozel)
 				foos!:Collection<Mozel>;
 			}
+			factory.register([FooMozel, SubFooMozel, BarMozel]);
 
 			// Instantiate mozel
 			const bar = factory.create(BarMozel, {
@@ -64,9 +54,6 @@ describe("MozelFactory", () => {
 			assert.instanceOf(bar.foos.get(1), SubFooMozel, "Subclass was instantiated correctly")
 		});
 		it('resolves reference Properties from Registry.', ()=> {
-			const container = new Container({autoBindInjectable:true});
-
-			@injectableMozel(container)
 			class FooMozel extends Mozel {
 				@collection(FooMozel)
 				fooChildren!:Collection<FooMozel>;
@@ -75,7 +62,9 @@ describe("MozelFactory", () => {
 				@collection(FooMozel, {reference})
 				fooReferences!:Collection<FooMozel>;
 			}
-			const factory = new MozelFactory(container);
+			const factory = new MozelFactory();
+			factory.register(FooMozel);
+
 			const foo = factory.create<FooMozel>(FooMozel, {
 				gid: 1,
 				fooChildren: [
@@ -107,25 +96,22 @@ describe("MozelFactory", () => {
 			assert.equal(ref3, child3, "Second Collection reference resolved correctly");
 		});
 		it('resolves Mozel types based on its container', () => {
-			let rome = MozelFactory.createDependencyContainer();
-			let romeFactory = new MozelFactory(rome);
+			let romeFactory = new MozelFactory();
+			let egyptFactory = new MozelFactory();
 
-			let egypt = MozelFactory.createDependencyContainer();
-			let egyptFactory = new MozelFactory(egypt);
-
-			@injectableMozel(rome)
 			class Roman extends Mozel {
 				static get type() {
 					return 'Person';
 				}
 			}
+			romeFactory.register(Roman);
 
-			@injectableMozel(egypt)
 			class Egyptian extends Mozel {
 				static get type() {
 					return 'Person'
 				}
 			}
+			egyptFactory.register(Egyptian);
 
 			const data = {_type: 'Person'};
 			let roman = romeFactory.create(Mozel, data);
@@ -135,14 +121,13 @@ describe("MozelFactory", () => {
 			assert.instanceOf(egyptian, Egyptian, "Egyptian mozel instantiated correctly");
 		});
 		it('created with MozelFactory gets assigned a unique GID if it does not already have one.', () => {
-			const container = new Container({autoBindInjectable:true});
-
-			@injectableMozel(container)
 			class FooMozel extends Mozel {
 				@property(FooMozel)
 				foo?:FooMozel;
 			}
-			const factory = new MozelFactory(container);
+			const factory = new MozelFactory();
+			factory.register(FooMozel);
+
 			const mozel1 = factory.create<FooMozel>(FooMozel);
 			const mozel2 = factory.create<FooMozel>(FooMozel, {
 				foo: {}

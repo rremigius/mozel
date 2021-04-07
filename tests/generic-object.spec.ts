@@ -4,7 +4,7 @@ import GenericMozel from "../src/GenericMozel";
 describe('GenericMozel', () => {
 	describe("(static) create", () => {
 		it('defines properties based on the given data.', () => {
-			let obj = GenericMozel.create({
+			let obj = GenericMozel.create<GenericMozel>({
 				foo: 'bar'
 			});
 			assert.ok(obj.$property('foo'), "Property 'foo' defined");

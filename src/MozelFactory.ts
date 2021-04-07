@@ -1,10 +1,10 @@
-import {Container, inject, injectable, optional} from "inversify";
+import {Container, inject, injectable, interfaces, optional} from "inversify";
 import {alphanumeric, Class} from "validation-kit";
 import Registry from "./Registry";
-import Mozel, {MozelConstructor, MozelData} from "./Mozel";
-import mozelContainer from "./inversify";
+import Mozel, {MozelClass, MozelConstructor, MozelData} from "./Mozel";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
+import {isArray} from "lodash";
 
 const log = logRoot.instance("factory");
 
@@ -16,21 +16,47 @@ export default class MozelFactory implements MozelFactoryInterface {
 	}
 
 	// If not set in constructor params, will be set in constructor. And readonly, so will always have value.
-	readonly diContainer:Container;
+	readonly dependencies:Container;
+	readonly localDependencies:Container;
 	readonly registry:Registry<Mozel>;
 
 	constructor(
-		@inject('container') @optional() diContainer?:Container,
+		@inject('container') @optional() dependencies?:Container,
 		@inject(Registry) @optional() mozelRegistry?:Registry<Mozel>
 	) {
 		this.registry = mozelRegistry || new Registry<Mozel>();
 
-		this.diContainer = MozelFactory.createDependencyContainer();
-		this.diContainer.parent = diContainer ? diContainer : mozelContainer;
+		this.localDependencies = MozelFactory.createDependencyContainer();
+		if(dependencies) {
+			this.dependencies = dependencies;
+			this.dependencies.parent = this.localDependencies;
+		} else {
+			this.dependencies = this.localDependencies;
+		}
 
 		// Set scoped globals
-		this.diContainer.bind(MozelFactoryType).toConstantValue(this);
-		this.diContainer.bind(Registry).toConstantValue(this.registry);
+		this.dependencies.bind(MozelFactoryType).toConstantValue(this);
+		this.dependencies.bind(Registry).toConstantValue(this.registry);
+	}
+
+	/**
+	 * Registers the class to the default mozel DI Container, under the class name or static `type`.
+	 * @param {MozelClass} MozelClass
+	 */
+	register(MozelClass:(typeof Mozel)|(typeof Mozel)[]) {
+		if(isArray(MozelClass)) {
+			for(let Class of MozelClass) {
+				this.register(Class);
+			}
+			return;
+		}
+		let type;
+		if(MozelClass.hasOwnProperty('type')) {
+			type = MozelClass.type;
+		} else {
+			type = MozelClass.name;
+		}
+		this.localDependencies.bind<Mozel>(Mozel).to(MozelClass).whenTargetNamed(type);
 	}
 
 	ensureUniqueGID(gid:alphanumeric) {
@@ -71,12 +97,12 @@ export default class MozelFactory implements MozelFactoryInterface {
 
 		let mozel;
 		try {
-			if (data && data._type && this.diContainer.isBoundNamed(Mozel, data._type)) {
+			if (data && data._type && this.dependencies.isBoundNamed(Mozel, data._type)) {
 				// Try to get most specific class
-				mozel = this.diContainer.getNamed<Mozel>(Mozel, data._type);
+				mozel = this.dependencies.getNamed<Mozel>(Mozel, data._type);
 			} else if (ExpectedClass) {
 				// Try to resolve exact class
-				mozel = this.diContainer.resolve<Mozel>(ExpectedClass);
+				mozel = this.dependencies.resolve<Mozel>(ExpectedClass);
 			}
 			if(!mozel && ExpectedClass) {
 				log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);

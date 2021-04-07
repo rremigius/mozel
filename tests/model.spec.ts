@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $s, MozelSchema} from '../src/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $s} from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
 import {injectable} from "inversify";
@@ -63,6 +63,17 @@ describe('Mozel', () => {
 
 		const mozel = new FooMozel();
 		assert.equal(mozel.foo, 2, "Default applied correctly");
+	});
+
+	it("extending class inherits properties", () => {
+		class FooMozel extends Mozel {
+			@property(String, {required})
+			foo?:string;
+		}
+		class BarMozel extends FooMozel {}
+
+		const bar = BarMozel.create<BarMozel>({foo: 'bar'});
+		assert.equal(bar.foo, 'bar');
 	});
 
 	describe("(static) create", () => {

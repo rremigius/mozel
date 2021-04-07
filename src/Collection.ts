@@ -78,7 +78,7 @@ export default class Collection<T extends Mozel|primitive> {
 		// Try to initialize
 		if(init && isPlainObject(item) && isMozelClass(this.type)) {
 			// If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
-			return <T><any>this.parent.$create(this.type, item, false, this.isReference);
+			return <T><any>this.parent.$create(this.type, item, this.isReference);
 		}
 		return false;
 	}

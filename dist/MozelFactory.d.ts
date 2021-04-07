@@ -26,8 +26,8 @@ export default class MozelFactory implements MozelFactoryInterface {
      * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
      * @param {Class} ExpectedClass
      * @param {mozel} data
-     * @param {boolean} root			Set to true if Mozel is root of its hierarchy and references should be resolved recursively after its creation.
      * @param {boolean} asReference		Set to true if the Mozel will only be a reference to another Mozel. It will not be registered.
      */
-    create<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>, root?: boolean, asReference?: boolean): T;
+    create<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>, asReference?: boolean): T;
+    createAndResolveReferences<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>): T;
 }

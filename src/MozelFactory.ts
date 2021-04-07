@@ -92,10 +92,9 @@ export default class MozelFactory implements MozelFactoryInterface {
 	 * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
 	 * @param {Class} ExpectedClass
 	 * @param {mozel} data
-	 * @param {boolean} root			Set to true if Mozel is root of its hierarchy and references should be resolved recursively after its creation.
 	 * @param {boolean} asReference		Set to true if the Mozel will only be a reference to another Mozel. It will not be registered.
 	 */
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root:boolean = false, asReference:boolean = false) {
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, asReference:boolean = false) {
 		function isT(mozel:any) : mozel is T {
 			return mozel instanceof ExpectedClass;
 		}
@@ -144,10 +143,12 @@ export default class MozelFactory implements MozelFactoryInterface {
 			this.registry.register(mozel);
 		}
 
-		if(root && !mozel.isReference) {
-			mozel.$resolveReferences();
-		}
+		return mozel;
+	}
 
+	createAndResolveReferences<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
+		const mozel = this.create(ExpectedClass, data);
+		mozel.$resolveReferences();
 		return mozel;
 	}
 }

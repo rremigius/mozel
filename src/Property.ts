@@ -357,7 +357,7 @@ export default class Property {
 		// Init Mozel
 		if(this.type && isMozelClass(this.type) && isPlainObject(value)) {
 			// Create mozel and try to set again, without type check
-			let mozel = this.parent.$create(this.type, value, false, this.isReference);
+			let mozel = this.parent.$create(this.type, value, this.isReference);
 			this._set(mozel);
 			return true;
 		}

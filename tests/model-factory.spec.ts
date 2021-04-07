@@ -53,48 +53,6 @@ describe("MozelFactory", () => {
 			assert.instanceOf(bar.foos.get(0), FooMozel, "Created collection submozel is of correct class");
 			assert.instanceOf(bar.foos.get(1), SubFooMozel, "Subclass was instantiated correctly")
 		});
-		it('resolves reference Properties from Registry.', ()=> {
-			class FooMozel extends Mozel {
-				@collection(FooMozel)
-				fooChildren!:Collection<FooMozel>;
-				@property(FooMozel, {reference})
-				fooReference?:FooMozel;
-				@collection(FooMozel, {reference})
-				fooReferences!:Collection<FooMozel>;
-			}
-			const factory = new MozelFactory();
-			factory.register(FooMozel);
-
-			const foo = factory.create<FooMozel>(FooMozel, {
-				gid: 1,
-				fooChildren: [
-					{ gid: 11 },
-					{ gid: 12 },
-					{ gid: 13 },
-					{
-						gid: 14,
-						fooReference: { gid: 11 },
-						fooReferences: [ { gid: 12 }, { gid: 13 } ]
-					}
-				]
-			}, true);
-
-			const child1 = foo.fooChildren.get(0);
-			const child2 = foo.fooChildren.get(1);
-			const child3 = foo.fooChildren.get(2);
-			const lastChild = foo.fooChildren.get(3);
-
-			assert.instanceOf(child1, FooMozel, "First child in Collection instantiated properly.");
-			assert.instanceOf(lastChild, FooMozel, "Last child in Collection instantiated properly.");
-
-			const ref1 = lastChild!.fooReference;
-			const ref2 = lastChild!.fooReferences.get(0);
-			const ref3 = lastChild!.fooReferences.get(1);
-
-			assert.equal(ref1, child1, "Reference Property resolved correctly");
-			assert.equal(ref2, child2, "First Collection reference resolved correctly");
-			assert.equal(ref3, child3, "Second Collection reference resolved correctly");
-		});
 		it('resolves Mozel types based on its container', () => {
 			let romeFactory = new MozelFactory();
 			let egyptFactory = new MozelFactory();
@@ -142,5 +100,49 @@ describe("MozelFactory", () => {
 			assert.deepEqual(gids, uniq(gids), "All GIDs are unique");
 			assert.equal(mozel3.gid, 'bar');
 		});
-	})
+	});
+	describe("createAndResolveReferences", () => {
+		it('resolves reference Properties from Registry.', ()=> {
+			class FooMozel extends Mozel {
+				@collection(FooMozel)
+				fooChildren!:Collection<FooMozel>;
+				@property(FooMozel, {reference})
+				fooReference?:FooMozel;
+				@collection(FooMozel, {reference})
+				fooReferences!:Collection<FooMozel>;
+			}
+			const factory = new MozelFactory();
+			factory.register(FooMozel);
+
+			const foo = factory.createAndResolveReferences<FooMozel>(FooMozel, {
+				gid: 1,
+				fooChildren: [
+					{ gid: 11 },
+					{ gid: 12 },
+					{ gid: 13 },
+					{
+						gid: 14,
+						fooReference: { gid: 11 },
+						fooReferences: [ { gid: 12 }, { gid: 13 } ]
+					}
+				]
+			});
+
+			const child1 = foo.fooChildren.get(0);
+			const child2 = foo.fooChildren.get(1);
+			const child3 = foo.fooChildren.get(2);
+			const lastChild = foo.fooChildren.get(3);
+
+			assert.instanceOf(child1, FooMozel, "First child in Collection instantiated properly.");
+			assert.instanceOf(lastChild, FooMozel, "Last child in Collection instantiated properly.");
+
+			const ref1 = lastChild!.fooReference;
+			const ref2 = lastChild!.fooReferences.get(0);
+			const ref3 = lastChild!.fooReferences.get(1);
+
+			assert.equal(ref1, child1, "Reference Property resolved correctly");
+			assert.equal(ref2, child2, "First Collection reference resolved correctly");
+			assert.equal(ref3, child3, "Second Collection reference resolved correctly");
+		});
+	});
 })

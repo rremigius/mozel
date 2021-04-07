@@ -153,10 +153,9 @@ export default class Mozel {
      * Instantiate a Mozel based on the given class and the data.
      * @param Class
      * @param data
-     * @param root					If true, references will be resolved after creation.
      * @param asReference		If true, will not be registered.
      */
-    $create(Class: MozelClass, data?: Data, root?: boolean, asReference?: boolean): Mozel;
+    $create(Class: MozelClass, data?: Data, asReference?: boolean): Mozel;
     $destroy(): void;
     /**
      * Set the Mozel's parent Mozel.

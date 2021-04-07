@@ -5,7 +5,7 @@ Simple definition file to prevent circular dependencies between MozelFactory and
 import Mozel, {MozelConstructor, MozelData} from "./Mozel";
 
 export default interface MozelFactoryInterface {
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root?:boolean, asReference?:boolean):T;
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, asReference?:boolean):T;
 	destroy(mozel:Mozel):void;
 }
 

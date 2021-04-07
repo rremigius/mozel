@@ -348,13 +348,12 @@ export default class Mozel {
 	 * Instantiate a Mozel based on the given class and the data.
 	 * @param Class
 	 * @param data
-	 * @param root					If true, references will be resolved after creation.
 	 * @param asReference		If true, will not be registered.
 	 */
-	$create(Class: MozelClass, data?: Data, root: boolean = false, asReference: boolean = false) {
+	$create(Class: MozelClass, data?: Data, asReference: boolean = false) {
 		if (this.mozelFactory) {
 			// Preferably, use DI-injected factory
-			return this.mozelFactory.create(Class, data, root, asReference);
+			return this.mozelFactory.create(Class, data, asReference);
 		}
 		// Otherwise, just create an instance of this class.
 		return Class.create(data);

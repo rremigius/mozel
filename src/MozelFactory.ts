@@ -37,7 +37,12 @@ export default class MozelFactory implements MozelFactoryInterface {
 		// Set scoped globals
 		this.dependencies.bind(MozelFactoryType).toConstantValue(this);
 		this.dependencies.bind(Registry).toConstantValue(this.registry);
+
+		this.initDependencies();
 	}
+
+	// For override
+	initDependencies() { }
 
 	/**
 	 * Registers the class to the default mozel DI Container, under the class name or static `type`.

@@ -36,6 +36,8 @@ export default class PropertyWatcher {
         // Exact path at which we're watching changes
         if (path === this.path)
             return true;
+        if (this.path === '')
+            return this.deep; // if we're watching all of the Mozel, we just need to check `deep`
         const watcherPath = this.path.split('.');
         const changePath = path.split('.');
         for (let i = 0; i < Math.max(watcherPath.length, changePath.length); i++) {

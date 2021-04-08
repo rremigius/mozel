@@ -59,9 +59,11 @@ export default class PropertyWatcher {
 		// Exact path at which we're watching changes
 		if (path === this.path) return true;
 
-		for(let i = 0; i < Math.max(this.path.length, path.length); i++) {
-			let watcherStep = this.path[i];
-			let changeStep = path[i];
+		const watcherPath = this.path.split('.');
+		const changePath = path.split('.');
+		for(let i = 0; i < Math.max(watcherPath.length, changePath.length); i++) {
+			let watcherStep = watcherPath[i];
+			let changeStep = changePath[i];
 
 			// Change happened deeper than watcher path, then 'deep' determines whether it should match
 			if(watcherStep === undefined) return this.deep;

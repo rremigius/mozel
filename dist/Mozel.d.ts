@@ -6,7 +6,7 @@ import MozelFactoryInterface from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import { alphanumeric, primitive } from 'validation-kit';
 import { LogLevel } from "log-control";
-import PropertyWatcher, { PropertyWatcherOptions } from "./PropertyWatcher";
+import PropertyWatcher, { PropertyChangeHandler, PropertyWatcherOptionsArgument } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 export declare type Data = {
     [key: string]: any;
@@ -25,7 +25,7 @@ export declare type MozelData<T extends Mozel> = T extends {
 } ? T['MozelDataType'] : {
     [K in PropertyKeys<T>]?: PropertyData<T[K]>;
 };
-export declare type PropertySchema = {
+export declare type PropertySchema<T> = {
     $: string;
     $path: string;
     $pathArray: string[];
@@ -34,13 +34,13 @@ export declare type PropertySchema = {
     $required: boolean;
     $collection: boolean;
 };
-export declare type CollectionSchema<C> = PropertySchema & {
+export declare type CollectionSchema<C> = PropertySchema<C> & {
     $collection: true;
-} & (C extends Mozel ? Omit<MozelSchema<C>, '$collection'> : PropertySchema);
-export declare type MozelSchema<T extends Mozel> = PropertySchema & {
+} & (C extends Mozel ? Omit<MozelSchema<C>, '$collection'> : PropertySchema<C>);
+export declare type MozelSchema<T extends Mozel> = PropertySchema<T> & {
     $collection: false;
 } & {
-    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : T[K] extends Collection<infer C> ? CollectionSchema<C> : PropertySchema;
+    [K in keyof T]-?: T[K] extends Mozel | undefined ? MozelSchema<Exclude<T[K], undefined>> : T[K] extends Collection<infer C> ? CollectionSchema<C> : PropertySchema<T[K]>;
 };
 declare type PropertyDefinition = {
     name: string;
@@ -240,9 +240,9 @@ export default class Mozel {
     $setData(data: Data, init?: boolean): void;
     /**
      * Watch changes to the given path.
-     * @param {PropertyWatcherOptions} options
+     * @param {PropertyWatcherOptionsArgument} options
      */
-    $watch(options: PropertyWatcherOptions): void;
+    $watch<T extends PropertyValue>(path: string | PropertySchema<T>, handler: PropertyChangeHandler<T>, options?: PropertyWatcherOptionsArgument): void;
     /**
      * Get watchers matching the given path.
      * @param {string} path

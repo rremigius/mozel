@@ -1,7 +1,5 @@
 import { isComplexValue } from "./Property";
 import Mozel from "./Mozel";
-import Log from "./log";
-const log = Log.instance("watcher");
 export default class PropertyWatcher {
     constructor(mozel, options) {
         this.currentValues = {};

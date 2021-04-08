@@ -475,10 +475,18 @@ let Mozel = Mozel_1 = class Mozel {
     }
     /**
      * Watch changes to the given path.
-     * @param {PropertyWatcherOptions} options
+     * @param {PropertyWatcherOptionsArgument} options
      */
-    $watch(options) {
-        const watcher = new PropertyWatcher(this, options);
+    $watch(path, handler, options) {
+        const finalPath = isString(path) ? path : path.$path;
+        const allOptions = {
+            ...options,
+            ...{
+                path: finalPath,
+                handler: handler
+            }
+        };
+        const watcher = new PropertyWatcher(this, allOptions);
         this.watchers.push(watcher);
     }
     /**

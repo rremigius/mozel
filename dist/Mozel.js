@@ -369,6 +369,8 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {string} property
      */
     $get(property) {
+        if (property === '')
+            return this;
         if (!(property in this.properties)) {
             throw new Error(`Could not get non-existing property '${property}' on ${this.$name()}.`);
         }

@@ -499,6 +499,8 @@ export default class Mozel {
 	 * @param {string} property
 	 */
 	$get(property: string) {
+		if(property === '') return this;
+
 		if (!(property in this.properties)) {
 			throw new Error(`Could not get non-existing property '${property}' on ${this.$name()}.`);
 		}

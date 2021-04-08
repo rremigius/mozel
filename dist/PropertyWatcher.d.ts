@@ -19,6 +19,6 @@ export default class PropertyWatcher {
     constructor(mozel: Mozel, options: PropertyWatcherOptions);
     execute(path: string): void;
     updateValues(path: string): void;
-    matches(path: string): boolean;
+    matches(path: string): boolean | undefined;
     applyMatchedPath(matchedPath: string): string;
 }

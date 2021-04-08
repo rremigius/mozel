@@ -59,12 +59,18 @@ export default class PropertyWatcher {
 		// Exact path at which we're watching changes
 		if (path === this.path) return true;
 
-		// Paths should fully overlap
-		for(let i = 0; i < Math.min(this.path.length, path.length); i++) {
+		for(let i = 0; i < Math.max(this.path.length, path.length); i++) {
 			let watcherStep = this.path[i];
-			let otherStep = path[i];
+			let changeStep = path[i];
+
+			// Change happened deeper than watcher path, then 'deep' determines whether it should match
+			if(watcherStep === undefined) return this.deep;
+
+			// change happened above watcher path: watcher path changed as well
+			if(changeStep === undefined) return true;
+
 			// Wildcard matches any
-			if(!(watcherStep === '*' || watcherStep === otherStep)) {
+			if(!(watcherStep === '*' || watcherStep === changeStep)) {
 				return false;
 			}
 		}

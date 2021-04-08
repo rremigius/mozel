@@ -242,7 +242,7 @@ export default class Mozel {
      * Watch changes to the given path.
      * @param {PropertyWatcherOptionsArgument} options
      */
-    $watch<T extends PropertyValue>(path: string | PropertySchema<T>, handler: PropertyChangeHandler<T>, options?: PropertyWatcherOptionsArgument): void;
+    $watch<T extends PropertyValue>(path: string | PropertySchema<T>, handler: PropertyChangeHandler<T>, options?: PropertyWatcherOptionsArgument): PropertyWatcher;
     /**
      * Get watchers matching the given path.
      * @param {string} path

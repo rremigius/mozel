@@ -442,14 +442,16 @@ describe('Mozel', () => {
 	});
 	describe("$watchers", () => {
 		it("returns all watchers matching the given path", () => {
-			let mozel = new Mozel();
-			mozel.$watch('foo', ()=>{},{deep: true});
-			mozel.$watch('foo.bar', ()=>{});
-			mozel.$watch('foo.bar.qux', ()=>{});
-			mozel.$watch('baz', ()=>{});
-			mozel.$watch('baz.bar', ()=>{});
+			const mozel = new Mozel();
+			const fooDeep = mozel.$watch('foo', ()=>{},{deep: true});
+			const fooShallow = mozel.$watch('foo', ()=>{});
+			const foobar = mozel.$watch('foo.bar', ()=>{});
+			const foobarqux = mozel.$watch('foo.bar.qux', ()=>{});
+			const baz = mozel.$watch('baz', ()=>{});
+			const bazbar = mozel.$watch('baz.bar', ()=>{});
+
 			const watchers = mozel.$watchers('foo.bar');
-			assert.deepEqual(watchers.map(watcher => watcher.path), ['foo', 'foo.bar', 'foo.bar.qux']);
+			assert.deepEqual(watchers, [fooDeep, foobar, foobarqux]);
 		});
 	});
 	describe("$watch", () => {

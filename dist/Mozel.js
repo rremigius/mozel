@@ -488,6 +488,7 @@ let Mozel = Mozel_1 = class Mozel {
         };
         const watcher = new PropertyWatcher(this, allOptions);
         this.watchers.push(watcher);
+        return watcher;
     }
     /**
      * Get watchers matching the given path.

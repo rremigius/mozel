@@ -632,6 +632,7 @@ export default class Mozel {
 		}
 		const watcher = new PropertyWatcher(this, allOptions);
 		this.watchers.push(watcher);
+		return watcher;
 	}
 
 	/**

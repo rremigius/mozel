@@ -19,8 +19,8 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
             this.dependencies = this.localDependencies;
         }
         // Set scoped globals
-        this.dependencies.bind(MozelFactoryType).toConstantValue(this);
-        this.dependencies.bind(Registry).toConstantValue(this.registry);
+        this.localDependencies.bind(MozelFactoryType).toConstantValue(this);
+        this.localDependencies.bind(Registry).toConstantValue(this.registry);
         this.initDependencies();
     }
     static createDependencyContainer() {

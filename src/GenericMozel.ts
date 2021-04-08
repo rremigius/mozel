@@ -1,6 +1,9 @@
 import Mozel, {Data, MozelData} from './Mozel';
 import Property from "./Property";
 import {forEach, mapValues} from 'lodash';
+import {inject, optional} from "inversify";
+import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
+import Registry from "./Registry";
 
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
@@ -33,8 +36,12 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
 
 	initialized = false;
 
-	constructor() {
-		super();
+	constructor(
+		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface,
+		@inject(Registry) @optional() registry?: Registry<Mozel>
+	) {
+		super(mozelFactory, registry);
+
 		// All inherited properties and methods have been set; for all future properties, define Properties.
 		this.initialized = true;
 		return new Proxy(this, {

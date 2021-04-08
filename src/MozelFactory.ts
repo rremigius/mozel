@@ -1,4 +1,4 @@
-import {Container, inject, injectable, interfaces, optional} from "inversify";
+import {Container, inject, injectable, optional} from "inversify";
 import {alphanumeric, Class} from "validation-kit";
 import Registry from "./Registry";
 import Mozel, {MozelClass, MozelConstructor, MozelData} from "./Mozel";
@@ -35,8 +35,8 @@ export default class MozelFactory implements MozelFactoryInterface {
 		}
 
 		// Set scoped globals
-		this.dependencies.bind(MozelFactoryType).toConstantValue(this);
-		this.dependencies.bind(Registry).toConstantValue(this.registry);
+		this.localDependencies.bind(MozelFactoryType).toConstantValue(this);
+		this.localDependencies.bind(Registry).toConstantValue(this.registry);
 
 		this.initDependencies();
 	}

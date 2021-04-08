@@ -258,23 +258,10 @@ let james = Person.create<Person>({
 
 // Watchers
 
-james.$watch({ // watcher A
-    path: 'dog.toy.state',
-    handler(newState, oldState) { /*...*/ }
-});
-james.$watch({ // watcher B
-    path: 'dog.toy',
-    handler(newToy, oldToy) { /*...*/ }
-});
-james.$watch({ // watcher C
-    path: 'dog',
-    handler(newDog, oldDog) { /*...*/ }
-})
-james.$watch({ // watcher D
-    path: 'dog',
-    handler(newDog, oldDog) { /*...*/ },
-    deep: true
-});
+james.$watch('dog.toy.state', (newState, oldState) => { /*...*/ }); // watcher A
+james.$watch('dog.toy', (newToy, oldToy) => { /*...*/ }); // watcher B
+james.$watch('dog', (newDog, oldDog) => { /*...*/ }); // watcher C
+james.$watch('dog', (newDog, oldDog) => { /*...*/ }, {deep: true}); // watcher D
 
 james.dog = Dog.create(); // potentially triggers watchers A, B, C and D
 james.dog.toy = Toy.create(); // potentially triggers watchers A, B and D
@@ -283,6 +270,16 @@ james.dog.toy.state = 'old'; // potentially triggers watchers A and D
 
 Note: watchers only get triggered if the new value is different than the old value. 
 If a new dog has a toy with the same state, the `dog.toy.state` watcher will not be triggered.
+
+##### Using `schema`
+
+Using `schema` in a watcher can provide Typescript type checking:
+
+```typescript
+james.$watch(schema(Person).dog.toy, (newToy:Toy, oldToy:Toy) => {
+    // schema provides type for handler; no need for type casting in handler
+})
+```
 
 #### Wildcard watchers
 

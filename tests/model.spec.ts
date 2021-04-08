@@ -443,11 +443,11 @@ describe('Mozel', () => {
 	describe("$watchers", () => {
 		it("returns all watchers matching the given path", () => {
 			let mozel = new Mozel();
-			mozel.$watch({path: 'foo', handler(){}, deep: true});
-			mozel.$watch({path: 'foo.bar', handler(){}});
-			mozel.$watch({path: 'foo.bar.qux', handler(){}});
-			mozel.$watch({path: 'baz', handler(){}});
-			mozel.$watch({path: 'baz.bar', handler(){}});
+			mozel.$watch('foo', ()=>{},{deep: true});
+			mozel.$watch('foo.bar', ()=>{});
+			mozel.$watch('foo.bar.qux', ()=>{});
+			mozel.$watch('baz', ()=>{});
+			mozel.$watch('baz.bar', ()=>{});
 			const watchers = mozel.$watchers('foo.bar');
 			assert.deepEqual(watchers.map(watcher => watcher.path), ['foo', 'foo.bar', 'foo.bar.qux']);
 		});
@@ -468,20 +468,14 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			mozel.$watch({
-				path: 'foo.bar',
-				handler: (newValue, oldValue) => {
-					assert.equal(oldValue, 'foobar', "Old value was correct");
-					assert.equal(newValue, 'barfoo', "New value was correct");
-					count++;
-				}
+			mozel.$watch('foo.bar', (newValue, oldValue) => {
+				assert.equal(oldValue, 'foobar', "Old value was correct");
+				assert.equal(newValue, 'barfoo', "New value was correct");
+				count++;
 			});
-			mozel.$watch({
-				path: 'foo.foo',
-				handler: ()=>{
-					assert.ok(false, "Incorrect deep watcher notified.");
-					count++;
-				}
+			mozel.$watch('foo.foo', ()=>{
+				assert.ok(false, "Incorrect deep watcher notified.");
+				count++;
 			});
 			set(mozel, 'foo.bar', 'barfoo');
 			assert.equal(count, 1, "Correct number of callbacks");
@@ -493,21 +487,17 @@ describe('Mozel', () => {
 					bar: 'foobar'
 				}
 			});
-			mozel.$watch({
-				path: 'foo',
-				deep: true,
-				handler: ()=> {
-					assert.ok(true, "Deep watcher notified");
-					count++;
-				}
+			mozel.$watch('foo', ()=> {
+				assert.ok(true, "Deep watcher notified");
+				count++;
+			}, {
+				deep: true
 			});
-			mozel.$watch({
-				path: 'bar',
-				deep: true,
-				handler: ()=>{
-					assert.ok(false, "Incorrect deep watcher notified.");
-					count++;
-				}
+			mozel.$watch('bar', ()=>{
+				assert.ok(false, "Incorrect deep watcher notified.");
+				count++;
+			}, {
+				deep: true
 			});
 
 			set(mozel, 'foo.bar', 'barfoo');
@@ -523,14 +513,11 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			root.$watch({
-				path: 'foo.foo.bar',
-				handler(newValue, oldValue) {
-					assert.equal(newValue, "x");
-					assert.equal(oldValue, "c");
-					count++;
-				}
-			})
+			root.$watch('foo.foo.bar',(newValue, oldValue) => {
+				assert.equal(newValue, "x");
+				assert.equal(oldValue, "c");
+				count++;
+			});
 			root.foo = Foo.create<Foo>({
 				foo: {
 					bar: "x"
@@ -559,16 +546,13 @@ describe('Mozel', () => {
 					}
 				}
 			});
-			tree.$watch({
-				path: 'left.*.name',
-				handler(newValue, oldValue, path) {
-					if(path === 'left.left.name') {
-						assert.equal(newValue, 'll2');
-					} else if (path == 'left.right.name') {
-						assert.equal(newValue, 'lr2');
-					} else {
-						assert.ok(false, "oldValue");
-					}
+			tree.$watch('left.*.name', (newValue, oldValue, path) => {
+				if(path === 'left.left.name') {
+					assert.equal(newValue, 'll2');
+				} else if (path == 'left.right.name') {
+					assert.equal(newValue, 'lr2');
+				} else {
+					assert.ok(false, "oldValue");
 				}
 			});
 			tree.left = Tree.create<Tree>({
@@ -590,17 +574,15 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			foo.$watch({
-				path: 'bars',
+			foo.$watch('bars', (newValue, oldValue) => {
+				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				assert.deepEqual(value.toArray(), [4,5,6], "newValue");
+				assert.deepEqual(old.toArray(), [1,2,3], "oldValue");
+				count++;
+			}, {
 				deep: true,
-				handler(newValue, oldValue) {
-					const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-					const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-					assert.deepEqual(value.toArray(), [4,5,6], "newValue");
-					assert.deepEqual(old.toArray(), [1,2,3], "oldValue");
-					count++;
-				}
-			})
+			});
 			foo.bars.setData([4,5,6]);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
@@ -614,17 +596,16 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			foo.$watch({
-				path: 'bars',
-				handler(newValue, oldValue) {
-					const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-					const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-					assert.deepEqual(value.toArray(), [1,2,3,4]);
-					assert.deepEqual(old.toArray(), [1,2,3]);
-					count++;
-				},
+			foo.$watch('bars',
+			(newValue, oldValue) => {
+				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				assert.deepEqual(value.toArray(), [1,2,3,4]);
+				assert.deepEqual(old.toArray(), [1,2,3]);
+				count++;
+			}, {
 				deep: true // is necessary to keep a clone of the old value
-			})
+			});
 			foo.bars.add(4);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
@@ -642,31 +623,26 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			foo.$watch({
-				path: 'bars',
-				handler(newValue, oldValue) {
-					const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
-					const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-					const newBar = value.get(1);
-					const oldBar = old.get(1);
-					assert.exists(newBar);
-					assert.exists(oldBar);
-					if(newBar && oldBar) {
-						assert.equal(newBar.bar, 3);
-						assert.equal(oldBar.bar, 2);
-					}
-					count++;
-				},
+			foo.$watch('bars', (newValue, oldValue) => {
+				const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				const newBar = value.get(1);
+				const oldBar = old.get(1);
+				assert.exists(newBar);
+				assert.exists(oldBar);
+				if(newBar && oldBar) {
+					assert.equal(newBar.bar, 3);
+					assert.equal(oldBar.bar, 2);
+				}
+				count++;
+			}, {
 				deep: true // is necessary to keep a clone of the old value
 			});
-			foo.$watch({
-				path: 'bars.1.bar',
-				handler(newValue, oldValue, path) {
-					assert.equal(path, 'bars.1.bar');
-					assert.equal(newValue, 3);
-					assert.equal(oldValue, 2);
-					count++;
-				}
+			foo.$watch('bars.1.bar', (newValue, oldValue, path) => {
+				assert.equal(path, 'bars.1.bar');
+				assert.equal(newValue, 3);
+				assert.equal(oldValue, 2);
+				count++;
 			})
 
 			// Change item
@@ -674,6 +650,20 @@ describe('Mozel', () => {
 			if(bar) bar.bar = 3;
 
 			assert.equal(count, 2, "Correct number of watchers called.");
+		});
+		it("with schema provides typescript checking for handler", () => {
+			class Foo extends Mozel {
+				@property(Number, {required})
+				foo!:number;
+			}
+			let count = 0;
+			const foo = new Foo();
+			foo.$watch(schema(Foo).foo, (value:number) => {
+				assert.ok(value === 1);
+				count++;
+			});
+			foo.foo = 1;
+			assert.equal(count, 1, "Correct number of watchers called.");
 		});
 	});
 	describe("$strict = false", () => {

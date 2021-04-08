@@ -1,25 +1,23 @@
 import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
-import Collection from "./Collection";
-import Log from "./log";
-
-const log = Log.instance("watcher");
 
 export type PropertyWatcherOptions = {
 	path:string,
-	handler:PropertyChangeHandler
+	handler:PropertyChangeHandler<PropertyValue>
 	immediate?:boolean,
-	deep?:boolean
+	deep?:boolean,
+	expect?:Function
 }
+export type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path'|'handler'>
 
-export type PropertyChangeHandler = (newValue:PropertyValue, oldValue:PropertyValue, path:string)=>void;
+export type PropertyChangeHandler<T> = (newValue:T, oldValue:T, path:string)=>void;
 
 export default class PropertyWatcher {
 	readonly mozel:Mozel;
 	readonly path: string;
 	readonly immediate?: boolean;
 	readonly deep?: boolean;
-	private readonly handler: PropertyChangeHandler
+	private readonly handler: PropertyChangeHandler<any>
 
 	private currentValues:Record<string, PropertyValue> = {};
 

@@ -23,7 +23,11 @@ import {alphanumeric, isSubClass, primitive} from 'validation-kit';
 
 import {LogLevel} from "log-control";
 import log from "./log";
-import PropertyWatcher, {PropertyWatcherOptions} from "./PropertyWatcher";
+import PropertyWatcher, {
+	PropertyChangeHandler,
+	PropertyWatcherOptions,
+	PropertyWatcherOptionsArgument
+} from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 
 // TYPES
@@ -53,7 +57,7 @@ export type PropertyData<T> =
 export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
 	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
 
-export type PropertySchema = {
+export type PropertySchema<T> = {
 	$:string; // path
 	$path:string; // path
 	$pathArray:string[];
@@ -63,19 +67,19 @@ export type PropertySchema = {
 	$collection:boolean;
 }
 
-export type CollectionSchema<C> = PropertySchema & {$collection: true} & (
+export type CollectionSchema<C> = PropertySchema<C> & {$collection: true} & (
 	C extends Mozel
 		? Omit<MozelSchema<C>, '$collection'>
-		: PropertySchema
+		: PropertySchema<C>
 )
 
-export type MozelSchema<T extends Mozel> = PropertySchema & {$collection: false} & {
+export type MozelSchema<T extends Mozel> = PropertySchema<T> & {$collection: false} & {
 	[K in keyof T]-?:
 	T[K] extends Mozel|undefined
 		? MozelSchema<Exclude<T[K], undefined>>
 		: T[K] extends Collection<infer C>
 			? CollectionSchema<C>
-			: PropertySchema
+			: PropertySchema<T[K]>
 }
 
 type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
@@ -161,7 +165,7 @@ export default class Mozel {
 	 * @param {SchemaDefinition} [definition]	The definition from the parent's
 	 */
 	static $schema<M extends Mozel>(definition?:SchemaDefinition):MozelSchema<M> {
-		function schemaFromDefinition(definition:SchemaDefinition):PropertySchema {
+		function schemaFromDefinition(definition:SchemaDefinition):PropertySchema<M> {
 			const pathArray = definition.path;
 			const path = pathArray.join('.');
 			return {
@@ -615,10 +619,18 @@ export default class Mozel {
 
 	/**
 	 * Watch changes to the given path.
-	 * @param {PropertyWatcherOptions} options
+	 * @param {PropertyWatcherOptionsArgument} options
 	 */
-	$watch(options: PropertyWatcherOptions) {
-		const watcher = new PropertyWatcher(this, options);
+	$watch<T extends PropertyValue>(path:string|PropertySchema<T>, handler:PropertyChangeHandler<T>, options?:PropertyWatcherOptionsArgument) {
+		const finalPath = isString(path) ? path : path.$path;
+		const allOptions = {
+			...options,
+			...{
+				path:finalPath,
+				handler:<PropertyChangeHandler<PropertyValue>><unknown>handler
+			}
+		}
+		const watcher = new PropertyWatcher(this, allOptions);
 		this.watchers.push(watcher);
 	}
 

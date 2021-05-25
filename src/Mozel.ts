@@ -73,7 +73,7 @@ export type CollectionSchema<C> = PropertySchema<C> & {$collection: true} & (
 		: PropertySchema<C>
 )
 
-export type MozelSchema<T extends Mozel> = PropertySchema<T> & {$collection: false} & {
+export type MozelSchema<T> = PropertySchema<T> & {$collection: false} & {
 	[K in keyof T]-?:
 	T[K] extends Mozel|undefined
 		? MozelSchema<Exclude<T[K], undefined>>
@@ -643,7 +643,7 @@ export default class Mozel {
 	 * Watch changes to the given path.
 	 * @param {PropertyWatcherOptionsArgument} options
 	 */
-	$watch<T extends PropertyValue>(path:string|PropertySchema<T>, handler:PropertyChangeHandler<T>, options?:PropertyWatcherOptionsArgument) {
+	$watch<T extends PropertyValue>(path:string|PropertySchema<T>|MozelSchema<T>, handler:PropertyChangeHandler<T>, options?:PropertyWatcherOptionsArgument) {
 		const finalPath = isString(path) ? path : path.$path;
 		const allOptions = {
 			...options,

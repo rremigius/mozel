@@ -701,7 +701,7 @@ describe('Mozel', () => {
 			let count = 0;
 			foo.$watch('foo', () => {
 				count++;
-			}, {deep, throttle: 1});
+			}, {deep, throttle: 100});
 
 			foo!.foo!.name = 'bx';
 			foo!.foo!.foo!.name = 'cx';

@@ -668,6 +668,24 @@ describe('Mozel', () => {
 			foo.foo = 1;
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
+		it("does not trigger handler for collection unless collection is replaced", () => {
+			class Foo extends Mozel {
+				@collection(Foo)
+				foos!:Collection<Foo>;
+			}
+			const foo = Foo.create<Foo>();
+			const bar = Foo.create<Foo>();
+
+			let count = 0;
+			foo.$watch(schema(Foo).foos, (newValue, oldValue) => {
+				assert.notEqual(newValue, oldValue);
+				count++;
+			});
+			foo.foos.add(bar);
+			assert.equal(count, 0, "Watcher not fired after addition.");
+			foo.$set('foos', [bar], true);
+			assert.equal(count, 1, "Watcher fired exactly once");
+		});
 	});
 	describe("$strict = false", () => {
 		class Foo extends Mozel {

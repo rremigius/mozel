@@ -17,8 +17,11 @@ export default class PropertyWatcher {
         const values = this.mozel.$pathPattern(appliedPath);
         for (let valuePath in values) {
             const value = values[valuePath];
-            this.handler(value, this.currentValues[valuePath], valuePath);
-            this.currentValues[valuePath] = value;
+            // Only fire if changed
+            if (this.currentValues[valuePath] !== values[valuePath]) {
+                this.handler(value, this.currentValues[valuePath], valuePath);
+                this.currentValues[valuePath] = value;
+            }
         }
     }
     updateValues(path) {

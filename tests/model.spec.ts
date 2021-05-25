@@ -756,5 +756,15 @@ describe('Mozel', () => {
 			assert.equal(schema(Tree).branches.left.right.$, 'branches.left.right');
 			assert.equal($s(Tree).branches.left.right.$, 'branches.left.right');
 		});
+		it("includes properties belonging to parent classes", () => {
+			class Foo extends Mozel {
+				@property(String)
+				foo?:string;
+			}
+			class Bar extends Foo {
+
+			}
+			assert.equal(schema(Bar).foo.$, 'foo');
+		});
 	});
 });

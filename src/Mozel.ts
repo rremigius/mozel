@@ -160,6 +160,28 @@ export default class Mozel {
 		return log;
 	}
 
+	static getPropertyDefinition(key:string):PropertyDefinition|undefined {
+		if(key in this.classPropertyDefinitions) {
+			return this.classPropertyDefinitions[key];
+		}
+		const Parent = Object.getPrototypeOf(this);
+		if(!isSubClass(Parent, Mozel)) {
+			return undefined;
+		}
+		return (<typeof Mozel>Parent).getPropertyDefinition(key);
+	}
+
+	static getCollectionDefinition(key:string):CollectionDefinition|undefined {
+		if(key in this.classCollectionDefinitions) {
+			return this.classCollectionDefinitions[key];
+		}
+		const Parent = Object.getPrototypeOf(this);
+		if(!isSubClass(Parent, Mozel)) {
+			return undefined;
+		}
+		return (<typeof Mozel>Parent).getCollectionDefinition(key);
+	}
+
 	/**
 	 * Get this Mozel's schema.
 	 * @param {SchemaDefinition} [definition]	The definition from the parent's
@@ -198,10 +220,8 @@ export default class Mozel {
 
 				// Try sub-properties
 				let def, collection = false;
-				if(key in target.classPropertyDefinitions) {
-					def = target.classPropertyDefinitions[key];
-				}
-				if(key in target.classCollectionDefinitions) {
+				def = target.getPropertyDefinition(key);
+				if(!def) {
 					def = target.classCollectionDefinitions[key];
 					collection = true;
 				}

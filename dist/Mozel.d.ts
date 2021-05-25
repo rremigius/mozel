@@ -96,6 +96,8 @@ export default class Mozel {
      * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
      */
     static get log(): import("log-control").default;
+    static getPropertyDefinition(key: string): PropertyDefinition | undefined;
+    static getCollectionDefinition(key: string): CollectionDefinition | undefined;
     /**
      * Get this Mozel's schema.
      * @param {SchemaDefinition} [definition]	The definition from the parent's

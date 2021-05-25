@@ -96,6 +96,26 @@ let Mozel = Mozel_1 = class Mozel {
     static get log() {
         return log;
     }
+    static getPropertyDefinition(key) {
+        if (key in this.classPropertyDefinitions) {
+            return this.classPropertyDefinitions[key];
+        }
+        const Parent = Object.getPrototypeOf(this);
+        if (!isSubClass(Parent, Mozel_1)) {
+            return undefined;
+        }
+        return Parent.getPropertyDefinition(key);
+    }
+    static getCollectionDefinition(key) {
+        if (key in this.classCollectionDefinitions) {
+            return this.classCollectionDefinitions[key];
+        }
+        const Parent = Object.getPrototypeOf(this);
+        if (!isSubClass(Parent, Mozel_1)) {
+            return undefined;
+        }
+        return Parent.getCollectionDefinition(key);
+    }
     /**
      * Get this Mozel's schema.
      * @param {SchemaDefinition} [definition]	The definition from the parent's
@@ -131,10 +151,8 @@ let Mozel = Mozel_1 = class Mozel {
                 }
                 // Try sub-properties
                 let def, collection = false;
-                if (key in target.classPropertyDefinitions) {
-                    def = target.classPropertyDefinitions[key];
-                }
-                if (key in target.classCollectionDefinitions) {
+                def = target.getPropertyDefinition(key);
+                if (!def) {
                     def = target.classCollectionDefinitions[key];
                     collection = true;
                 }

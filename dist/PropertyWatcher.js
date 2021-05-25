@@ -1,5 +1,6 @@
 import { isComplexValue } from "./Property";
 import Mozel from "./Mozel";
+import { throttle, isNumber } from "lodash";
 export default class PropertyWatcher {
     constructor(mozel, options) {
         this.currentValues = {};
@@ -8,6 +9,9 @@ export default class PropertyWatcher {
         this.handler = options.handler;
         this.immediate = options.immediate;
         this.deep = options.deep;
+        this.throttle = options.throttle;
+        if (isNumber(this.throttle))
+            this.handler = throttle(this.handler, this.throttle);
         if (this.immediate) {
             this.execute(this.path);
         }

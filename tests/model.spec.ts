@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $s} from '../src/Mozel';
+import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $s, deep} from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
 import {injectable} from "inversify";
@@ -685,6 +685,28 @@ describe('Mozel', () => {
 			assert.equal(count, 0, "Watcher not fired after addition.");
 			foo.$set('foos', [bar], true);
 			assert.equal(count, 1, "Watcher fired exactly once");
+		});
+		it("with `throttle` throttles the handler", () => {
+			class Foo extends Mozel {
+				@property(String) name?:string;
+				@property(Foo) foo?:Foo;
+			}
+			const foo = Foo.create<Foo>({
+				name: 'a',
+				foo: {
+					name: 'b',
+					foo: {name: 'c'}
+				}
+			});
+			let count = 0;
+			foo.$watch('foo', () => {
+				count++;
+			}, {deep, throttle: 1});
+
+			foo!.foo!.name = 'bx';
+			foo!.foo!.foo!.name = 'cx';
+
+			assert.equal(count, 1, "Watched called exactly once.");
 		});
 	});
 	describe("$strict = false", () => {

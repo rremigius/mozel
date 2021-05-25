@@ -5,7 +5,7 @@ export declare type PropertyWatcherOptions = {
     handler: PropertyChangeHandler<PropertyValue>;
     immediate?: boolean;
     deep?: boolean;
-    expect?: Function;
+    throttle?: number;
 };
 export declare type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path' | 'handler'>;
 export declare type PropertyChangeHandler<T> = (newValue: T, oldValue: T, path: string) => void;
@@ -14,6 +14,7 @@ export default class PropertyWatcher {
     readonly path: string;
     readonly immediate?: boolean;
     readonly deep?: boolean;
+    readonly throttle?: number;
     private readonly handler;
     private currentValues;
     constructor(mozel: Mozel, options: PropertyWatcherOptions);

@@ -222,7 +222,7 @@ export default class Mozel {
 				let def, collection = false;
 				def = target.getPropertyDefinition(key);
 				if(!def) {
-					def = target.classCollectionDefinitions[key];
+					def = target.getCollectionDefinition(key);
 					collection = true;
 				}
 				if(!def) {

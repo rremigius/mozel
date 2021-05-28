@@ -3,7 +3,7 @@ import { __decorate, __param } from "tslib";
 import "reflect-metadata";
 import Property, { Alphanumeric, isComplexValue, isMozelClass } from './Property';
 import Collection from './Collection';
-import { concat, find, forEach, get, isPlainObject, isString } from 'lodash';
+import { concat, find, forEach, get, isPlainObject, isString, remove } from 'lodash';
 import Templater from './Templater';
 import { inject, injectable, optional } from "inversify";
 import { MozelFactoryType } from "./MozelFactoryInterface";
@@ -507,7 +507,7 @@ let Mozel = Mozel_1 = class Mozel {
             }
         };
         const watcher = new PropertyWatcher(this, allOptions);
-        this.watchers.push(watcher);
+        this.$addWatcher(watcher);
         return watcher;
     }
     /**
@@ -516,6 +516,12 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $watchers(path) {
         return this.watchers.filter(watcher => watcher.matches(path));
+    }
+    $addWatcher(watcher) {
+        this.watchers.push(watcher);
+    }
+    $removeWatcher(watcher) {
+        remove(this.watchers, w => w === watcher);
     }
     /**
      * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to

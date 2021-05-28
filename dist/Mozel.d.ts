@@ -250,6 +250,8 @@ export default class Mozel {
      * @param {string} path
      */
     $watchers(path: string): PropertyWatcher[];
+    $addWatcher(watcher: PropertyWatcher): void;
+    $removeWatcher(watcher: PropertyWatcher): void;
     /**
      * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to
      * the given path.

@@ -13,7 +13,7 @@ import Property, {
 } from './Property';
 import Collection, {CollectionOptions, CollectionType} from './Collection';
 
-import {concat, find, forEach, get, isPlainObject, isString} from 'lodash';
+import {concat, find, forEach, get, isPlainObject, isString, remove} from 'lodash';
 
 import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
@@ -653,7 +653,7 @@ export default class Mozel {
 			}
 		}
 		const watcher = new PropertyWatcher(this, allOptions);
-		this.watchers.push(watcher);
+		this.$addWatcher(watcher);
 		return watcher;
 	}
 
@@ -663,6 +663,14 @@ export default class Mozel {
 	 */
 	$watchers(path:string) {
 		return this.watchers.filter(watcher => watcher.matches(path));
+	}
+
+	$addWatcher(watcher:PropertyWatcher) {
+		this.watchers.push(watcher);
+	}
+
+	$removeWatcher(watcher:PropertyWatcher) {
+		remove(this.watchers, w => w === watcher);
 	}
 
 	/**

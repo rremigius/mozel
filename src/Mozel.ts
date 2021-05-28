@@ -667,6 +667,7 @@ export default class Mozel {
 
 	$addWatcher(watcher:PropertyWatcher) {
 		this.watchers.push(watcher);
+		if(watcher.immediate) watcher.execute(watcher.path);
 	}
 
 	$removeWatcher(watcher:PropertyWatcher) {

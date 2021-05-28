@@ -519,6 +519,8 @@ let Mozel = Mozel_1 = class Mozel {
     }
     $addWatcher(watcher) {
         this.watchers.push(watcher);
+        if (watcher.immediate)
+            watcher.execute(watcher.path);
     }
     $removeWatcher(watcher) {
         remove(this.watchers, w => w === watcher);

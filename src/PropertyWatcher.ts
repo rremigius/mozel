@@ -33,10 +33,6 @@ export default class PropertyWatcher {
 		this.throttle = options.throttle;
 
 		if(isNumber(this.throttle)) this.handler = throttle(this.handler, this.throttle);
-
-		if (this.immediate) {
-			this.execute(this.path);
-		}
 	}
 
 	execute(path:string) {

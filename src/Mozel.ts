@@ -473,7 +473,8 @@ export default class Mozel {
 		let currentValue = get(this, name);
 		Object.defineProperty(this, name, {
 			get: () => this.$get(name),
-			set: value => this.$set(name, value)
+			set: value => this.$set(name, value),
+			configurable: true
 		});
 		// Preset value
 		if (currentValue !== undefined) {

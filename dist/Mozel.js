@@ -69,7 +69,7 @@ let Mozel = Mozel_1 = class Mozel {
          * Alias of $property
          */
         this.$ = this.$property;
-        this.mozelFactory = mozelFactory;
+        this.factory = mozelFactory;
         this.registry = registry;
         this.watchers = [];
         this.$define();
@@ -254,16 +254,16 @@ let Mozel = Mozel_1 = class Mozel {
      * @param asReference		If true, will not be registered.
      */
     $create(Class, data, asReference = false) {
-        if (this.mozelFactory) {
+        if (this.factory) {
             // Preferably, use DI-injected factory
-            return this.mozelFactory.create(Class, data, asReference);
+            return this.factory.create(Class, data, asReference);
         }
         // Otherwise, just create an instance of this class.
         return Class.create(data);
     }
     $destroy() {
-        if (this.mozelFactory) {
-            this.mozelFactory.destroy(this);
+        if (this.factory) {
+            this.factory.destroy(this);
         }
     }
     /**

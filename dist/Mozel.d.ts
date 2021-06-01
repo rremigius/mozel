@@ -106,7 +106,7 @@ export default class Mozel {
     static $<M extends Mozel>(definition?: SchemaDefinition): MozelSchema<M>;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
-    private readonly mozelFactory?;
+    private readonly factory?;
     private readonly registry?;
     private properties;
     private parent;

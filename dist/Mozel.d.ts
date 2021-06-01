@@ -14,6 +14,7 @@ export declare type Data = {
 export declare type MozelConstructor<T extends Mozel> = {
     new (...args: any[]): T;
     type: string;
+    create<T extends Mozel>(data?: MozelData<T>): T;
 };
 export declare type PropertyKeys<T extends Mozel> = {
     [K in keyof T]: T[K] extends PropertyValue ? K : never;
@@ -157,7 +158,7 @@ export default class Mozel {
      * @param data
      * @param asReference		If true, will not be registered.
      */
-    $create(Class: MozelClass, data?: Data, asReference?: boolean): Mozel;
+    $create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, asReference?: boolean): T;
     $destroy(): void;
     /**
      * Set the Mozel's parent Mozel.

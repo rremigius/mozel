@@ -36,6 +36,7 @@ export type Data = { [key: string]: any }; // General-purpose plain object
 export type MozelConstructor<T extends Mozel> = {
 	new(...args: any[]): T;
 	type: string;
+	create<T extends Mozel>(data?: MozelData<T>): T;
 };
 
 // Types for Mozel creation by plain object
@@ -374,7 +375,7 @@ export default class Mozel {
 	 * @param data
 	 * @param asReference		If true, will not be registered.
 	 */
-	$create(Class: MozelClass, data?: Data, asReference: boolean = false) {
+	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, asReference: boolean = false) {
 		if (this.factory) {
 			// Preferably, use DI-injected factory
 			return this.factory.create(Class, data, asReference);

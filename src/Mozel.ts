@@ -385,6 +385,9 @@ export default class Mozel {
 	}
 
 	$destroy() {
+		if(this.$parent) {
+			this.$parent.$remove(this);
+		}
 		if (this.factory) {
 			this.factory.destroy(this);
 		}

@@ -262,6 +262,9 @@ let Mozel = Mozel_1 = class Mozel {
         return Class.create(data);
     }
     $destroy() {
+        if (this.$parent) {
+            this.$parent.$remove(this);
+        }
         if (this.factory) {
             this.factory.destroy(this);
         }

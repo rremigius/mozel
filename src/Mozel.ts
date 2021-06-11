@@ -270,6 +270,8 @@ export default class Mozel {
 	id?: alphanumeric;
 	@property(Alphanumeric, {required})
 	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
+	@property(Boolean)
+	destroyed?:boolean;
 
 	isReference: boolean = false;
 
@@ -385,6 +387,7 @@ export default class Mozel {
 	}
 
 	$destroy() {
+		this.destroyed = true;
 		if(this.$parent) {
 			this.$parent.$remove(this);
 		}

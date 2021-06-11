@@ -262,6 +262,7 @@ let Mozel = Mozel_1 = class Mozel {
         return Class.create(data);
     }
     $destroy() {
+        this.destroyed = true;
         if (this.$parent) {
             this.$parent.$remove(this);
         }
@@ -798,6 +799,9 @@ __decorate([
 __decorate([
     property(Alphanumeric, { required })
 ], Mozel.prototype, "gid", void 0);
+__decorate([
+    property(Boolean)
+], Mozel.prototype, "destroyed", void 0);
 Mozel = Mozel_1 = __decorate([
     injectable(),
     __param(0, inject(MozelFactoryType)), __param(0, optional()),

@@ -117,6 +117,7 @@ export default class Mozel {
     private readonly watchers;
     id?: alphanumeric;
     gid: alphanumeric;
+    destroyed?: boolean;
     isReference: boolean;
     /**
      * Define a property for the mozel.

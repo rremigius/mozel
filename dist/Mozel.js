@@ -270,6 +270,8 @@ let Mozel = Mozel_1 = class Mozel {
     }
     $destroy() {
         this.$destroyed = true;
+        // First remove watchers to avoid confusing them with the break-down
+        this.watchers.splice(0, this.watchers.length);
         if (this.$parent) {
             this.$parent.$remove(this);
         }
@@ -590,9 +592,6 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {Mozel} [submozel]	The direct submozel reporting the change.
      */
     $notifyPropertyChanged(path, submozel) {
-        // If Mozel is destroyed, we should not notify about changes
-        if (this.$destroyed)
-            return;
         if (submozel) {
             path = this.$maybeAddCollectionIndex(submozel, path);
         }

@@ -788,6 +788,16 @@ let Mozel = Mozel_1 = class Mozel {
             }
         });
     }
+    $forEachChild(callback) {
+        forEach(this.properties, (property, key) => {
+            if (property.value instanceof Mozel_1) {
+                return callback(property.value, key);
+            }
+            if (property.value instanceof Collection) {
+                return property.value.each((mozel, index) => callback(mozel, key + "." + index));
+            }
+        });
+    }
     // For override
     $name() {
         return this.static.type;

@@ -363,6 +363,7 @@ export default class Mozel {
      * If a data object is provided, a new Templater will be instantiated with that data object.
      */
     $renderTemplates(templater: Templater | Data): void;
+    $forEachChild(callback: (mozel: Mozel, key: string) => void): void;
     $name(): string;
     $plural(): string;
     $uriPart(): string;

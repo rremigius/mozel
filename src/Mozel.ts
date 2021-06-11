@@ -965,6 +965,17 @@ export default class Mozel {
 		});
 	}
 
+	$forEachChild(callback:(mozel:Mozel, key:string) => void) {
+		forEach(this.properties, (property:Property, key:string) => {
+			if(property.value instanceof Mozel) {
+				return callback(property.value, key);
+			}
+			if(property.value instanceof Collection) {
+				return property.value.each((mozel, index) => callback(mozel, key + "." + index));
+			}
+		});
+	}
+
 	// For override
 
 	$name() {

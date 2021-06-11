@@ -807,4 +807,25 @@ describe('Mozel', () => {
 			assert.equal(schema(Bar).foo.$, 'foo');
 		});
 	});
+	describe("$forEachChild", () => {
+		it("calls the given function for each of the child mozels", () => {
+			class Foo extends Mozel {
+				@property(Foo)
+				oneFoo?:Foo;
+
+				@collection(Foo)
+				manyFoos!:Collection<Foo>;
+			}
+
+			const foo = Foo.create<Foo>({
+				gid: 1,
+				oneFoo: {gid: 11},
+				manyFoos: [{gid: 121}, {gid: 122}]
+			});
+
+			const gids:alphanumeric[] = [];
+			foo.$forEachChild(mozel => gids.push(mozel.gid));
+			assert.deepEqual(gids, [11, 121, 122]);
+		});
+	});
 });

@@ -29,6 +29,7 @@ import PropertyWatcher, {
 	PropertyWatcherOptionsArgument
 } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
+import EventInterface, {Event} from "event-interface-mixin";
 
 // TYPES
 
@@ -135,6 +136,8 @@ export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof 
 	return MozelClass.$schema<M>();
 }
 export const $s = schema; // shorter alias
+
+export class DestroyedEvent extends Event<void> {}
 
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
@@ -270,10 +273,11 @@ export default class Mozel {
 	id?: alphanumeric;
 	@property(Alphanumeric, {required})
 	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
-	@property(Boolean)
-	destroyed?:boolean;
 
-	isReference: boolean = false;
+	$destroyed: boolean = false;
+	$isReference: boolean = false;
+
+	$events = new EventInterface();
 
 	/**
 	 * Define a property for the mozel.
@@ -371,6 +375,9 @@ export default class Mozel {
 		return this.properties;
 	}
 
+	$on = this.$events.getOnMethod();
+	$off = this.$events.getOffMethod();
+
 	/**
 	 * Instantiate a Mozel based on the given class and the data.
 	 * @param Class
@@ -387,13 +394,14 @@ export default class Mozel {
 	}
 
 	$destroy() {
-		this.destroyed = true;
+		this.$destroyed = true;
 		if(this.$parent) {
 			this.$parent.$remove(this);
 		}
 		if (this.factory) {
 			this.factory.destroy(this);
 		}
+		this.$events.fire(new DestroyedEvent());
 	}
 
 	/**
@@ -756,7 +764,7 @@ export default class Mozel {
 		if (!this.registry) return;
 
 		if (!ref) {
-			if (!this.isReference) {
+			if (!this.$isReference) {
 				// Mozel is already resolved
 				return this;
 			}

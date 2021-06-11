@@ -107,7 +107,7 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         if (!mozel) {
             throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
         }
-        mozel.isReference = asReference;
+        mozel.$isReference = asReference;
         if (data) {
             mozel.$setData(data, true);
         }
@@ -115,7 +115,7 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         if (!mozel.gid) {
             mozel.gid = this.nextGID();
         }
-        if (!mozel.isReference) {
+        if (!mozel.$isReference) {
             this.registry.register(mozel);
         }
         return mozel;

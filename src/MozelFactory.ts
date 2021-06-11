@@ -129,7 +129,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 			throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
 		}
 
-		mozel.isReference = asReference;
+		mozel.$isReference = asReference;
 
 		if(data) {
 			mozel.$setData(data, true);
@@ -139,7 +139,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 		if(!mozel.gid) {
 			mozel.gid = this.nextGID();
 		}
-		if(!mozel.isReference) {
+		if(!mozel.$isReference) {
 			this.registry.register(mozel);
 		}
 

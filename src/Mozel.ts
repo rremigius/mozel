@@ -745,6 +745,9 @@ export default class Mozel {
 	 * @param {Mozel} [submozel]	The direct submozel reporting the change.
 	 */
 	$notifyPropertyChanged(path: string[], submozel?:Mozel) {
+		// If Mozel is destroyed, we should not notify about changes
+		if(this.$destroyed) return;
+
 		if(submozel) {
 			path = this.$maybeAddCollectionIndex(submozel, path);
 		}

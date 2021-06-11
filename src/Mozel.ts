@@ -401,6 +401,7 @@ export default class Mozel {
 		if (this.factory) {
 			this.factory.destroy(this);
 		}
+		this.$forEachChild(mozel => mozel.$destroy());
 		this.$events.fire(new DestroyedEvent());
 	}
 

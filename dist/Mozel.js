@@ -80,10 +80,6 @@ let Mozel = Mozel_1 = class Mozel {
         this.registry = registry;
         this.watchers = [];
         this.$define();
-        // Check if subclass properly overrode defineData method.
-        if (!('id' in this.properties)) {
-            log.warn(`Modl property 'id' was not defined in mozel ${this.$name()}. Perhaps defineData did not call super?`);
-        }
         this.$applyDefaults();
         this.$init();
     }
@@ -814,9 +810,6 @@ let Mozel = Mozel_1 = class Mozel {
 };
 Mozel._classPropertyDefinitions = {};
 Mozel._classCollectionDefinitions = {};
-__decorate([
-    property(Alphanumeric)
-], Mozel.prototype, "id", void 0);
 __decorate([
     property(Alphanumeric, { required })
 ], Mozel.prototype, "gid", void 0);

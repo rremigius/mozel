@@ -269,8 +269,6 @@ export default class Mozel {
 
 	private readonly watchers: PropertyWatcher[];
 
-	@property(Alphanumeric)
-	id?: alphanumeric;
 	@property(Alphanumeric, {required})
 	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
 
@@ -353,11 +351,6 @@ export default class Mozel {
 		this.watchers = [];
 
 		this.$define();
-
-		// Check if subclass properly overrode defineData method.
-		if (!('id' in this.properties)) {
-			log.warn(`Modl property 'id' was not defined in mozel ${this.$name()}. Perhaps defineData did not call super?`);
-		}
 
 		this.$applyDefaults();
 

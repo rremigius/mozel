@@ -118,7 +118,6 @@ export default class Mozel {
     private relation;
     private strict?;
     private readonly watchers;
-    id?: alphanumeric;
     gid: alphanumeric;
     $destroyed: boolean;
     $isReference: boolean;

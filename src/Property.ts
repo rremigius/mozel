@@ -1,4 +1,4 @@
-import Collection from './Collection';
+import Collection, {AddedListener, RemovedListener} from './Collection';
 
 import {find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil, cloneDeep} from 'lodash';
 
@@ -93,6 +93,11 @@ export default class Property {
 	private _default?:PropertyValue|PropertyValueFactory;
 	private _value:PropertyValue;
 	private _isDefault = false;
+
+	private _collectionBeforeAddedListener:AddedListener<any> = (item, index) => this.notifyBeforeChange(index.toString());
+	private _collectionAddedListener:AddedListener<any> = (item, index) => this.notifyChange(index.toString());
+	private _collectionBeforeRemovedListener:RemovedListener<any> = (item, index) => this.notifyBeforeChange(index.toString());
+	private _collectionRemovedListener:RemovedListener<any> = (item, index) => this.notifyChange(index.toString());
 
 	private readonly parent:Mozel;
 
@@ -221,6 +226,13 @@ export default class Property {
 		// Notify watchers before the change, so they can get the old value
 		this.notifyBeforeChange();
 
+		if(this._value instanceof Collection) {
+			this._value.removeBeforeAddedListener(this._collectionBeforeAddedListener);
+			this._value.removeAddedListener(this._collectionAddedListener);
+			this._value.removeBeforeRemovedListener(this._collectionBeforeRemovedListener);
+			this._value.removeRemovedListener(this._collectionRemovedListener);
+		}
+
 		// Set value on parent
 		this._value = value;
 		this._isDefault = false;
@@ -237,18 +249,10 @@ export default class Property {
 
 		// If value is Collection, should listen to changes in Collection
 		if(value instanceof Collection) {
-			value.beforeAdd((item, batch) => {
-				if(batch.index === 0) this.notifyBeforeChange() ;// notify before first
-			});
-			value.onAdded((item, batch) => {
-				if(batch.index >= batch.total-1) this.notifyChange(); // notify after last
-			});
-			value.beforeRemoved((item, index, batch) => {
-				if(batch.index === 0) this.notifyBeforeChange(); // notify before first
-			});
-			value.onRemoved((item, index, batch) => {
-				if(batch.index >= batch.total-1) this.notifyChange(); // notify after last
-			});
+			value.beforeAdd(this._collectionBeforeAddedListener);
+			value.onAdded(this._collectionAddedListener);
+			value.beforeRemoved(this._collectionBeforeRemovedListener);
+			value.onRemoved(this._collectionRemovedListener);
 		}
 
 		this.notifyChange();
@@ -274,14 +278,16 @@ export default class Property {
 		return true;
 	}
 
-	notifyBeforeChange() {
+	notifyBeforeChange(path?:string) {
 		if(!this.parent) return;
-		this.parent.$notifyPropertyBeforeChange([this.name]);
+		const name = path ? `${this.name}.${path}` : this.name;
+		this.parent.$notifyPropertyBeforeChange([name]);
 	}
 
-	notifyChange() {
+	notifyChange(path?:string) {
 		if(!this.parent) return;
-		this.parent.$notifyPropertyChanged([this.name]);
+		const name = path ? `${this.name}.${path}` : this.name;
+		this.parent.$notifyPropertyChanged([name]);
 	}
 
 	setErrorValue(value:any) {
@@ -349,7 +355,7 @@ export default class Property {
 		if(this.type === Collection && current instanceof Collection && isArray(value)) {
 			const newCollection = new Collection(this.parent, this.name, current.getType());
 			newCollection.isReference = current.isReference;
-			newCollection.addItems(value, true);
+			newCollection.setData(value, true);
 			this._set(newCollection);
 			return true;
 		}

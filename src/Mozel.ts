@@ -584,7 +584,7 @@ export default class Mozel {
 		if(isString(pathPattern)) {
 			pathPattern = pathPattern.split('.');
 		}
-		if(pathPattern.length === 0) return {};
+		if(pathPattern.length === 0) return {[startingPath.join('.')]: this};
 
 		const step = pathPattern[0];
 		const properties = step === '*' ? Object.keys(this.properties) : [step];
@@ -593,7 +593,7 @@ export default class Mozel {
 			for(let name of properties) {
 				values = {
 					...values,
-					[concat(startingPath, pathPattern).join('.')]: this.$get(name)
+					[concat(startingPath, name).join('.')]: this.$get(name)
 				}
 			}
 			return values;

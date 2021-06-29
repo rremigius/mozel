@@ -1,21 +1,21 @@
-import Mozel, {Data, isData} from './Mozel';
-import Property, {isComplexValue, isMozelClass, MozelClass, PropertyValue} from './Property';
+import Mozel, {Data, isData, MozelData} from './Mozel';
+import Property, {isMozelClass, MozelClass, PropertyValue} from './Property';
 
 import {Class, primitive} from 'validation-kit';
-import {forEach, isPlainObject, isString, map, isMatch, clone, remove} from 'lodash';
+import {forEach, isFunction, isMatch, isPlainObject, isString, map, remove, concat} from 'lodash';
 
 import Templater from "./Templater";
 import Log from 'log-control';
 
-const log = Log.instance("mozel/collection")
+const log = Log.instance("mozel/collection");
 
 export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
 
-type AddedListener<T> = (item:T, batch:BatchInfo)=>void;
-type RemovedListener<T> = (item:T, index:number, batch:BatchInfo)=>void;
-type BatchInfo = {index:number, total:number};
+export type AddedListener<T> = (item:T, index:number)=>void;
+export type RemovedListener<T> = (item:T, index:number)=>void;
 type CollectionItem = Mozel|primitive;
+type FindFunction<T> = (item:T, index:number)=>boolean;
 
 export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
@@ -44,7 +44,7 @@ export default class Collection<T extends Mozel|primitive> {
 		this.relation = relation;
 
 		this.list = [];
-		this.addItems(list);
+		this.setData(list);
 
 		this.removed = [];
 	}
@@ -83,61 +83,27 @@ export default class Collection<T extends Mozel|primitive> {
 		return false;
 	}
 
-	/**
-	 * Add an item to the Collection.
-	 * @param item					The item to add.
-	 * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize a Mozel based on the given data.
-	 * @param {BatchInfo} [batch]	Provide batch information for the listeners. Defaults to {index: 0, total:1};
-	 */
-	add(item:T|object, init = false, batch?:BatchInfo) {
-		if(!batch) batch = {index: 0, total:1};
+	add(item:T, notify = true) {
+		const index = this.list.length;
+		if(notify) this.notifyBeforeAdd(item, index);
 
-		let final = this.revise(item, init);
-		if(!final) {
-			const message = `Item is not (convertable to) ${this.getTypeName()}`;
-			log.error(message, item);
-			if(this.parent.$strict) {
-				return this;
-			}
-			this._errors[this.list.length] = new Error(message);
-			// TS: for non-strict models, we disable allow non-typesafe values
-			final = <T>item;
+		if(item instanceof Mozel) {
+			item.$setParent(this.parent, this.relation);
 		}
-		this.notifyBeforeAdd(final, batch);
+		this.list.push(<T>item);
 
-		if(final instanceof Mozel) {
-			final.$setParent(this.parent, this.relation);
-		}
-		this.list.push(<T>final);
-
-		this.notifyAdded(final, batch);
-		return this;
-	}
-
-	/**
-	 * Add an item to the Collection.
-	 * @param items							The items to add.
-	 * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize Mozels based on the given data.
-	 */
-	addItems(items:Array<object|T>, init = false) {
-		items.forEach((item:object|T, index) => {
-			this.add(item, init, {index, total: items.length});
-		});
-		return this;
+		if(notify) this.notifyAdded(item, index);
 	}
 
 	/**
 	 * Removes the item at the given index from the list. Returns the item.
 	 * @param {number} index			The index to remove.
 	 * @param {boolean} [track]			If set to `true`, item will be kept in `removed` list.
-	 * @param {boolean} [batch]			Provide batch information for change listeners. Defaults to {index: 0, total: 1}.
 	 */
-	removeIndex(index:number, track= false, batch?:BatchInfo) {
-		if(!batch) batch = {index: 0, total:1};
-
+	removeIndex(index:number, track= false) {
 		let item = this.list[index];
 
-		this.notifyBeforeRemove(item, index, batch);
+		this.notifyBeforeRemove(item, index);
 
 		this.list.splice(index, 1);
 		delete this._errors[index];
@@ -145,7 +111,7 @@ export default class Collection<T extends Mozel|primitive> {
 			this.removed.push(item);
 		}
 
-		this.notifyRemoved(item, index, batch);
+		this.notifyRemoved(item, index);
 		return item;
 	}
 
@@ -189,16 +155,13 @@ export default class Collection<T extends Mozel|primitive> {
 
 	/**
 	 * Clear all items from the list.
-	 * @param {BatchInfo} [batch]		If clear operation is part of a larger batch of operations, this sets the batch info.
 	 */
-	clear(batch?:BatchInfo) {
-		const start = batch ? clone(batch) : {index: 0, total: this.list.length};
+	clear() {
 		const items = this.list.slice();
 
 		// Notify before change
 		items.forEach((item, index) => {
-			// TS: forEach is synchronous and we don't change batch to undefined.
-			this.notifyBeforeRemove(item, index, {index: start.index + index, total: start.total});
+			this.notifyBeforeRemove(item, index);
 		});
 
 		// Clear the list
@@ -207,12 +170,14 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Notify after change
 		items.forEach((item, index) => {
-			this.notifyRemoved(item, index, {index: start.index + index, total: start.total});
+			this.notifyRemoved(item, index);
 		});
 		return this;
 	}
 
-	find(specs:Data|T) {
+	find(specs:Data|T|FindFunction<T>) {
+		if(isFunction(specs)) return this.list.find(specs);
+
 		for(let i in this.list) {
 			if(this.matches(specs, this.list[i])) {
 				return this.list[i];
@@ -251,20 +216,20 @@ export default class Collection<T extends Mozel|primitive> {
 		this.list[index] = item;
 	}
 
-	notifyBeforeRemove(item:T, index:number, batch:BatchInfo) {
-		this.beforeRemovedListeners.forEach(listener => listener(item, index, batch));
+	notifyBeforeRemove(item:T, index:number) {
+		this.beforeRemovedListeners.forEach(listener => listener(item, index));
 	}
 
-	notifyRemoved(item:T, index:number, batch:BatchInfo) {
-		this.removedListeners.forEach(listener => listener(item, index, batch));
+	notifyRemoved(item:T, index:number) {
+		this.removedListeners.forEach(listener => listener(item, index));
 	}
 
-	notifyBeforeAdd(item:T, batch:BatchInfo) {
-		this.beforeAddedListeners.forEach(listener => listener(item, batch));
+	notifyBeforeAdd(item:T, index:number) {
+		this.beforeAddedListeners.forEach(listener => listener(item, index));
 	}
 
-	notifyAdded(item:T, batch:BatchInfo) {
-		this.addedListeners.forEach(listener => listener(item, batch));
+	notifyAdded(item:T, index:number) {
+		this.addedListeners.forEach(listener => listener(item, index));
 	}
 
 	beforeAdd(callback:AddedListener<CollectionItem>) {
@@ -276,6 +241,9 @@ export default class Collection<T extends Mozel|primitive> {
 	removeAddedListener(callback:AddedListener<CollectionItem>) {
 		remove(this.addedListeners, item => item === callback);
 	}
+	removeBeforeAddedListener(callback:AddedListener<CollectionItem>) {
+		remove(this.beforeAddedListeners, item => item === callback);
+	}
 
 	beforeRemoved(callback:RemovedListener<CollectionItem>) {
 		this.beforeRemovedListeners.push(callback);
@@ -286,18 +254,76 @@ export default class Collection<T extends Mozel|primitive> {
 	removeRemovedListener(callback:RemovedListener<CollectionItem>) {
 		remove(this.removedListeners, item => item === callback);
 	}
+	removeBeforeRemovedListener(callback:RemovedListener<CollectionItem>) {
+		remove(this.beforeRemovedListeners, item => item === callback);
+	}
 
 	// COMPLEX VALUE METHODS
 
 	setData(items:Array<object|T>, init = false) {
-		const oldCount = this.list.length;
-		const batch = {index: 0, total: oldCount + items.length};
+		const remove:Array<{item: T, index:number}> = [];
+		const add:Array<T> = [];
 
-		this.clear(batch);
-
-		items.forEach((item: object | T, index) => {
-			this.add(item, init, {index: oldCount + index, total: batch.total});
+		const resolved:T[] = [];
+		items.forEach(item => {
+			// Initialize item
+			const revisedItem = this.revise(item, init);
+			if(!revisedItem) {
+				const message = `Item is not (convertable to) ${this.getTypeName()}`;
+				log.error(message, item);
+				if(this.parent.$strict) {
+					return; // we don't add
+				}
+				// TS: for non-strict models, we disable allow non-typesafe values
+				this._errors[this.list.length] = new Error(message);
+			}
+			// Check for existing item
+			if(isMozelClass(this.type)) {
+				const existing = this.list.find(existing => (<Mozel>existing).gid === (<Mozel>revisedItem).gid);
+				if (existing && existing !== item) {
+					(existing as Mozel).$setData(item as MozelData<any>, init);
+					resolved.push(existing);
+				} else {
+					resolved.push(<T>revisedItem);
+				}
+			}
 		});
+
+		// Remove old items not in new list
+		this.list.forEach((oldItem, index) => {
+			if(!resolved.find(newItem => newItem === oldItem)) {
+				remove.push({item: oldItem, index});
+			}
+		});
+
+		const length = this.list.length - remove.length + add.length;
+
+		// Add new items not in old list
+		resolved.forEach(newItem => {
+			if(!this.list.find(oldItem => oldItem === newItem)) {
+				add.push(newItem);
+			}
+		});
+
+		// Notify the listeners which items will be removed
+		remove.forEach(removal => this.notifyBeforeRemove(removal.item, removal.index));
+
+		// Start with a new list
+		this.list = [];
+		this._errors = {};
+
+		// Notify listeners which items have been removed
+		remove.forEach(removal => this.notifyRemoved(removal.item, removal.index));
+
+		// Notify listeners which items will be added
+		add.forEach((item, index) => this.notifyBeforeAdd(item, length + index));
+
+		// Add all items
+		resolved.forEach(item => this.add(item, false));
+
+		// Notify listeners which items have been added
+		add.forEach((item, index) => this.notifyAdded(item, length + index));
+
 		return this;
 	}
 
@@ -347,6 +373,18 @@ export default class Collection<T extends Mozel|primitive> {
 				this.list[i] = resolved;
 			}
 		}
+	}
+
+	equals(other:Collection<any>) {
+		if(this.type !== other.type) return false;
+		if(this.length !== other.length) return false;
+		return !this.find((item, index) => {
+			return other.get(index) !== item;
+		});
+	}
+
+	clone() {
+		return new Collection<T>(this.parent, this.relation, this.type, this.list.slice());
 	}
 
 	cloneDeep() {
@@ -415,7 +453,7 @@ export default class Collection<T extends Mozel|primitive> {
 		if(isString(path)) {
 			path = path.split('.');
 		}
-		if(!isMozelClass(this.getType()) || path.length === 0) {
+		if(path.length === 0) {
 			return {};
 		}
 
@@ -432,11 +470,16 @@ export default class Collection<T extends Mozel|primitive> {
 
 		let values = {};
 		items.forEach(({item, index}) => {
+			const indexPath = concat(startingPath, index.toString()).join('.');
 			if(item instanceof Mozel) {
 				values = {
 					...values,
 					...item.$pathPattern(path.slice(1), [...startingPath, index.toString()])
 				}
+			} else if (path.length === 1) {
+				values = { ...values, [indexPath]: item };
+			} else {
+				values = { ...values, [indexPath]: undefined };
 			}
 		});
 		return values;

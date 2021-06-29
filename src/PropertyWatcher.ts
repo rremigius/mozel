@@ -1,6 +1,7 @@
 import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
-import { throttle, isNumber } from "lodash";
+import {isNumber, throttle} from "lodash";
+import Collection from "./Collection";
 
 export type PropertyWatcherOptions = {
 	path:string,
@@ -23,6 +24,8 @@ export default class PropertyWatcher {
 	private readonly handler: PropertyChangeHandler<any>;
 
 	private currentValues:Record<string, PropertyValue> = {};
+	private deepValues:Record<string, PropertyValue> = {};
+	private shallowClones:Record<string, PropertyValue> = {};
 
 	constructor(mozel:Mozel, options:PropertyWatcherOptions) {
 		this.mozel = mozel;
@@ -38,14 +41,42 @@ export default class PropertyWatcher {
 	execute(path:string) {
 		const appliedPath = this.applyMatchedPath(path);
 		const values = this.mozel.$pathPattern(appliedPath);
+
 		for(let valuePath in values) {
 			const value = values[valuePath];
 			// Only fire if changed
-			if(this.currentValues[valuePath] !== values[valuePath]) {
+			if(this.hasChanged(value, valuePath, path)) {
 				this.handler(value, this.currentValues[valuePath], valuePath);
 				this.currentValues[valuePath] = value;
 			}
 		}
+	}
+
+	hasChanged(newWatcherValue:any, watcherPath:string, changePath:string) {
+		const current = this.currentValues[watcherPath];
+
+		// Value changed
+		if(current !== newWatcherValue) return true;
+
+		// Value didn't change, and we're not looking deeper
+		if(!this.deep) return false;
+
+		// Change occurred no deeper than our watcher path
+		if(changePath.length <= watcherPath.length || changePath.substring(0, watcherPath.length) !== watcherPath) {
+			return false;
+		}
+
+		// Compare deep value with our deep clone
+		const currentDeep = this.deepValues[watcherPath];
+		const deeperPath = changePath.substring(watcherPath.length + 1); // remove watcher path, including final '.'
+
+		// If the change happened deep, but current or new value is not a Mozel, then it must be different
+		// (although it should not even be possible, actually)
+		if(!(currentDeep instanceof Mozel) || !(newWatcherValue instanceof Mozel)) return true;
+
+		const deepOldValue = currentDeep.$path(deeperPath);
+		const deepNewValue = newWatcherValue.$path(deeperPath);
+		return deepOldValue !== deepNewValue;
 	}
 
 	updateValues(path:string) {
@@ -53,10 +84,15 @@ export default class PropertyWatcher {
 		const values = this.mozel.$pathPattern(appliedPath);
 		for(let path in values) {
 			let value = values[path];
-			if(this.deep && isComplexValue(value)) {
-				value = value instanceof Mozel ? value.$cloneDeep() : value.cloneDeep();
-			}
 			this.currentValues[path] = value;
+			// Make deep clone so we can compare deeper paths
+			if(this.deep) {
+				if(isComplexValue(value)) {
+					this.deepValues[path] = value instanceof Mozel ? value.$cloneDeep() : value.cloneDeep();
+				} else {
+					this.deepValues[path] = value;
+				}
+			}
 		}
 	}
 

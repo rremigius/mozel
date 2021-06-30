@@ -104,6 +104,13 @@ export default class PropertyWatcher {
 				}
 			}
 		}
+		// Reset values next tick. All updates should be completed within the tick
+		setTimeout(()=>this.resetValues());
+	}
+
+	resetValues() {
+		this.currentValues = {};
+		this.deepValues = {};
 	}
 
 	matches(path:string) {

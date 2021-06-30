@@ -54,7 +54,7 @@ export default class Collection<T extends Mozel | primitive> {
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
     revise(item: any, init?: boolean): T | false;
-    add(item: T, init?: boolean): object | T;
+    add(item: object | T, init?: boolean): object | T;
     /**
      * Removes the item at the given index from the list. Returns the item.
      * @param {number} index			The index to remove.

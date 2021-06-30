@@ -86,7 +86,7 @@ export default class Collection<T extends Mozel|primitive> {
 		return false;
 	}
 
-	add(item:T, init = true) {
+	add(item:object|T, init = true) {
 		const index = this.list.length;
 		return this.set(index, item, init);
 	}

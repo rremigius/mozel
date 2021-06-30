@@ -61,9 +61,9 @@ export default class Collection {
         }
         return false;
     }
-    add(item) {
+    add(item, init = true) {
         const index = this.list.length;
-        this.set(index, item);
+        this.set(index, item, init);
     }
     /**
      * Removes the item at the given index from the list. Returns the item.
@@ -169,48 +169,45 @@ export default class Collection {
     get(index) {
         return this.list[index];
     }
-    set(index, value) {
+    set(index, value, init = true) {
         const current = this.list[index];
         if (value === current)
             return;
-        this.events.fire(new CollectionBeforeChangeEvent({ item: value, index }));
-        this.list[index] = value;
-        if (value instanceof Mozel && !this.isReference) {
-            value.$setParent(this.parent, this.relation);
+        // New value replaces current Mozel with same GID, but may change data
+        if (current instanceof Mozel && isPlainObject(value) && get(value, 'gid') === current.gid) {
+            current.$setData(value);
+            return true;
         }
-        this.events.fire(new CollectionChangedEvent({ item: value, index }));
+        // Check and initialize value if necessary
+        let revised = this.revise(value, init);
+        if (!revised) {
+            log.error(`Item ${index} could not be intialized to a valid value.`);
+            if (this.parent.$strict) {
+                return false;
+            }
+            // For non-strict models, we act as if the given value is ok
+            this._errors[index] = new Error("Invalid item.");
+            revised = value;
+        }
+        // Set new value
+        this.events.fire(new CollectionBeforeChangeEvent({ item: revised, index }));
+        this.list[index] = revised;
+        if (revised instanceof Mozel && !this.isReference) {
+            revised.$setParent(this.parent, this.relation);
+        }
+        this.events.fire(new CollectionChangedEvent({ item: revised, index }));
         this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
-        this.events.fire(new CollectionItemAddedEvent({ item: value, index }));
+        this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
+        return true;
     }
     // COMPLEX VALUE METHODS
     setData(items, init = true) {
         let skipped = 0;
         items.forEach((item, i) => {
             const index = i - skipped;
-            const current = this.list[index];
-            // The same value, nothing to do here
-            if (current == item) {
-                return;
-            }
-            let newItem = this.revise(item, init);
-            if (!newItem) {
-                log.error(`Item ${index} could not be intialized to a valid value.`);
-            }
-            // New value replaces current Mozel with same GID, but may change data
-            if (current instanceof Mozel && get(newItem, 'gid') === current.gid) {
-                current.$setData(item);
-                newItem = current;
-            }
-            // Current value will be replaced by new value
-            if (newItem) {
-                this.set(index, newItem);
-            }
-            else if (!this.parent.$strict) {
-                // set item with error
-                this.set(index, item);
-                this._errors[index] = new Error("Invalid item.");
-            }
-            else {
+            // Try to add the item
+            if (!this.set(index, item, init)) {
+                // Otherwise, remove the index
                 this.removeIndex(index);
                 skipped++;
             }

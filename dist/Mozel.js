@@ -691,7 +691,7 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $isPrimitiveProperty(key) {
         let type = this.properties[key].type;
-        return !isMozelClass(type);
+        return !isMozelClass(type) && type !== Collection;
     }
     /**
      * Checks if the Mozel has a property

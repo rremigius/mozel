@@ -855,7 +855,7 @@ export default class Mozel {
 	 */
 	$isPrimitiveProperty(key: string) {
 		let type = this.properties[key].type;
-		return !isMozelClass(type);
+		return !isMozelClass(type) && type !== Collection;
 	}
 
 	/**

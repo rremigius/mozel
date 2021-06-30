@@ -524,7 +524,7 @@ export default class Mozel {
 			throw new Error(`Could not set non-existing property '${property}' on ${this.$name()}.`);
 		}
 		this.properties[property].set(value, init);
-		return true;
+		return this.properties[property].value;
 	}
 
 	/**

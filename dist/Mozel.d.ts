@@ -211,7 +211,7 @@ export default class Mozel {
      * @param {PropertyInput} value		The value to set on the property
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
-    $set(property: string, value: PropertyInput, init?: boolean): boolean;
+    $set(property: string, value: PropertyInput, init?: boolean): PropertyValue;
     /**
      * Get type-safe value of the given property.
      * @param {string} property

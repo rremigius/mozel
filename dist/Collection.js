@@ -63,7 +63,7 @@ export default class Collection {
     }
     add(item, init = true) {
         const index = this.list.length;
-        this.set(index, item, init);
+        return this.set(index, item, init);
     }
     /**
      * Removes the item at the given index from the list. Returns the item.
@@ -172,21 +172,22 @@ export default class Collection {
     set(index, value, init = true) {
         const current = this.list[index];
         if (value === current)
-            return;
+            return value;
         // New value replaces current Mozel with same GID, but may change data
         if (current instanceof Mozel && isPlainObject(value) && get(value, 'gid') === current.gid) {
             current.$setData(value);
-            return true;
+            return current;
         }
         // Check and initialize value if necessary
         let revised = this.revise(value, init);
         if (!revised) {
-            log.error(`Item ${index} could not be intialized to a valid value.`);
+            const message = `Item ${index} could not be intialized to a valid value.`;
+            log.error(message);
             if (this.parent.$strict) {
-                return false;
+                throw new Error(message);
             }
             // For non-strict models, we act as if the given value is ok
-            this._errors[index] = new Error("Invalid item.");
+            this._errors[index] = new Error(message);
             revised = value;
         }
         // Set new value
@@ -198,7 +199,7 @@ export default class Collection {
         this.events.fire(new CollectionChangedEvent({ item: revised, index }));
         this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
         this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
-        return true;
+        return revised;
     }
     // COMPLEX VALUE METHODS
     setData(items, init = true) {

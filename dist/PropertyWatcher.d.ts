@@ -1,7 +1,8 @@
 import { PropertyValue } from "./Property";
 import Mozel from "./Mozel";
-export declare type WatcherThrottleOptions = {
+export declare type WatcherDebounceOptions = {
     wait?: number;
+    maxWait?: number;
     leading?: boolean;
     trailing?: boolean;
 };
@@ -10,7 +11,7 @@ export declare type PropertyWatcherOptions = {
     handler: PropertyChangeHandler<PropertyValue>;
     immediate?: boolean;
     deep?: boolean;
-    throttle?: number | WatcherThrottleOptions;
+    debounce?: number | WatcherDebounceOptions;
 };
 export declare type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path' | 'handler'>;
 export declare type PropertyChangeHandler<T> = (change: {
@@ -24,7 +25,7 @@ export default class PropertyWatcher {
     readonly path: string;
     readonly immediate?: boolean;
     readonly deep?: boolean;
-    readonly throttle?: number | WatcherThrottleOptions;
+    readonly debounce?: number | WatcherDebounceOptions;
     private readonly handler;
     private currentValues;
     private deepValues;

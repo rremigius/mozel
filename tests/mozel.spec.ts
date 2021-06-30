@@ -704,7 +704,7 @@ describe('Mozel', () => {
 			foo.$set('foos', [bar]);
 			assert.equal(count, 0, "Watcher not fired after replacement.");
 		});
-		it("with `throttle` throttles the handler", () => {
+		it("with `debounce` limits the calls to the handler", () => {
 			class Foo extends Mozel {
 				@property(String) name?:string;
 				@property(Foo) foo?:Foo;
@@ -719,7 +719,7 @@ describe('Mozel', () => {
 			let count = 0;
 			foo.$watch('foo', () => {
 				count++;
-			}, {deep, throttle: 100});
+			}, {deep, debounce: {leading: true}});
 
 			foo!.foo!.name = 'bx';
 			foo!.foo!.foo!.name = 'cx';

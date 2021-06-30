@@ -178,6 +178,10 @@ let Property = Property_1 = class Property {
     _set(value) {
         if (value === this._value)
             return;
+        if (this._value instanceof Collection) {
+            log.error("Collections cannot be replaced.");
+            return;
+        }
         // Notify watchers before the change, so they can get the old value
         this.notifyBeforeChange();
         // Stop listening to current collection

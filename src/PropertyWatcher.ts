@@ -1,14 +1,18 @@
 import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
 import {isNumber, throttle} from "lodash";
-import Collection from "./Collection";
 
+export type WatcherThrottleOptions = {
+	leading?:boolean,
+	trailing?:boolean
+}
 export type PropertyWatcherOptions = {
 	path:string,
 	handler:PropertyChangeHandler<PropertyValue>
 	immediate?:boolean,
 	deep?:boolean,
-	throttle?:number
+	throttle?:number,
+	throttleOptions?:WatcherThrottleOptions
 }
 export type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path'|'handler'>
 
@@ -20,6 +24,7 @@ export default class PropertyWatcher {
 	readonly immediate?: boolean;
 	readonly deep?: boolean;
 	readonly throttle?:number;
+	readonly throttleOptions?:WatcherThrottleOptions;
 
 	private readonly handler: PropertyChangeHandler<any>;
 
@@ -33,8 +38,9 @@ export default class PropertyWatcher {
 		this.immediate = options.immediate;
 		this.deep = options.deep;
 		this.throttle = options.throttle;
+		this.throttleOptions = options.throttleOptions;
 
-		if(isNumber(this.throttle)) this.handler = throttle(this.handler, this.throttle);
+		if(isNumber(this.throttle)) this.handler = throttle(this.handler, this.throttle, this.throttleOptions);
 	}
 
 	execute(path:string) {

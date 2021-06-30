@@ -11,8 +11,9 @@ export default class PropertyWatcher {
         this.immediate = options.immediate;
         this.deep = options.deep;
         this.throttle = options.throttle;
+        this.throttleOptions = options.throttleOptions;
         if (isNumber(this.throttle))
-            this.handler = throttle(this.handler, this.throttle);
+            this.handler = throttle(this.handler, this.throttle, this.throttleOptions);
     }
     execute(path) {
         const appliedPath = this.applyMatchedPath(path);

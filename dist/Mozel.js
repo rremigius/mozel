@@ -215,7 +215,7 @@ let Mozel = Mozel_1 = class Mozel {
         // Instantiate this class.
         const mozel = new this();
         if (data) {
-            mozel.$setData(data, true);
+            mozel.$setData(data);
         }
         return mozel;
     }
@@ -496,15 +496,22 @@ let Mozel = Mozel_1 = class Mozel {
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
-     * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
+     * @param {boolean} merge		If set to `true`, only defined keys will be set.
      */
-    $setData(data, init = true) {
+    $setData(data, merge = false) {
         forEach(this.properties, (property, key) => {
-            if (key in data) {
-                this.$set(key, data[key], init);
+            if (!merge || key in data) {
+                this.$set(key, data[key], true);
             }
         });
     }
+    // $merge(data: Data) {
+    // 	forEach(this.properties, (property: Property, key: string) => {
+    // 		if(key in data) {
+    // 			this.
+    // 		}
+    // 	});
+    // }
     /**
      * Watch changes to the given path.
      * @param {PropertyWatcherOptionsArgument} options

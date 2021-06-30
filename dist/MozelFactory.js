@@ -109,7 +109,7 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         }
         mozel.$isReference = asReference;
         if (data) {
-            mozel.$setData(data, true);
+            mozel.$setData(data);
         }
         // Register
         if (!mozel.gid) {

@@ -847,7 +847,41 @@ describe('Mozel', () => {
 		});
 	});
 	describe("$setData", () => {
-		it("merges given data if possible, without replacing Mozels", () => {
+		it("sets all properties, including undefined", () => {
+			class Foo extends Mozel {
+				@property(String)
+				foo?:string;
+				@property(String)
+				bar?:string;
+				@property(Foo)
+				other?:Foo;
+			}
+			const foo = Foo.create<Foo>({
+				gid: 'foo',
+				foo: 'foo.foo',
+				bar: 'foo.bar',
+				other: {
+					gid: 'foo.other',
+					foo: 'foo.other.foo',
+					bar: 'foo.other.bar',
+					other: {gid: 'foo.other.other'}
+				}
+			});
+			foo.$setData({
+				gid: 'foo',
+				foo: 'FOO.FOO',
+				other: {
+					gid: 'foo.other',
+					bar: 'FOO.OTHER.BAR'
+				}
+			});
+			assert.equal(foo.foo, "FOO.FOO", "'foo.foo' changed");
+			assert.equal(foo.bar, undefined, "'foo.bar' unset");
+			assert.equal(foo.other!.bar, "FOO.OTHER.BAR", "'foo.other.bar' changed");
+			assert.equal(foo.other!.other, undefined, "'foo.other.other' unset");
+		});
+
+		it("leaves Mozels in place if possible, just setting its data", () => {
 			class Foo extends Mozel {
 				@property(String)
 				name?:string;
@@ -909,5 +943,55 @@ describe('Mozel', () => {
 				'foos.2'
 			]);
 		});
+
+		it("with merge = true sets only defined keys and ignores existing values", () => {
+			it("merges only given data into current model, without replacing undefined values", () => {
+				class Foo extends Mozel {
+					@property(String)
+					name?:string;
+					@property(String)
+					extra?:string;
+					@property(Foo)
+					other?:Foo;
+					@collection(Foo)
+					list?:Collection<Foo>
+					@property(Foo, {reference})
+					ref?:Foo;
+				}
+				const root = Foo.create<Foo>({
+					gid: 'root',
+					name: 'root',
+					extra: 'ROOT_EXTRA',
+					other: {gid: 'root.other', extra: 'ROOT_OTHER_EXTRA'},
+					list: [{gid: 'root.list.0', extra: 'ROOT_LIST_0_EXTRA'}, {gid: 'root.list.1'}, {gid: 'root.list.2'}],
+					ref: {gid: 'root.other'}
+				});
+				const rootOther = root.other;
+				const rootList0 = root.list!.get(0);
+				const rootList1 = root.list!.get(1);
+				const rootList2 = root.list!.get(2);
+				const rootList1Other = rootList1!.other;
+
+				root.$setData({
+					name: 'root2',
+					other: {gid: 'root.other', name: 'root.other2'},
+					list: [{gid: 'root.list.0'}, {gid: 'root.list.1', other: {gid: 'root.list.1.other'}}, {gid: 'root.list.X' }],
+					ref: {gid: 'root.other'}
+				}, true);
+
+				const newRootOther = root.other;
+				const newRootList0 = root.list!.get(0);
+				const newRootList1 = root.list!.get(1);
+				const newRootList2 = root.list!.get(2);
+				const newRootList1Other = newRootList1!.other;
+
+				assert.equal(root.name, 'root2', "Direct property set");
+				assert.equal(root.extra, 'ROOT_EXTRA', "Undefined direct property untouched");
+				assert.equal(newRootOther, rootOther, "'other' untouched");
+				assert.equal(newRootList0, rootList0, "'root.list.0' untouched.");
+				assert.notEqual(newRootList1Other, rootList1Other, "'root.list.1.other' changed");
+				assert.notEqual(newRootList2, rootList2, "'root.list.2' replaced");
+			});
+		})
 	});
 });

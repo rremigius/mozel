@@ -244,9 +244,9 @@ export default class Mozel {
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
-     * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
+     * @param {boolean} merge		If set to `true`, only defined keys will be set.
      */
-    $setData(data: Data, init?: boolean): void;
+    $setData(data: Data, merge?: boolean): void;
     /**
      * Watch changes to the given path.
      * @param {PropertyWatcherOptionsArgument} options

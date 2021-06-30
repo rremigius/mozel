@@ -132,7 +132,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 		mozel.$isReference = asReference;
 
 		if(data) {
-			mozel.$setData(data, true);
+			mozel.$setData(data);
 		}
 
 		// Register

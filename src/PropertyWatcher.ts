@@ -12,7 +12,7 @@ export type PropertyWatcherOptions = {
 }
 export type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path'|'handler'>
 
-export type PropertyChangeHandler<T> = (newValue:T, oldValue:T, path:string)=>void;
+export type PropertyChangeHandler<T> = (change:{newValue:T, oldValue:T, valuePath:string, changePath:string})=>void;
 
 export default class PropertyWatcher {
 	readonly mozel:Mozel;
@@ -25,7 +25,6 @@ export default class PropertyWatcher {
 
 	private currentValues:Record<string, PropertyValue> = {};
 	private deepValues:Record<string, PropertyValue> = {};
-	private shallowClones:Record<string, PropertyValue> = {};
 
 	constructor(mozel:Mozel, options:PropertyWatcherOptions) {
 		this.mozel = mozel;
@@ -43,11 +42,11 @@ export default class PropertyWatcher {
 		const values = this.mozel.$pathPattern(appliedPath);
 
 		for(let valuePath in values) {
-			const value = values[valuePath];
+			const newValue = values[valuePath];
 			// Only fire if changed
-			if(this.hasChanged(value, valuePath, path)) {
-				this.handler(value, this.currentValues[valuePath], valuePath);
-				this.currentValues[valuePath] = value;
+			if(this.hasChanged(newValue, valuePath, path)) {
+				const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
+				this.handler({newValue, oldValue, valuePath, changePath: path});
 			}
 		}
 	}

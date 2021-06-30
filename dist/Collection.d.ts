@@ -2,17 +2,32 @@ import Mozel, { Data } from './Mozel';
 import { MozelClass, PropertyValue } from './Property';
 import { Class, primitive } from 'validation-kit';
 import Templater from "./Templater";
+import EventInterface, { Event } from "event-interface-mixin";
 export declare type CollectionType = MozelClass | Class;
 export declare type CollectionOptions = {
     reference?: boolean;
 };
-declare type AddedListener<T> = (item: T, batch: BatchInfo) => void;
-declare type RemovedListener<T> = (item: T, index: number, batch: BatchInfo) => void;
-declare type BatchInfo = {
+declare type FindFunction<T> = (item: T, index: number) => boolean;
+export declare class CollectionChangedEvent<T> extends Event<{
+    item: T;
     index: number;
-    total: number;
-};
-declare type CollectionItem = Mozel | primitive;
+}> {
+}
+export declare class CollectionBeforeChangeEvent<T> extends Event<{
+    item: T;
+    index: number;
+}> {
+}
+export declare class CollectionItemAddedEvent<T> extends Event<{
+    item: T;
+    index: number;
+}> {
+}
+export declare class CollectionItemRemovedEvent<T> extends Event<{
+    item: T;
+    index: number;
+}> {
+}
 export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
     private readonly type?;
@@ -25,10 +40,9 @@ export default class Collection<T extends Mozel | primitive> {
     parent: Mozel;
     relation: string;
     isReference: boolean;
-    beforeAddedListeners: AddedListener<CollectionItem>[];
-    beforeRemovedListeners: RemovedListener<CollectionItem>[];
-    addedListeners: AddedListener<CollectionItem>[];
-    removedListeners: RemovedListener<CollectionItem>[];
+    events: EventInterface;
+    on: <T_1, E extends Event<T_1>>(event: import("event-interface-mixin").EventConstructor<T_1, E>, callback: import("event-interface-mixin").Callback<E>) => void;
+    off: <T_1, E extends Event<T_1>>(event: import("event-interface-mixin").EventConstructor<T_1, E>, callback: import("event-interface-mixin").Callback<E>) => void;
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
     getTypeName(): string;
     getType(): CollectionType | undefined;
@@ -40,26 +54,13 @@ export default class Collection<T extends Mozel | primitive> {
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
     revise(item: any, init?: boolean): T | false;
-    /**
-     * Add an item to the Collection.
-     * @param item					The item to add.
-     * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize a Mozel based on the given data.
-     * @param {BatchInfo} [batch]	Provide batch information for the listeners. Defaults to {index: 0, total:1};
-     */
-    add(item: T | object, init?: boolean, batch?: BatchInfo): this;
-    /**
-     * Add an item to the Collection.
-     * @param items							The items to add.
-     * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize Mozels based on the given data.
-     */
-    addItems(items: Array<object | T>, init?: boolean): this;
+    add(item: T): void;
     /**
      * Removes the item at the given index from the list. Returns the item.
      * @param {number} index			The index to remove.
      * @param {boolean} [track]			If set to `true`, item will be kept in `removed` list.
-     * @param {boolean} [batch]			Provide batch information for change listeners. Defaults to {index: 0, total: 1}.
      */
-    removeIndex(index: number, track?: boolean, batch?: BatchInfo): T;
+    removeIndex(index: number, track?: boolean): T;
     /**
    *
    * @param item
@@ -76,35 +77,27 @@ export default class Collection<T extends Mozel | primitive> {
     get length(): number;
     /**
      * Clear all items from the list.
-     * @param {BatchInfo} [batch]		If clear operation is part of a larger batch of operations, this sets the batch info.
      */
-    clear(batch?: BatchInfo): this;
-    find(specs: Data | T): T | undefined;
+    clear(): this;
+    find(specs: Data | T | FindFunction<T>): T | undefined;
     each(func: (item: T, index: number) => any): T[];
     map<V>(func: (item: T, index: number) => V): V[];
+    filter(func: (item: T, index: number) => boolean): T[];
     indexOf(item: T): number;
     toArray(): T[];
     getRemovedItems(): T[];
     /**
-   * @param index
-   * @return {Mozel}
-   */
+    * @param index
+    * @return {Mozel}
+    */
     get(index: number): T | undefined;
-    set(index: number, item: T): void;
-    notifyBeforeRemove(item: T, index: number, batch: BatchInfo): void;
-    notifyRemoved(item: T, index: number, batch: BatchInfo): void;
-    notifyBeforeAdd(item: T, batch: BatchInfo): void;
-    notifyAdded(item: T, batch: BatchInfo): void;
-    beforeAdd(callback: AddedListener<CollectionItem>): void;
-    onAdded(callback: AddedListener<CollectionItem>): void;
-    removeAddedListener(callback: AddedListener<CollectionItem>): void;
-    beforeRemoved(callback: RemovedListener<CollectionItem>): void;
-    onRemoved(callback: RemovedListener<CollectionItem>): void;
-    removeRemovedListener(callback: RemovedListener<CollectionItem>): void;
-    setData(items: Array<object | T>, init?: boolean): this;
+    set(index: number, value: T): void;
+    setData(items: Array<object | T>, init?: boolean): void;
     setParent(parent: Mozel): void;
     isDefault(): boolean;
     resolveReferences(): void;
+    equals(other: Collection<any>): boolean;
+    clone(): Collection<T>;
     cloneDeep(): Collection<T>;
     renderTemplates(templater: Templater | Data): void;
     path(path: string | string[]): PropertyValue;

@@ -1,8 +1,8 @@
 var Property_1;
 import { __decorate } from "tslib";
-import Collection from './Collection';
-import { find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil } from 'lodash';
-import { isClass, isPrimitive, isAlphanumeric, isSubClass } from "validation-kit";
+import Collection, { CollectionBeforeChangeEvent, CollectionChangedEvent } from './Collection';
+import { find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString } from 'lodash';
+import { isAlphanumeric, isClass, isPrimitive, isSubClass } from "validation-kit";
 import Mozel from "./Mozel";
 import { injectable } from "inversify";
 import logRoot from "./log";
@@ -42,6 +42,8 @@ let Property = Property_1 = class Property {
         this._reference = false;
         this._required = false;
         this._isDefault = false;
+        this._collectionBeforeChangeListener = (event) => this.notifyBeforeChange(event.data.index.toString());
+        this._collectionChangedListener = (event) => this.notifyChange(event.data.index.toString());
         if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
             log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
             type = undefined;
@@ -178,6 +180,11 @@ let Property = Property_1 = class Property {
             return;
         // Notify watchers before the change, so they can get the old value
         this.notifyBeforeChange();
+        // Stop listening to current collection
+        if (this._value instanceof Collection) {
+            this._value.off(CollectionChangedEvent, this._collectionChangedListener);
+            this._value.off(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
+        }
         // Set value on parent
         this._value = value;
         this._isDefault = false;
@@ -192,22 +199,8 @@ let Property = Property_1 = class Property {
         }
         // If value is Collection, should listen to changes in Collection
         if (value instanceof Collection) {
-            value.beforeAdd((item, batch) => {
-                if (batch.index === 0)
-                    this.notifyBeforeChange(); // notify before first
-            });
-            value.onAdded((item, batch) => {
-                if (batch.index >= batch.total - 1)
-                    this.notifyChange(); // notify after last
-            });
-            value.beforeRemoved((item, index, batch) => {
-                if (batch.index === 0)
-                    this.notifyBeforeChange(); // notify before first
-            });
-            value.onRemoved((item, index, batch) => {
-                if (batch.index >= batch.total - 1)
-                    this.notifyChange(); // notify after last
-            });
+            value.on(CollectionChangedEvent, this._collectionChangedListener);
+            value.on(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
         }
         this.notifyChange();
     }
@@ -231,15 +224,17 @@ let Property = Property_1 = class Property {
         this._set(value);
         return true;
     }
-    notifyBeforeChange() {
+    notifyBeforeChange(path) {
         if (!this.parent)
             return;
-        this.parent.$notifyPropertyBeforeChange([this.name]);
+        const name = path ? `${this.name}.${path}` : this.name;
+        this.parent.$notifyPropertyBeforeChange([name]);
     }
-    notifyChange() {
+    notifyChange(path) {
         if (!this.parent)
             return;
-        this.parent.$notifyPropertyChanged([this.name]);
+        const name = path ? `${this.name}.${path}` : this.name;
+        this.parent.$notifyPropertyChanged([name]);
     }
     setErrorValue(value) {
         let err = new Error(`${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`);
@@ -298,17 +293,20 @@ let Property = Property_1 = class Property {
         let current = this.value;
         // Init Collection
         if (this.type === Collection && current instanceof Collection && isArray(value)) {
-            const newCollection = new Collection(this.parent, this.name, current.getType());
-            newCollection.isReference = current.isReference;
-            newCollection.addItems(value, true);
-            this._set(newCollection);
+            current.setData(value, true);
             return true;
         }
         // Init Mozel
         if (this.type && isMozelClass(this.type) && isPlainObject(value)) {
-            // Create mozel and try to set again, without type check
-            let mozel = this.parent.$create(this.type, value, this.isReference);
-            this._set(mozel);
+            if (current instanceof Mozel && value.gid === current.gid) {
+                // Same Mozel, different data
+                current.$setData(value);
+            }
+            else {
+                // Create mozel and try to set again, without type check
+                let mozel = this.parent.$create(this.type, value, this.isReference);
+                this._set(mozel);
+            }
             return true;
         }
         return false;

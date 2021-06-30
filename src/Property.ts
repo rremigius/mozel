@@ -1,8 +1,8 @@
-import Collection, {AddedListener, RemovedListener} from './Collection';
+import Collection, {CollectionBeforeChangeEvent, CollectionChangedEvent} from './Collection';
 
-import {find, includes, isArray, isBoolean, isFunction, isNumber, isPlainObject, isString, isNil, cloneDeep} from 'lodash';
+import {find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString} from 'lodash';
 
-import {isClass, isPrimitive, isAlphanumeric, isSubClass, Class, primitive} from "validation-kit"
+import {Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
 import Mozel from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
@@ -94,10 +94,8 @@ export default class Property {
 	private _value:PropertyValue;
 	private _isDefault = false;
 
-	private _collectionBeforeAddedListener:AddedListener<any> = (item, index) => this.notifyBeforeChange(index.toString());
-	private _collectionAddedListener:AddedListener<any> = (item, index) => this.notifyChange(index.toString());
-	private _collectionBeforeRemovedListener:RemovedListener<any> = (item, index) => this.notifyBeforeChange(index.toString());
-	private _collectionRemovedListener:RemovedListener<any> = (item, index) => this.notifyChange(index.toString());
+	private _collectionBeforeChangeListener = (event:CollectionBeforeChangeEvent<any>) => this.notifyBeforeChange(event.data.index.toString());
+	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => this.notifyChange(event.data.index.toString());
 
 	private readonly parent:Mozel;
 
@@ -226,11 +224,10 @@ export default class Property {
 		// Notify watchers before the change, so they can get the old value
 		this.notifyBeforeChange();
 
+		// Stop listening to current collection
 		if(this._value instanceof Collection) {
-			this._value.removeBeforeAddedListener(this._collectionBeforeAddedListener);
-			this._value.removeAddedListener(this._collectionAddedListener);
-			this._value.removeBeforeRemovedListener(this._collectionBeforeRemovedListener);
-			this._value.removeRemovedListener(this._collectionRemovedListener);
+			this._value.off(CollectionChangedEvent, this._collectionChangedListener);
+			this._value.off(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
 		}
 
 		// Set value on parent
@@ -249,10 +246,8 @@ export default class Property {
 
 		// If value is Collection, should listen to changes in Collection
 		if(value instanceof Collection) {
-			value.beforeAdd(this._collectionBeforeAddedListener);
-			value.onAdded(this._collectionAddedListener);
-			value.beforeRemoved(this._collectionBeforeRemovedListener);
-			value.onRemoved(this._collectionRemovedListener);
+			value.on(CollectionChangedEvent, this._collectionChangedListener);
+			value.on(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
 		}
 
 		this.notifyChange();
@@ -353,18 +348,20 @@ export default class Property {
 
 		// Init Collection
 		if(this.type === Collection && current instanceof Collection && isArray(value)) {
-			const newCollection = new Collection(this.parent, this.name, current.getType());
-			newCollection.isReference = current.isReference;
-			newCollection.setData(value, true);
-			this._set(newCollection);
+			current.setData(value, true);
 			return true;
 		}
 
 		// Init Mozel
 		if(this.type && isMozelClass(this.type) && isPlainObject(value)) {
-			// Create mozel and try to set again, without type check
-			let mozel = this.parent.$create(this.type, value, this.isReference);
-			this._set(mozel);
+			if(current instanceof Mozel && value.gid === current.gid) {
+				// Same Mozel, different data
+				current.$setData(value);
+			} else {
+				// Create mozel and try to set again, without type check
+				let mozel = this.parent.$create(this.type, value, this.isReference);
+				this._set(mozel);
+			}
 			return true;
 		}
 

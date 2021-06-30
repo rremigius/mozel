@@ -1,9 +1,18 @@
 import Mozel, { isData } from './Mozel';
 import Property, { isMozelClass } from './Property';
-import { forEach, isPlainObject, isString, map, isMatch, clone, remove } from 'lodash';
+import { forEach, isFunction, isMatch, isPlainObject, isString, map, get, concat } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
+import EventInterface, { Event } from "event-interface-mixin";
 const log = Log.instance("mozel/collection");
+export class CollectionChangedEvent extends Event {
+}
+export class CollectionBeforeChangeEvent extends Event {
+}
+export class CollectionItemAddedEvent extends Event {
+}
+export class CollectionItemRemovedEvent extends Event {
+}
 export default class Collection {
     constructor(parent, relation, type, list = []) {
         /**
@@ -11,15 +20,14 @@ export default class Collection {
          */
         this._errors = {};
         this.isReference = false;
-        this.beforeAddedListeners = [];
-        this.beforeRemovedListeners = [];
-        this.addedListeners = [];
-        this.removedListeners = [];
+        this.events = new EventInterface();
+        this.on = this.events.getOnMethod();
+        this.off = this.events.getOffMethod();
         this.type = type;
         this.parent = parent;
         this.relation = relation;
         this.list = [];
-        this.addItems(list);
+        this.setData(list);
         this.removed = [];
     }
     static get type() { return 'Collection'; }
@@ -42,7 +50,7 @@ export default class Collection {
      * @param {boolean} [init]	If set to `true`, Mozel Collections may try to initialize a Mozel based on the provided data.
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
-    revise(item, init = false) {
+    revise(item, init = true) {
         if (this.checkType(item)) {
             return item;
         }
@@ -53,62 +61,31 @@ export default class Collection {
         }
         return false;
     }
-    /**
-     * Add an item to the Collection.
-     * @param item					The item to add.
-     * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize a Mozel based on the given data.
-     * @param {BatchInfo} [batch]	Provide batch information for the listeners. Defaults to {index: 0, total:1};
-     */
-    add(item, init = false, batch) {
-        if (!batch)
-            batch = { index: 0, total: 1 };
-        let final = this.revise(item, init);
-        if (!final) {
-            const message = `Item is not (convertable to) ${this.getTypeName()}`;
-            log.error(message, item);
-            if (this.parent.$strict) {
-                return this;
-            }
-            this._errors[this.list.length] = new Error(message);
-            // TS: for non-strict models, we disable allow non-typesafe values
-            final = item;
-        }
-        this.notifyBeforeAdd(final, batch);
-        if (final instanceof Mozel) {
-            final.$setParent(this.parent, this.relation);
-        }
-        this.list.push(final);
-        this.notifyAdded(final, batch);
-        return this;
-    }
-    /**
-     * Add an item to the Collection.
-     * @param items							The items to add.
-     * @param {boolean} init		If set to `true`, Mozel Collections may create and initialize Mozels based on the given data.
-     */
-    addItems(items, init = false) {
-        items.forEach((item, index) => {
-            this.add(item, init, { index, total: items.length });
-        });
-        return this;
+    add(item) {
+        const index = this.list.length;
+        this.set(index, item);
     }
     /**
      * Removes the item at the given index from the list. Returns the item.
      * @param {number} index			The index to remove.
      * @param {boolean} [track]			If set to `true`, item will be kept in `removed` list.
-     * @param {boolean} [batch]			Provide batch information for change listeners. Defaults to {index: 0, total: 1}.
      */
-    removeIndex(index, track = false, batch) {
-        if (!batch)
-            batch = { index: 0, total: 1 };
+    removeIndex(index, track = false) {
         let item = this.list[index];
-        this.notifyBeforeRemove(item, index, batch);
+        // All items from the removed index will change
+        for (let i = index; i < this.list.length; i++) {
+            this.events.fire(new CollectionBeforeChangeEvent({ item: this.list[index], index }));
+        }
         this.list.splice(index, 1);
         delete this._errors[index];
         if (track) {
             this.removed.push(item);
         }
-        this.notifyRemoved(item, index, batch);
+        // All items from the removed index have changed
+        for (let i = index; i < this.list.length + 1; i++) {
+            this.events.fire(new CollectionChangedEvent({ item: this.list[index], index }));
+        }
+        this.events.fire(new CollectionItemRemovedEvent({ item, index }));
         return item;
     }
     /**
@@ -148,26 +125,19 @@ export default class Collection {
     }
     /**
      * Clear all items from the list.
-     * @param {BatchInfo} [batch]		If clear operation is part of a larger batch of operations, this sets the batch info.
      */
-    clear(batch) {
-        const start = batch ? clone(batch) : { index: 0, total: this.list.length };
+    clear() {
         const items = this.list.slice();
-        // Notify before change
-        items.forEach((item, index) => {
-            // TS: forEach is synchronous and we don't change batch to undefined.
-            this.notifyBeforeRemove(item, index, { index: start.index + index, total: start.total });
-        });
-        // Clear the list
-        this.list = [];
+        for (let i = items.length; i >= 0; i--) {
+            this.removeIndex(i);
+        }
+        // Reset errors
         this._errors = {};
-        // Notify after change
-        items.forEach((item, index) => {
-            this.notifyRemoved(item, index, { index: start.index + index, total: start.total });
-        });
         return this;
     }
     find(specs) {
+        if (isFunction(specs))
+            return this.list.find(specs);
         for (let i in this.list) {
             if (this.matches(specs, this.list[i])) {
                 return this.list[i];
@@ -180,6 +150,9 @@ export default class Collection {
     map(func) {
         return map(this.list, func);
     }
+    filter(func) {
+        return this.list.filter(func);
+    }
     indexOf(item) {
         return this.list.indexOf(item);
     }
@@ -190,54 +163,65 @@ export default class Collection {
         return this.removed;
     }
     /**
-   * @param index
-   * @return {Mozel}
-   */
+    * @param index
+    * @return {Mozel}
+    */
     get(index) {
         return this.list[index];
     }
-    set(index, item) {
-        this.list[index] = item;
-    }
-    notifyBeforeRemove(item, index, batch) {
-        this.beforeRemovedListeners.forEach(listener => listener(item, index, batch));
-    }
-    notifyRemoved(item, index, batch) {
-        this.removedListeners.forEach(listener => listener(item, index, batch));
-    }
-    notifyBeforeAdd(item, batch) {
-        this.beforeAddedListeners.forEach(listener => listener(item, batch));
-    }
-    notifyAdded(item, batch) {
-        this.addedListeners.forEach(listener => listener(item, batch));
-    }
-    beforeAdd(callback) {
-        this.beforeAddedListeners.push(callback);
-    }
-    onAdded(callback) {
-        this.addedListeners.push(callback);
-    }
-    removeAddedListener(callback) {
-        remove(this.addedListeners, item => item === callback);
-    }
-    beforeRemoved(callback) {
-        this.beforeRemovedListeners.push(callback);
-    }
-    onRemoved(callback) {
-        this.removedListeners.push(callback);
-    }
-    removeRemovedListener(callback) {
-        remove(this.removedListeners, item => item === callback);
+    set(index, value) {
+        const current = this.list[index];
+        if (value === current)
+            return;
+        this.events.fire(new CollectionBeforeChangeEvent({ item: value, index }));
+        this.list[index] = value;
+        if (value instanceof Mozel && !this.isReference) {
+            value.$setParent(this.parent, this.relation);
+        }
+        this.events.fire(new CollectionChangedEvent({ item: value, index }));
+        this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
+        this.events.fire(new CollectionItemAddedEvent({ item: value, index }));
     }
     // COMPLEX VALUE METHODS
-    setData(items, init = false) {
-        const oldCount = this.list.length;
-        const batch = { index: 0, total: oldCount + items.length };
-        this.clear(batch);
-        items.forEach((item, index) => {
-            this.add(item, init, { index: oldCount + index, total: batch.total });
+    setData(items, init = true) {
+        let skipped = 0;
+        items.forEach((item, i) => {
+            const index = i - skipped;
+            const current = this.list[index];
+            // The same value, nothing to do here
+            if (current == item) {
+                return;
+            }
+            let newItem = this.revise(item, init);
+            if (!newItem) {
+                log.error(`Item ${index} could not be intialized to a valid value.`);
+            }
+            // New value replaces current Mozel with same GID, but may change data
+            if (current instanceof Mozel && get(newItem, 'gid') === current.gid) {
+                current.$setData(item);
+                newItem = current;
+            }
+            // Current value will be replaced by new value
+            if (newItem) {
+                this.set(index, newItem);
+            }
+            else if (!this.parent.$strict) {
+                // set item with error
+                this.set(index, item);
+                this._errors[index] = new Error("Invalid item.");
+            }
+            else {
+                this.removeIndex(index);
+                skipped++;
+            }
         });
-        return this;
+        // Remove end of current list if new list is shorter
+        for (let i = this.list.length; i > items.length; i--) {
+            const item = this.list[i];
+            this.events.fire(new CollectionBeforeChangeEvent({ item, index: i }));
+            this.list.splice(i, 1);
+            this.events.fire(new CollectionChangedEvent({ item, index: i }));
+        }
     }
     setParent(parent) {
         this.parent = parent;
@@ -276,9 +260,21 @@ export default class Collection {
                     continue;
                 }
                 // Replace placeholder Mozel with resolved reference
-                this.list[i] = resolved;
+                this.set(i, resolved);
             }
         }
+    }
+    equals(other) {
+        if (this.type !== other.type)
+            return false;
+        if (this.length !== other.length)
+            return false;
+        return !this.find((item, index) => {
+            return other.get(index) !== item;
+        });
+    }
+    clone() {
+        return new Collection(this.parent, this.relation, this.type, this.list.slice());
     }
     cloneDeep() {
         let list = this.toArray();
@@ -300,7 +296,7 @@ export default class Collection {
             let item = this.list[i];
             // Render string templates
             if (isString(item)) {
-                this.list[i] = templater.render(item);
+                this.set(i, templater.render(item));
                 return;
             }
             // Render Mozels recursively
@@ -342,7 +338,7 @@ export default class Collection {
         if (isString(path)) {
             path = path.split('.');
         }
-        if (!isMozelClass(this.getType()) || path.length === 0) {
+        if (path.length === 0) {
             return {};
         }
         // Select the items of which to get the rest of the path of
@@ -359,11 +355,18 @@ export default class Collection {
         }
         let values = {};
         items.forEach(({ item, index }) => {
+            const indexPath = concat(startingPath, index.toString()).join('.');
             if (item instanceof Mozel) {
                 values = {
                     ...values,
                     ...item.$pathPattern(path.slice(1), [...startingPath, index.toString()])
                 };
+            }
+            else if (path.length === 1) {
+                values = { ...values, [indexPath]: item };
+            }
+            else {
+                values = { ...values, [indexPath]: undefined };
             }
         });
         return values;

@@ -1,6 +1,16 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
-import Mozel, {Alphanumeric, alphanumeric, collection, property, required, schema, $s, deep} from '../src/Mozel';
+import Mozel, {
+	Alphanumeric,
+	alphanumeric,
+	collection,
+	property,
+	required,
+	schema,
+	$s,
+	deep,
+	reference
+} from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
 import {injectable} from "inversify";
@@ -30,11 +40,11 @@ function checkAll(mozel:Mozel, acceptable:Record<string, any[]>) {
 			}
 			if (includes(acceptable, value)) {
 				// For acceptable values, check if the new value was actually set.
-				assert.equal(_mozel[property], value, `${typeof (acceptable[0])} property ${property} accepted ${typeof (value)} input`);
+				assert.equal(_mozel[property], value, `${typeof (acceptable[0])} property '${property}' accepted ${typeof (value)} input`);
 			} else {
 				// For unacceptable values, check if the new value was rejected.
-				assert.notEqual(_mozel[property], value, `${typeof (acceptable[0])} property ${property} did not accept ${typeof (value)} input`);
-				assert.equal(_mozel[property], oldValue, `${typeof (acceptable[0])} property value was maintained after rejection of ${typeof (value)} input rejection`);
+				assert.notEqual(_mozel[property], value, `${typeof (acceptable[0])} property '${property}' did not accept ${typeof (value)} input`);
+				assert.equal(_mozel[property], oldValue, `${typeof (oldValue)} property value was maintained after rejection of ${typeof (value)} input`);
 			}
 		});
 	});
@@ -471,7 +481,7 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			mozel.$watch('foo.bar', (newValue, oldValue) => {
+			mozel.$watch('foo.bar', ({newValue, oldValue}) => {
 				assert.equal(oldValue, 'foobar', "Old value was correct");
 				assert.equal(newValue, 'barfoo', "New value was correct");
 				count++;
@@ -516,7 +526,7 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			root.$watch('foo.foo.bar',(newValue, oldValue) => {
+			root.$watch('foo.foo.bar',({newValue, oldValue}) => {
 				assert.equal(newValue, "x");
 				assert.equal(oldValue, "c");
 				count++;
@@ -549,10 +559,10 @@ describe('Mozel', () => {
 					}
 				}
 			});
-			tree.$watch('left.*.name', (newValue, oldValue, path) => {
-				if(path === 'left.left.name') {
+			tree.$watch('left.*.name', ({newValue, oldValue, valuePath}) => {
+				if(valuePath === 'left.left.name') {
 					assert.equal(newValue, 'll2');
-				} else if (path == 'left.right.name') {
+				} else if (valuePath == 'left.right.name') {
 					assert.equal(newValue, 'lr2');
 				} else {
 					assert.ok(false, "oldValue");
@@ -577,17 +587,25 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			foo.$watch('bars', (newValue, oldValue) => {
+			const oldValues:number[][] = [];
+			const newValues:number[][] = [];
+			foo.$watch('bars', ({newValue, oldValue}) => {
 				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				assert.deepEqual(value.toArray(), [4,5,6], "newValue");
-				assert.deepEqual(old.toArray(), [1,2,3], "oldValue");
+				newValues.push(value.toArray());
+				oldValues.push(old.toArray());
 				count++;
 			}, {
 				deep: true,
 			});
 			foo.bars.setData([4,5,6]);
-			assert.equal(count, 1, "Correct number of watchers called.");
+			assert.equal(count, 3, "Correct number of watchers called.");
+			assert.deepEqual(newValues, [
+				[4,2,3], [4,5,3], [4,5,6]
+			], "new values in watchers correct");
+			assert.deepEqual(oldValues, [
+				[1,2,3], [4,2,3], [4,5,3]
+			], "old values in watchers correct");
 		});
 		it("notifies about additions/removals to/from Collection ", () => {
 			class Foo extends Mozel {
@@ -600,7 +618,7 @@ describe('Mozel', () => {
 
 			let count = 0;
 			foo.$watch('bars',
-			(newValue, oldValue) => {
+			({newValue, oldValue}) => {
 				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
 				assert.deepEqual(value.toArray(), [1,2,3,4]);
@@ -626,7 +644,7 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			foo.$watch('bars', (newValue, oldValue) => {
+			foo.$watch('bars', ({newValue, oldValue}) => {
 				const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
 				const newBar = value.get(1);
@@ -641,12 +659,12 @@ describe('Mozel', () => {
 			}, {
 				deep: true // is necessary to keep a clone of the old value
 			});
-			foo.$watch('bars.1.bar', (newValue, oldValue, path) => {
-				assert.equal(path, 'bars.1.bar');
+			foo.$watch('bars.1.bar', ({newValue, oldValue, valuePath}) => {
+				assert.equal(valuePath, 'bars.1.bar');
 				assert.equal(newValue, 3);
 				assert.equal(oldValue, 2);
 				count++;
-			})
+			});
 
 			// Change item
 			const bar = foo.bars.get(1);
@@ -661,14 +679,14 @@ describe('Mozel', () => {
 			}
 			let count = 0;
 			const foo = new Foo();
-			foo.$watch(schema(Foo).foo, (value:number) => {
-				assert.ok(value === 1);
+			foo.$watch(schema(Foo).foo, ({newValue}) => {
+				assert.ok(newValue === 1);
 				count++;
 			});
 			foo.foo = 1;
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
-		it("does not trigger handler for collection unless collection is replaced", () => {
+		it("does not trigger handler for collection even if provided with new array", () => {
 			class Foo extends Mozel {
 				@collection(Foo)
 				foos!:Collection<Foo>;
@@ -677,14 +695,14 @@ describe('Mozel', () => {
 			const bar = Foo.create<Foo>();
 
 			let count = 0;
-			foo.$watch(schema(Foo).foos, (newValue, oldValue) => {
+			foo.$watch(schema(Foo).foos, ({newValue, oldValue}) => {
 				assert.notEqual(newValue, oldValue);
 				count++;
 			});
 			foo.foos.add(bar);
 			assert.equal(count, 0, "Watcher not fired after addition.");
-			foo.$set('foos', [bar], true);
-			assert.equal(count, 1, "Watcher fired exactly once");
+			foo.$set('foos', [bar]);
+			assert.equal(count, 0, "Watcher not fired after replacement.");
 		});
 		it("with `throttle` throttles the handler", () => {
 			class Foo extends Mozel {
@@ -826,6 +844,70 @@ describe('Mozel', () => {
 			const gids:alphanumeric[] = [];
 			foo.$forEachChild(mozel => gids.push(mozel.gid));
 			assert.deepEqual(gids, [11, 121, 122]);
+		});
+	});
+	describe("$setData", () => {
+		it("merges given data if possible, without replacing Mozels", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				other?:Foo;
+				@collection(Foo)
+				foos?:Collection<Foo>;
+				@property(Foo, {reference})
+				ref?:Foo;
+			}
+			const root = Foo.create<Foo>({
+				gid: 'root',
+				name: 'root',
+				other: {
+					gid: 'root.other',
+					name: 'A'
+				},
+				foos: [
+					{gid: 'root.foos.1'}, {gid: 'root.foos.2'}
+				],
+				ref: {gid: 'root.other'}
+			});
+			const rootOther = root.other;
+			const rootFoos1 = root.foos!.get(0);
+			const rootFoos2 = root.foos!.get(1);
+			const rootRef = root.ref;
+
+			const changes:string[] = [];
+			root.$watch('*', event => {
+				changes.push(event.changePath);
+			}, {deep});
+
+			root.$setData({
+				gid: 'root',
+				name: 'root',
+				other: {
+					gid: 'root.other',
+					name: 'B'
+				},
+				foos: [
+					{gid: 'root.foos.1A'}, {gid: 'root.foos.2', name: 'C'}, {gid: 'root.foos.3'}
+				],
+				ref: {gid: 'root.other'}
+			});
+
+			const newRootOther = root.other;
+			const newRootFoos1 = root.foos!.get(0);
+			const newRootFoos2 = root.foos!.get(1);
+			const newRootRef = root.ref;
+
+			assert.equal(newRootOther, rootOther, "root.other");
+			assert.notEqual(newRootFoos1, rootFoos1, "root.foos.1");
+			assert.equal(newRootFoos2, rootFoos2, "root.foos.2");
+			assert.equal(newRootRef, rootRef, "root.ref");
+			assert.deepEqual(changes, [
+				'other.name',
+				'foos.0',
+				'foos.1.name',
+				'foos.2'
+			]);
 		});
 	});
 });

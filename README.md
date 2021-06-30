@@ -258,10 +258,10 @@ let james = Person.create<Person>({
 
 // Watchers
 
-james.$watch('dog.toy.state', (newState, oldState) => { /*...*/ }); // watcher A
-james.$watch('dog.toy', (newToy, oldToy) => { /*...*/ }); // watcher B
-james.$watch('dog', (newDog, oldDog) => { /*...*/ }); // watcher C
-james.$watch('dog', (newDog, oldDog) => { /*...*/ }, {deep: true}); // watcher D
+james.$watch('dog.toy.state', (change) => { /*...*/ }); // watcher A
+james.$watch('dog.toy', (change) => { /*...*/ }); // watcher B
+james.$watch('dog', (change) => { /*...*/ }); // watcher C
+james.$watch('dog', (change) => { /*...*/ }, {deep: true}); // watcher D
 
 james.dog = Dog.create(); // potentially triggers watchers A, B, C and D
 james.dog.toy = Toy.create(); // potentially triggers watchers A, B and D
@@ -276,7 +276,7 @@ If a new dog has a toy with the same state, the `dog.toy.state` watcher will not
 Using `schema` in a watcher can provide Typescript type checking:
 
 ```typescript
-james.$watch(schema(Person).dog.toy, (newToy:Toy, oldToy:Toy) => {
+james.$watch(schema(Person).dog.toy, change => {
     // schema provides type for handler; no need for type casting in handler
 })
 ```
@@ -298,9 +298,9 @@ class Dog extends Mozel {
 let dog = Dog.create({
    toys: [{name: 'ball'}, {name: 'stick'}] 
 });
-dog.$watch('toys.*.name', (newName, oldName, path) => {
+dog.$watch('toys.*.name', ({valuePath}) => {
     // do something if the name of any toy changes
-    // `path` argument will provide the actual path that changed
+    // changePath will provide the path to changed name (* replaced with the index of the toy in the Collection)
 });
 ```
 
@@ -309,10 +309,11 @@ dog.$watch('toys.*.name', (newName, oldName, path) => {
 A watcher can be configured with the following properties:
 
 - `path`: (string, required): The path from the current Mozel to watch.
-- `handler`: (function, required): The handler to call when a value changes. Takes three arguments:
-    - `newValue`: the new value
-    - `oldValue`: the value before the change
-    - `path`: the path that changed
+- `handler`: (function, required): The handler to call when a value changes. Takes one argument, which is an object with the following properties:
+    - `newValue`: (any): The value after the change.
+    - `oldValue`: (any): The value before the change.
+    - `valuePath`: (string): The path at the level the watcher is watching.
+    - `changePath`: (string): The path at the deepest level where the actual change occurred.
 - `deep`: (boolean) If set to `true`, will respond to changes deeper than the given path. Will make a deep clone to provide the old value.
 - `immediate`: (boolean) If set to `true`, will call the handler immediately with the current value.
 

@@ -21,7 +21,7 @@ describe("MozelFactory", () => {
 				{gid: 'lisa', likes: [{gid: 'james'}, {gid: 'frank'}]},
 				{gid: 'jessica', likes: [{gid: 'jessica'}, {gid: 'james'}, {gid: 'frank'}]},
 				{gid: 'frank', likes: [{gid: 'lisa'}]}
-			]
+			];
 
 			let people = factory.createSet(Person, data);
 

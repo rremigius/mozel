@@ -42,6 +42,8 @@ export default class Property {
     private _default?;
     private _value;
     private _isDefault;
+    private _collectionBeforeChangeListener;
+    private _collectionChangedListener;
     private readonly parent;
     constructor(parent: Mozel, name: string, type?: PropertyType, options?: PropertyOptions);
     get value(): PropertyValue;
@@ -74,8 +76,8 @@ export default class Property {
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
     set(value: PropertyInput, init?: boolean): boolean;
-    notifyBeforeChange(): void;
-    notifyChange(): void;
+    notifyBeforeChange(path?: string): void;
+    notifyChange(path?: string): void;
     setErrorValue(value: any): void;
     applyDefault(): void;
     generateDefaultValue(): false | "" | 0 | Mozel;

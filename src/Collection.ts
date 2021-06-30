@@ -2,20 +2,24 @@ import Mozel, {Data, isData, MozelData} from './Mozel';
 import Property, {isMozelClass, MozelClass, PropertyValue} from './Property';
 
 import {Class, primitive} from 'validation-kit';
-import {forEach, isFunction, isMatch, isPlainObject, isString, map, remove, concat} from 'lodash';
+import {forEach, isFunction, isMatch, isPlainObject, isString, map, get, concat} from 'lodash';
 
 import Templater from "./Templater";
 import Log from 'log-control';
+import EventInterface, {Event} from "event-interface-mixin";
 
 const log = Log.instance("mozel/collection");
 
 export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
 
-export type AddedListener<T> = (item:T, index:number)=>void;
-export type RemovedListener<T> = (item:T, index:number)=>void;
 type CollectionItem = Mozel|primitive;
 type FindFunction<T> = (item:T, index:number)=>boolean;
+
+export class CollectionChangedEvent<T> extends Event<{item:T, index:number}> {}
+export class CollectionBeforeChangeEvent<T> extends Event<{item:T, index:number}> {}
+export class CollectionItemAddedEvent<T> extends Event<{item:T, index:number}> {}
+export class CollectionItemRemovedEvent<T> extends Event<{item:T, index:number}> {}
 
 export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
@@ -33,10 +37,9 @@ export default class Collection<T extends Mozel|primitive> {
 	relation:string;
 	isReference:boolean = false;
 
-	beforeAddedListeners:AddedListener<CollectionItem>[] = [];
-	beforeRemovedListeners:RemovedListener<CollectionItem>[] = [];
-	addedListeners:AddedListener<CollectionItem>[] = [];
-	removedListeners:RemovedListener<CollectionItem>[] = [];
+	events = new EventInterface();
+	on = this.events.getOnMethod();
+	off = this.events.getOffMethod();
 
 	constructor(parent:Mozel, relation:string, type?:CollectionType, list:T[] = []) {
 		this.type = type;
@@ -70,7 +73,7 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param {boolean} [init]	If set to `true`, Mozel Collections may try to initialize a Mozel based on the provided data.
 	 * @return 		Either the revised item, or `false`, if the item did not pass.
 	 */
-	revise(item:any, init = false):T|false {
+	revise(item:any, init = true):T|false {
 		if(this.checkType(item)) {
 			return item;
 		}
@@ -83,16 +86,9 @@ export default class Collection<T extends Mozel|primitive> {
 		return false;
 	}
 
-	add(item:T, notify = true) {
+	add(item:T) {
 		const index = this.list.length;
-		if(notify) this.notifyBeforeAdd(item, index);
-
-		if(item instanceof Mozel) {
-			item.$setParent(this.parent, this.relation);
-		}
-		this.list.push(<T>item);
-
-		if(notify) this.notifyAdded(item, index);
+		this.set(index, item);
 	}
 
 	/**
@@ -103,7 +99,10 @@ export default class Collection<T extends Mozel|primitive> {
 	removeIndex(index:number, track= false) {
 		let item = this.list[index];
 
-		this.notifyBeforeRemove(item, index);
+		// All items from the removed index will change
+		for(let i = index; i < this.list.length; i++) {
+			this.events.fire(new CollectionBeforeChangeEvent({item: this.list[index], index}));
+		}
 
 		this.list.splice(index, 1);
 		delete this._errors[index];
@@ -111,7 +110,13 @@ export default class Collection<T extends Mozel|primitive> {
 			this.removed.push(item);
 		}
 
-		this.notifyRemoved(item, index);
+		// All items from the removed index have changed
+		for(let i = index; i < this.list.length+1; i++) {
+			this.events.fire(new CollectionChangedEvent({item: this.list[index], index}));
+		}
+
+		this.events.fire(new CollectionItemRemovedEvent({item, index}));
+
 		return item;
 	}
 
@@ -158,20 +163,11 @@ export default class Collection<T extends Mozel|primitive> {
 	 */
 	clear() {
 		const items = this.list.slice();
-
-		// Notify before change
-		items.forEach((item, index) => {
-			this.notifyBeforeRemove(item, index);
-		});
-
-		// Clear the list
-		this.list = [];
+		for(let i = items.length; i >= 0; i--) {
+			this.removeIndex(i);
+		}
+		// Reset errors
 		this._errors = {};
-
-		// Notify after change
-		items.forEach((item, index) => {
-			this.notifyRemoved(item, index);
-		});
 		return this;
 	}
 
@@ -193,6 +189,10 @@ export default class Collection<T extends Mozel|primitive> {
 		return map(this.list, func);
 	}
 
+	filter(func:(item:T, index:number)=>boolean):T[] {
+		return this.list.filter(func);
+	}
+
 	indexOf(item:T) {
 		return this.list.indexOf(item);
 	}
@@ -206,125 +206,73 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	/**
-   * @param index
-   * @return {Mozel}
-   */
+   	* @param index
+   	* @return {Mozel}
+   	*/
 	get(index:number):T|undefined {
 		return this.list[index];
 	}
-	set(index:number, item:T) {
-		this.list[index] = item;
-	}
+	set(index:number, value:T) {
+		const current = this.list[index];
+		if(value === current) return;
 
-	notifyBeforeRemove(item:T, index:number) {
-		this.beforeRemovedListeners.forEach(listener => listener(item, index));
-	}
+		this.events.fire(new CollectionBeforeChangeEvent({item: value, index}));
 
-	notifyRemoved(item:T, index:number) {
-		this.removedListeners.forEach(listener => listener(item, index));
-	}
+		this.list[index] = value;
+		if(value instanceof Mozel && !this.isReference) {
+			value.$setParent(this.parent, this.relation);
+		}
 
-	notifyBeforeAdd(item:T, index:number) {
-		this.beforeAddedListeners.forEach(listener => listener(item, index));
-	}
+		this.events.fire(new CollectionChangedEvent({item: value, index}));
 
-	notifyAdded(item:T, index:number) {
-		this.addedListeners.forEach(listener => listener(item, index));
-	}
-
-	beforeAdd(callback:AddedListener<CollectionItem>) {
-		this.beforeAddedListeners.push(callback);
-	}
-	onAdded(callback:AddedListener<CollectionItem>) {
-		this.addedListeners.push(callback);
-	}
-	removeAddedListener(callback:AddedListener<CollectionItem>) {
-		remove(this.addedListeners, item => item === callback);
-	}
-	removeBeforeAddedListener(callback:AddedListener<CollectionItem>) {
-		remove(this.beforeAddedListeners, item => item === callback);
-	}
-
-	beforeRemoved(callback:RemovedListener<CollectionItem>) {
-		this.beforeRemovedListeners.push(callback);
-	}
-	onRemoved(callback:RemovedListener<CollectionItem>) {
-		this.removedListeners.push(callback);
-	}
-	removeRemovedListener(callback:RemovedListener<CollectionItem>) {
-		remove(this.removedListeners, item => item === callback);
-	}
-	removeBeforeRemovedListener(callback:RemovedListener<CollectionItem>) {
-		remove(this.beforeRemovedListeners, item => item === callback);
+		this.events.fire(new CollectionItemRemovedEvent({item: current, index}));
+		this.events.fire(new CollectionItemAddedEvent({item: value, index}));
 	}
 
 	// COMPLEX VALUE METHODS
 
-	setData(items:Array<object|T>, init = false) {
-		const remove:Array<{item: T, index:number}> = [];
-		const add:Array<T> = [];
+	setData(items:Array<object|T>, init = true) {
+		let skipped = 0;
+		items.forEach((item, i) => {
+			const index = i - skipped;
+			const current = this.list[index];
 
-		const resolved:T[] = [];
-		items.forEach(item => {
-			// Initialize item
-			const revisedItem = this.revise(item, init);
-			if(!revisedItem) {
-				const message = `Item is not (convertable to) ${this.getTypeName()}`;
-				log.error(message, item);
-				if(this.parent.$strict) {
-					return; // we don't add
-				}
-				// TS: for non-strict models, we disable allow non-typesafe values
-				this._errors[this.list.length] = new Error(message);
+			// The same value, nothing to do here
+			if(current == item) {
+				return;
 			}
-			// Check for existing item
-			if(isMozelClass(this.type)) {
-				const existing = this.list.find(existing => (<Mozel>existing).gid === (<Mozel>revisedItem).gid);
-				if (existing && existing !== item) {
-					(existing as Mozel).$setData(item as MozelData<any>, init);
-					resolved.push(existing);
-				} else {
-					resolved.push(<T>revisedItem);
-				}
+
+			let newItem = this.revise(item, init);
+			if(!newItem) {
+				log.error(`Item ${index} could not be intialized to a valid value.`);
 			}
-		});
 
-		// Remove old items not in new list
-		this.list.forEach((oldItem, index) => {
-			if(!resolved.find(newItem => newItem === oldItem)) {
-				remove.push({item: oldItem, index});
+			// New value replaces current Mozel with same GID, but may change data
+			if(current instanceof Mozel && get(newItem, 'gid') === current.gid) {
+				current.$setData(item as Data);
+				newItem = current;
 			}
-		});
 
-		const length = this.list.length - remove.length + add.length;
-
-		// Add new items not in old list
-		resolved.forEach(newItem => {
-			if(!this.list.find(oldItem => oldItem === newItem)) {
-				add.push(newItem);
+			// Current value will be replaced by new value
+			if(newItem) {
+				this.set(index, newItem);
+			} else if (!this.parent.$strict) {
+				// set item with error
+				this.set(index, item as T);
+				this._errors[index] = new Error("Invalid item.");
+			} else {
+				this.removeIndex(index);
+				skipped++;
 			}
 		});
 
-		// Notify the listeners which items will be removed
-		remove.forEach(removal => this.notifyBeforeRemove(removal.item, removal.index));
-
-		// Start with a new list
-		this.list = [];
-		this._errors = {};
-
-		// Notify listeners which items have been removed
-		remove.forEach(removal => this.notifyRemoved(removal.item, removal.index));
-
-		// Notify listeners which items will be added
-		add.forEach((item, index) => this.notifyBeforeAdd(item, length + index));
-
-		// Add all items
-		resolved.forEach(item => this.add(item, false));
-
-		// Notify listeners which items have been added
-		add.forEach((item, index) => this.notifyAdded(item, length + index));
-
-		return this;
+		// Remove end of current list if new list is shorter
+		for(let i = this.list.length; i > items.length; i--) {
+			const item = this.list[i];
+			this.events.fire(new CollectionBeforeChangeEvent({item, index: i}));
+			this.list.splice(i, 1);
+			this.events.fire(new CollectionChangedEvent({item, index: i}));
+		}
 	}
 
 	setParent(parent:Mozel){
@@ -370,7 +318,7 @@ export default class Collection<T extends Mozel|primitive> {
 				}
 
 				// Replace placeholder Mozel with resolved reference
-				this.list[i] = resolved;
+				this.set(i, resolved);
 			}
 		}
 	}
@@ -408,7 +356,7 @@ export default class Collection<T extends Mozel|primitive> {
 			let item = this.list[i];
 			// Render string templates
 			if(isString(item)) {
-				this.list[i] = templater.render(item);
+				this.set(i as unknown as number, templater.render(item));
 				return;
 			}
 			// Render Mozels recursively

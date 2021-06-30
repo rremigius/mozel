@@ -356,7 +356,7 @@ let Mozel = Mozel_1 = class Mozel {
         let currentValue = get(this, name);
         Object.defineProperty(this, name, {
             get: () => this.$get(name),
-            set: value => this.$set(name, value),
+            set: value => this.$set(name, value, false),
             configurable: true
         });
         // Preset value
@@ -387,7 +387,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {PropertyInput} value		The value to set on the property
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      */
-    $set(property, value, init = false) {
+    $set(property, value, init = true) {
         if (!(property in this.properties)) {
             throw new Error(`Could not set non-existing property '${property}' on ${this.$name()}.`);
         }
@@ -444,7 +444,7 @@ let Mozel = Mozel_1 = class Mozel {
             pathPattern = pathPattern.split('.');
         }
         if (pathPattern.length === 0)
-            return {};
+            return { [startingPath.join('.')]: this };
         const step = pathPattern[0];
         const properties = step === '*' ? Object.keys(this.properties) : [step];
         if (pathPattern.length === 1) {
@@ -452,7 +452,7 @@ let Mozel = Mozel_1 = class Mozel {
             for (let name of properties) {
                 values = {
                     ...values,
-                    [concat(startingPath, pathPattern).join('.')]: this.$get(name)
+                    [concat(startingPath, name).join('.')]: this.$get(name)
                 };
             }
             return values;
@@ -498,7 +498,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {object} data			The data to set into the mozel.
      * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
      */
-    $setData(data, init = false) {
+    $setData(data, init = true) {
         forEach(this.properties, (property, key) => {
             if (key in data) {
                 this.$set(key, data[key], init);

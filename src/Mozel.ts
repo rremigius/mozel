@@ -485,7 +485,7 @@ export default class Mozel {
 		let currentValue = get(this, name);
 		Object.defineProperty(this, name, {
 			get: () => this.$get(name),
-			set: value => this.$set(name, value),
+			set: value => this.$set(name, value, false),
 			configurable: true
 		});
 		// Preset value
@@ -519,7 +519,7 @@ export default class Mozel {
 	 * @param {PropertyInput} value		The value to set on the property
 	 * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
 	 */
-	$set(property: string, value: PropertyInput, init = false) {
+	$set(property: string, value: PropertyInput, init = true) {
 		if (!(property in this.properties)) {
 			throw new Error(`Could not set non-existing property '${property}' on ${this.$name()}.`);
 		}
@@ -644,7 +644,7 @@ export default class Mozel {
 	 * @param {object} data			The data to set into the mozel.
 	 * @param {boolean} [init]	If set to true, Mozels and Collections can be initialized from objects and arrays.
 	 */
-	$setData(data: Data, init = false) {
+	$setData(data: Data, init = true) {
 		forEach(this.properties, (property: Property, key: string) => {
 			if (key in data) {
 				this.$set(key, data[key], init);

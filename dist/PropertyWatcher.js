@@ -16,7 +16,7 @@ export default class PropertyWatcher {
                 this.handler = throttle(this.handler, this.throttle);
             }
             else {
-                this.handler = throttle(this.handler, this.throttle.wait, this.throttle);
+                this.handler = throttle(this.handler, this.throttle.wait || 0, this.throttle);
             }
         }
     }

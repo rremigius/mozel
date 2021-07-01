@@ -212,13 +212,23 @@ export default class Collection<T extends Mozel|primitive> {
 	get(index:number):T|undefined {
 		return this.list[index];
 	}
-	set(index:number, value:object|T, init = true) {
+
+	/**
+	 *
+	 * @param index
+	 * @param value
+	 * @param init
+	 * @param merge		If set to true, will keep the current mozel value if possible, only changing its data
+	 */
+	set(index:number, value:object|T, init = true, merge = false) {
 		const current = this.list[index];
 		if(value === current) return value;
 
 		// New value replaces current Mozel with same GID, but may change data
-		if(current instanceof Mozel && isPlainObject(value) && get(value, 'gid') === current.gid) {
-			current.$setData(value as Data);
+		if(current instanceof Mozel && isPlainObject(value)
+			&& (get(value, 'gid') === current.gid || (merge && !get(value, 'gid')))
+		) {
+			current.$setData(value as Data, merge);
 			return current;
 		}
 
@@ -251,13 +261,19 @@ export default class Collection<T extends Mozel|primitive> {
 
 	// COMPLEX VALUE METHODS
 
-	setData(items:Array<object|T>, init = true) {
+	/**
+	 *
+	 * @param items
+	 * @param init
+	 * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
+	 */
+	setData(items:Array<object|T>, init = true, merge = false) {
 		let skipped = 0;
 		items.forEach((item, i) => {
 			const index = i - skipped;
 
 			// Try to add the item
-			if(!this.set(index, item, init)) {
+			if(!this.set(index, item, init, merge)) {
 				// Otherwise, remove the index
 				this.removeIndex(index);
 				skipped++;

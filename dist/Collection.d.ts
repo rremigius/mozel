@@ -91,8 +91,21 @@ export default class Collection<T extends Mozel | primitive> {
     * @return {Mozel}
     */
     get(index: number): T | undefined;
-    set(index: number, value: object | T, init?: boolean): object | T;
-    setData(items: Array<object | T>, init?: boolean): void;
+    /**
+     *
+     * @param index
+     * @param value
+     * @param init
+     * @param merge		If set to true, will keep the current mozel value if possible, only changing its data
+     */
+    set(index: number, value: object | T, init?: boolean, merge?: boolean): object | T;
+    /**
+     *
+     * @param items
+     * @param init
+     * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
+     */
+    setData(items: Array<object | T>, init?: boolean, merge?: boolean): void;
     setParent(parent: Mozel): void;
     isDefault(): boolean;
     resolveReferences(): void;

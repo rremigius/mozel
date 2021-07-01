@@ -211,12 +211,13 @@ let Property = Property_1 = class Property {
     /**
      * Set value with type checking
      * @param {PropertyInput} value
-     * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init			If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} merge			If set to true, will set data to existing mozels rather than creating new ones.
      */
-    set(value, init = false) {
+    set(value, init = false, merge = false) {
         if (!this.checkType(value)) {
             // Value was not correct but perhaps it is acceptable init data
-            if (init && this.tryInit(value)) {
+            if (init && this.tryInit(value, merge)) {
                 return true;
             }
             if (this.parent.$strict) {
@@ -292,19 +293,23 @@ let Property = Property_1 = class Property {
      * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections
      * with objects or arrays, respectively.
      * @param value
+     * @param merge
      */
-    tryInit(value) {
+    tryInit(value, merge = false) {
         let current = this.value;
         // Init Collection
         if (this.type === Collection && current instanceof Collection && isArray(value)) {
-            current.setData(value, true);
+            current.setData(value, true, merge);
             return true;
         }
         // Init Mozel
         if (this.type && isMozelClass(this.type) && isPlainObject(value)) {
-            if (current instanceof Mozel && value.gid === current.gid) {
+            if (current instanceof Mozel
+                && (value.gid === current.gid // new data has same gid
+                    || (merge && !value.gid)) // or new data has no gid and we merge
+            ) {
                 // Same Mozel, different data
-                current.$setData(value);
+                current.$setData(value, merge);
             }
             else {
                 // Create mozel and try to set again, without type check

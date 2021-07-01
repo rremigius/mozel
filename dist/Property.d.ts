@@ -73,9 +73,10 @@ export default class Property {
     /**
      * Set value with type checking
      * @param {PropertyInput} value
-     * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init			If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} merge			If set to true, will set data to existing mozels rather than creating new ones.
      */
-    set(value: PropertyInput, init?: boolean): boolean;
+    set(value: PropertyInput, init?: boolean, merge?: boolean): boolean;
     notifyBeforeChange(path?: string): void;
     notifyChange(path?: string): void;
     setErrorValue(value: any): void;
@@ -86,7 +87,8 @@ export default class Property {
      * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections
      * with objects or arrays, respectively.
      * @param value
+     * @param merge
      */
-    tryInit(value: any): boolean;
+    tryInit(value: any, merge?: boolean): boolean;
     getPathFrom(mozel: Mozel): string;
 }

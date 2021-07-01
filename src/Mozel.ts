@@ -518,12 +518,13 @@ export default class Mozel {
 	 * @param {string} property				The name of the property
 	 * @param {PropertyInput} value		The value to set on the property
 	 * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+	 * @param {boolean} merge					If set to true, Mozels will be kept if gid did not change; data will be set instead
 	 */
-	$set(property: string, value: PropertyInput, init = true) {
+	$set(property: string, value: PropertyInput, init = true, merge = false) {
 		if (!(property in this.properties)) {
 			throw new Error(`Could not set non-existing property '${property}' on ${this.$name()}.`);
 		}
-		this.properties[property].set(value, init);
+		this.properties[property].set(value, init, merge);
 		return this.properties[property].value;
 	}
 
@@ -647,7 +648,7 @@ export default class Mozel {
 	$setData(data: Data, merge = false) {
 		forEach(this.properties, (property: Property, key: string) => {
 			if (!merge || key in data) {
-				this.$set(key, data[key], true);
+				this.$set(key, data[key], true, merge);
 			}
 		});
 	}

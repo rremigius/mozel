@@ -210,8 +210,9 @@ export default class Mozel {
      * @param {string} property				The name of the property
      * @param {PropertyInput} value		The value to set on the property
      * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} merge					If set to true, Mozels will be kept if gid did not change; data will be set instead
      */
-    $set(property: string, value: PropertyInput, init?: boolean): PropertyValue;
+    $set(property: string, value: PropertyInput, init?: boolean, merge?: boolean): PropertyValue;
     /**
      * Get type-safe value of the given property.
      * @param {string} property

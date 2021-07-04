@@ -207,8 +207,10 @@ export default class Collection {
         }
         this.events.fire(new CollectionChangedEvent({ item: revised, index }));
         if (notifyAddRemove) {
-            this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
-            this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
+            if (current)
+                this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
+            if (revised)
+                this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
         }
         return revised;
     }

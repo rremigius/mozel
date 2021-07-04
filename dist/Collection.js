@@ -174,9 +174,10 @@ export default class Collection {
      * @param index
      * @param value
      * @param init
-     * @param merge		If set to true, will keep the current mozel value if possible, only changing its data
+     * @param merge				If set to true, will keep the current mozel value if possible, only changing its data
+     * @param notifyAddRemove	If set to false, will not fire add/remove events
      */
-    set(index, value, init = true, merge = false) {
+    set(index, value, init = true, merge = false, notifyAddRemove = true) {
         const current = this.list[index];
         if (value === current)
             return value;
@@ -205,8 +206,10 @@ export default class Collection {
             revised.$setParent(this.parent, this.relation);
         }
         this.events.fire(new CollectionChangedEvent({ item: revised, index }));
-        this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
-        this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
+        if (notifyAddRemove) {
+            this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
+            this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
+        }
         return revised;
     }
     // COMPLEX VALUE METHODS
@@ -217,11 +220,12 @@ export default class Collection {
      * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
      */
     setData(items, init = true, merge = false) {
+        const before = this.list.slice();
         let skipped = 0;
         items.forEach((item, i) => {
             const index = i - skipped;
-            // Try to add the item
-            if (!this.set(index, item, init, merge)) {
+            // Try to set the item at the current index
+            if (!this.set(index, item, init, merge, false)) {
                 // Otherwise, remove the index
                 this.removeIndex(index);
                 skipped++;
@@ -234,6 +238,35 @@ export default class Collection {
             this.list.splice(i, 1);
             this.events.fire(new CollectionChangedEvent({ item, index: i }));
         }
+        // Compare before/after
+        const after = this.list;
+        const countsBefore = this.getCounts(before);
+        const countsAfter = this.getCounts(after);
+        for (let i = 0; i < Math.max(before.length, after.length); i++) {
+            if (before[i] === after[i])
+                continue; // no change
+            // Was new value added? Or just moved?
+            let countBefore = countsBefore.get(after[i]);
+            let countAfter = countsAfter.get(after[i]);
+            if (countAfter && (!countBefore || countAfter > countBefore)) {
+                this.events.fire(new CollectionItemAddedEvent({ item: after[i], index: i }));
+            }
+            // Was old value deleted? Or just moved?
+            countBefore = countsBefore.get(before[i]);
+            countAfter = countsAfter.get(before[i]);
+            if (countBefore && (!countAfter || countBefore > countAfter)) {
+                this.events.fire(new CollectionItemRemovedEvent({ item: before[i], index: i }));
+            }
+        }
+    }
+    getCounts(items) {
+        const counts = new Map();
+        for (let item of items) {
+            if (!counts.has(item))
+                counts.set(item, 0);
+            counts.set(item, counts.get(item) + 1);
+        }
+        return counts;
     }
     setParent(parent) {
         this.parent = parent;

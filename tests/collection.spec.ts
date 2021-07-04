@@ -2,7 +2,11 @@ import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
 import Mozel, {collection, deep, property} from "../src/Mozel";
-import Collection, {CollectionChangedEvent, CollectionItemRemovedEvent} from "../src/Collection";
+import Collection, {
+	CollectionChangedEvent,
+	CollectionItemAddedEvent,
+	CollectionItemRemovedEvent
+} from "../src/Collection";
 import {alphanumeric} from "validation-kit";
 
 describe("Collection", () => {
@@ -87,6 +91,62 @@ describe("Collection", () => {
 				'items.2.foo',
 				'items.2.items'
 			], "'changedPaths' correct");
+		});
+	});
+	describe("CollectionItemAddedEvent", () => {
+		class Foo extends Mozel {
+			@collection(Number)
+			items!:Collection<number>;
+		}
+		it("is fired if `add` is called", () => {
+			const foo = Foo.create<Foo>({items: [1,2,3]});
+			let count = 0;
+			foo.items.on(CollectionItemAddedEvent, event => {
+				assert.equal(event.data.item, 5);
+				assert.equal(event.data.index, 3);
+				count++;
+			});
+			foo.items.add(5);
+			assert.equal(count, 1, "event called exactly 1 time");
+		});
+		it("is fired if setData added an item to the collection that was not there before", () => {
+			const foo = Foo.create<Foo>({items: [1,2,3]});
+			let count = 0;
+			foo.items.on(CollectionItemAddedEvent, event => {
+				assert.equal(event.data.item, 4);
+				assert.equal(event.data.index, 2);
+				count++;
+			});
+			foo.items.setData([2,3,4]);
+			assert.equal(count, 1, "event called exactly 1 time");
+		});
+	});
+	describe("CollectionItemRemovedEvent", () => {
+		class Foo extends Mozel {
+			@collection(Number)
+			items!:Collection<number>;
+		}
+		it("is fired if `remove` is called", () => {
+			const foo = Foo.create<Foo>({items: [1,2,3]});
+			let count = 0;
+			foo.items.on(CollectionItemRemovedEvent, event => {
+				assert.equal(event.data.item, 1);
+				assert.equal(event.data.index, 0);
+				count++;
+			});
+			foo.items.remove(1);
+			assert.equal(count, 1, "event called exactly 1 time");
+		});
+		it("is fired if setData did not include an item in the collection that was there before", () => {
+			const foo = Foo.create<Foo>({items: [1,2,3]});
+			let count = 0;
+			foo.items.on(CollectionItemRemovedEvent, event => {
+				assert.equal(event.data.item, 1);
+				assert.equal(event.data.index, 0);
+				count++;
+			});
+			foo.items.setData([2,3,4]);
+			assert.equal(count, 1, "event called exactly 1 time");
 		});
 	});
 });

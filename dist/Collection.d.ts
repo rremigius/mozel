@@ -96,9 +96,10 @@ export default class Collection<T extends Mozel | primitive> {
      * @param index
      * @param value
      * @param init
-     * @param merge		If set to true, will keep the current mozel value if possible, only changing its data
+     * @param merge				If set to true, will keep the current mozel value if possible, only changing its data
+     * @param notifyAddRemove	If set to false, will not fire add/remove events
      */
-    set(index: number, value: object | T, init?: boolean, merge?: boolean): object | T;
+    set(index: number, value: object | T, init?: boolean, merge?: boolean, notifyAddRemove?: boolean): object | T;
     /**
      *
      * @param items
@@ -106,6 +107,7 @@ export default class Collection<T extends Mozel | primitive> {
      * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
      */
     setData(items: Array<object | T>, init?: boolean, merge?: boolean): void;
+    getCounts(items: T[]): Map<T, number>;
     setParent(parent: Mozel): void;
     isDefault(): boolean;
     resolveReferences(): void;

@@ -105,8 +105,8 @@ export default class MozelFactory implements MozelFactoryInterface {
 				// Try to get most specific class
 				mozel = this.dependencies.getNamed<Mozel>(Mozel, data._type);
 			} else if (ExpectedClass) {
-				// Try to resolve exact class
-				mozel = this.dependencies.resolve<Mozel>(ExpectedClass);
+				// Try to resolve class from dependencies
+				mozel = this.dependencies.get<Mozel>(ExpectedClass);
 			}
 			if(!mozel && ExpectedClass) {
 				log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);

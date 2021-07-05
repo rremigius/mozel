@@ -85,8 +85,8 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
                 mozel = this.dependencies.getNamed(Mozel, data._type);
             }
             else if (ExpectedClass) {
-                // Try to resolve exact class
-                mozel = this.dependencies.resolve(ExpectedClass);
+                // Try to resolve class from dependencies
+                mozel = this.dependencies.get(ExpectedClass);
             }
             if (!mozel && ExpectedClass) {
                 log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);

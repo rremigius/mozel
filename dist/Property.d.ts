@@ -64,6 +64,7 @@ export default class Property {
     isDefault(): boolean;
     get(): PropertyValue;
     checkType(value: any): value is PropertyValue;
+    isPrimitiveType(): boolean;
     /**
      * Set value without runtime type checking
      * @param {PropertyValue} value

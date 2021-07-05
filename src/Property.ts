@@ -213,6 +213,10 @@ export default class Property {
 		return Property.checkType(value, this.type, this.required);
 	}
 
+	isPrimitiveType() {
+		return !isMozelClass(this.type) && this.type !== Collection;
+	}
+
 	/**
 	 * Set value without runtime type checking
 	 * @param {PropertyValue} value

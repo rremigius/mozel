@@ -62,23 +62,19 @@ export default class Collection {
         return false;
     }
     add(item, init = true) {
-        if (item === undefined && init) {
-            item = this.createDefaultInput();
-        }
-        if (!item)
-            throw new Error("Invalid Collection item");
         const index = this.list.length;
         return this.set(index, item, init);
     }
-    createDefaultInput() {
+    addDefault() {
         if (this.type === Number)
-            return 0;
+            return this.add(0);
         if (this.type === Boolean)
-            return false;
+            return this.add(false);
         if (this.type === String)
-            return "";
+            return this.add("");
         if (isMozelClass(this.type))
-            return {};
+            return this.add({});
+        throw new Error("Could not add default value.");
     }
     /**
      * Removes the item at the given index from the list. Returns the item.

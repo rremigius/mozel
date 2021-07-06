@@ -308,12 +308,8 @@ export default class Mozel {
 	 * @param {Data} [data]
 	 */
 	static create<T extends Mozel>(data?: MozelData<T>):T {
-		// Instantiate this class.
-		const mozel = new this();
-		if (data) {
-			mozel.$setData(data);
-		}
-		return <T>mozel;
+		const factory = this.createFactory();
+		return <T>factory.create(this, data as any);
 	}
 
 	static getParentClass() {

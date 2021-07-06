@@ -212,12 +212,8 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {Data} [data]
      */
     static create(data) {
-        // Instantiate this class.
-        const mozel = new this();
-        if (data) {
-            mozel.$setData(data);
-        }
-        return mozel;
+        const factory = this.createFactory();
+        return factory.create(this, data);
     }
     static getParentClass() {
         return Object.getPrototypeOf(this);

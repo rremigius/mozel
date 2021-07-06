@@ -333,6 +333,7 @@ let Property = Property_1 = class Property {
                 value = this.parseValue(value);
                 if (this.checkType(value)) {
                     this._set(value);
+                    return true;
                 }
             }
         }

@@ -327,7 +327,40 @@ let Property = Property_1 = class Property {
             }
             return true;
         }
+        // Parse primitives
+        if (this.type && this.isPrimitiveType() && isPrimitive(value)) {
+            if (this.type === Number) {
+                value = this.parseValue(value);
+                if (this.checkType(value)) {
+                    this._set(value);
+                }
+            }
+        }
         return false;
+    }
+    parseValue(value) {
+        if (this.type === Number) {
+            if (isString(value)) {
+                value = parseFloat(value);
+                if (isNaN(value))
+                    return 0;
+            }
+            if (isBoolean(value))
+                return value ? 1 : 0;
+        }
+        if (this.type === String) {
+            if (isNumber(value))
+                return value.toString();
+            if (isBoolean(value))
+                return value ? "true" : "false";
+        }
+        if (this.type === Boolean) {
+            if (isNumber(value))
+                return value >= 1;
+            if (isString(value))
+                return value === "true";
+        }
+        return value;
     }
     getPathFrom(mozel) {
         return [...this.parent.$getPathArrayFrom(mozel), this.name].join('.');

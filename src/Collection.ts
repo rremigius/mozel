@@ -86,9 +86,21 @@ export default class Collection<T extends Mozel|primitive> {
 		return false;
 	}
 
-	add(item:object|T, init = true) {
+	add(item?:object|T, init = true) {
+		if(item === undefined && init) {
+			item = this.createDefaultInput();
+		}
+		if(!item) throw new Error("Invalid Collection item");
+
 		const index = this.list.length;
 		return this.set(index, item, init);
+	}
+
+	protected createDefaultInput() {
+		if(this.type === Number) return 0;
+		if(this.type === Boolean) return false;
+		if(this.type === String) return "";
+		if(isMozelClass(this.type)) return {};
 	}
 
 	/**

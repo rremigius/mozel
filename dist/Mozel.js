@@ -3,7 +3,7 @@ import { __decorate, __param } from "tslib";
 import "reflect-metadata";
 import Property, { Alphanumeric, isComplexValue, isMozelClass } from './Property';
 import Collection from './Collection';
-import { concat, find, forEach, get, isPlainObject, isString, remove } from 'lodash';
+import { concat, find, forEach, get, isPlainObject, isString, remove, map } from 'lodash';
 import Templater from './Templater';
 import { inject, injectable, optional } from "inversify";
 import { MozelFactoryType } from "./MozelFactoryInterface";
@@ -700,6 +700,14 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $has(property) {
         return property in this.properties;
+    }
+    $eachProperty(callback) {
+        for (let name in this.$properties) {
+            callback(this.$properties[name]);
+        }
+    }
+    $mapProperties(callback) {
+        return map(this.$properties, callback);
     }
     /**
      * Export defined properties to a plain (nested) object.

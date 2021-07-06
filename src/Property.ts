@@ -214,7 +214,15 @@ export default class Property {
 	}
 
 	isPrimitiveType() {
-		return !isMozelClass(this.type) && this.type !== Collection;
+		return !this.isMozelType() && !this.isCollectionType();
+	}
+
+	isMozelType() {
+		return isMozelClass(this.type);
+	}
+
+	isCollectionType() {
+		return this.type === Collection;
 	}
 
 	/**

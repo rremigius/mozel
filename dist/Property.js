@@ -171,7 +171,13 @@ let Property = Property_1 = class Property {
         return Property_1.checkType(value, this.type, this.required);
     }
     isPrimitiveType() {
-        return !isMozelClass(this.type) && this.type !== Collection;
+        return !this.isMozelType() && !this.isCollectionType();
+    }
+    isMozelType() {
+        return isMozelClass(this.type);
+    }
+    isCollectionType() {
+        return this.type === Collection;
     }
     /**
      * Set value without runtime type checking

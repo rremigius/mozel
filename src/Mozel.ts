@@ -13,7 +13,7 @@ import Property, {
 } from './Property';
 import Collection, {CollectionOptions, CollectionType} from './Collection';
 
-import {concat, find, forEach, get, isPlainObject, isString, remove} from 'lodash';
+import {concat, find, forEach, get, isPlainObject, isString, remove, map} from 'lodash';
 
 import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
@@ -865,6 +865,16 @@ export default class Mozel {
 	 */
 	$has(property: string) {
 		return property in this.properties;
+	}
+
+	$eachProperty(callback:(property:Property)=>void) {
+		for(let name in this.$properties) {
+			callback(this.$properties[name]);
+		}
+	}
+
+	$mapProperties<T>(callback:(property:Property)=>T) {
+		return map(this.$properties, callback);
 	}
 
 	/**

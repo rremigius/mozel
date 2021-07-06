@@ -334,6 +334,8 @@ export default class Mozel {
      * @param property
      */
     $has(property: string): boolean;
+    $eachProperty(callback: (property: Property) => void): void;
+    $mapProperties<T>(callback: (property: Property) => T): T[];
     /**
      * Export defined properties to a plain (nested) object.
      * @return {Data}

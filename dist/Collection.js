@@ -1,5 +1,6 @@
 import Mozel, { isData } from './Mozel';
 import Property, { isMozelClass } from './Property';
+import { isPrimitive } from 'validation-kit';
 import { forEach, isFunction, isMatch, isPlainObject, isString, map, get, concat } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
@@ -41,6 +42,15 @@ export default class Collection {
     getType() {
         return this.type;
     }
+    isPrimitiveType() {
+        return !this.isMozelType() && !this.isCollectionType();
+    }
+    isMozelType() {
+        return isMozelClass(this.type);
+    }
+    isCollectionType() {
+        return this.type === Collection;
+    }
     checkType(value) {
         return Property.checkType(value, this.type);
     }
@@ -58,6 +68,15 @@ export default class Collection {
         if (init && isPlainObject(item) && isMozelClass(this.type)) {
             // If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
             return this.parent.$create(this.type, item, this.isReference);
+        }
+        // Parse primitives
+        if (this.type && this.isPrimitiveType() && isPrimitive(item)) {
+            if (this.type === Number) {
+                item = Property.parseValue(item, this.type);
+                if (this.checkType(item)) {
+                    return item;
+                }
+            }
         }
         throw new Error("Could not revise value.");
     }

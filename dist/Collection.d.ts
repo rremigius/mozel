@@ -46,6 +46,9 @@ export default class Collection<T extends Mozel | primitive> {
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
     getTypeName(): string;
     getType(): CollectionType | undefined;
+    isPrimitiveType(): boolean;
+    isMozelType(): boolean;
+    isCollectionType(): boolean;
     checkType(value: any): value is T;
     /**
      * Checks if the given item is a valid item for the Collection.

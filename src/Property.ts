@@ -80,6 +80,25 @@ export default class Property {
 		}
 	}
 
+	static parseValue(value:unknown, type:PropertyType) {
+		if(type === Number) {
+			if(isString(value)) {
+				value = parseFloat(value);
+				if(isNaN(value as number)) return 0;
+			}
+			if(isBoolean(value)) return value ? 1 : 0;
+		}
+		if(type === String) {
+			if(isNumber(value)) return value.toString();
+			if(isBoolean(value)) return value ? "true" : "false";
+		}
+		if(type === Boolean) {
+			if(isNumber(value)) return value >= 1;
+			if(isString(value)) return value === "true";
+		}
+		return value;
+	}
+
 	name:string;
 	type?:PropertyType;
 	error?:Error;
@@ -402,22 +421,7 @@ export default class Property {
 	}
 
 	parseValue(value:unknown) {
-		if(this.type === Number) {
-			if(isString(value)) {
-				value = parseFloat(value);
-				if(isNaN(value as number)) return 0;
-			}
-			if(isBoolean(value)) return value ? 1 : 0;
-		}
-		if(this.type === String) {
-			if(isNumber(value)) return value.toString();
-			if(isBoolean(value)) return value ? "true" : "false";
-		}
-		if(this.type === Boolean) {
-			if(isNumber(value)) return value >= 1;
-			if(isString(value)) return value === "true";
-		}
-		return value;
+		return Property.parseValue(value, this.type);
 	}
 
 	getPathFrom(mozel:Mozel) {

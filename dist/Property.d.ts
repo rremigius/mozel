@@ -30,6 +30,7 @@ export declare function isPrimitiveObject(object: any): object is PrimitiveObjec
 export default class Property {
     static AcceptedNonComplexTypes: (StringConstructor | BooleanConstructor | NumberConstructor | typeof Alphanumeric)[];
     static checkType(value: any, type?: PropertyType, required?: boolean): value is PropertyValue;
+    static parseValue(value: unknown, type: PropertyType): unknown;
     name: string;
     type?: PropertyType;
     error?: Error;

@@ -59,7 +59,7 @@ export default class Collection {
             // If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
             return this.parent.$create(this.type, item, this.isReference);
         }
-        return false;
+        throw new Error("Could not revise value.");
     }
     add(item, init = true) {
         const index = this.list.length;
@@ -199,8 +199,11 @@ export default class Collection {
             return current;
         }
         // Check and initialize value if necessary
-        let revised = this.revise(value, init);
-        if (!revised) {
+        let revised;
+        try {
+            revised = this.revise(value, init);
+        }
+        catch (e) {
             const message = `Item ${index} could not be intialized to a valid value.`;
             log.error(message);
             if (this.parent.$strict) {

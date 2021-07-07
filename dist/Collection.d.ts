@@ -53,7 +53,7 @@ export default class Collection<T extends Mozel | primitive> {
      * @param {boolean} [init]	If set to `true`, Mozel Collections may try to initialize a Mozel based on the provided data.
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
-    revise(item: any, init?: boolean): T | false;
+    revise(item: any, init?: boolean): T;
     add(item: object | T, init?: boolean): object | T;
     addDefault(): object | T;
     /**

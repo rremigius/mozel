@@ -73,7 +73,7 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param {boolean} [init]	If set to `true`, Mozel Collections may try to initialize a Mozel based on the provided data.
 	 * @return 		Either the revised item, or `false`, if the item did not pass.
 	 */
-	revise(item:any, init = true):T|false {
+	revise(item:any, init = true):T {
 		if(this.checkType(item)) {
 			return item;
 		}
@@ -83,7 +83,7 @@ export default class Collection<T extends Mozel|primitive> {
 			// If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
 			return <T><any>this.parent.$create(this.type, item, this.isReference);
 		}
-		return false;
+		throw new Error("Could not revise value.");
 	}
 
 	add(item:object|T, init = true) {
@@ -242,8 +242,10 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 
 		// Check and initialize value if necessary
-		let revised = this.revise(value, init);
-		if(!revised) {
+		let revised:T;
+		try {
+			revised = this.revise(value, init);
+		} catch(e) {
 			const message = `Item ${index} could not be intialized to a valid value.`;
 			log.error(message);
 			if (this.parent.$strict) {

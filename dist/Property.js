@@ -353,12 +353,10 @@ let Property = Property_1 = class Property {
         }
         // Parse primitives
         if (this.type && this.isPrimitiveType() && isPrimitive(value)) {
-            if (this.type === Number) {
-                value = this.parseValue(value);
-                if (this.checkType(value)) {
-                    this._set(value);
-                    return true;
-                }
+            value = this.parseValue(value);
+            if (this.checkType(value)) {
+                this._set(value);
+                return true;
             }
         }
         return false;

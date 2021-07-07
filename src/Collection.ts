@@ -98,11 +98,9 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Parse primitives
 		if(this.type && this.isPrimitiveType() && isPrimitive(item)) {
-			if(this.type === Number) {
-				item = Property.parseValue(item, this.type);
-				if(this.checkType(item)) {
-					return item;
-				}
+			item = Property.parseValue(item, this.type);
+			if(this.checkType(item)) {
+				return item;
 			}
 		}
 		throw new Error("Could not revise value.");

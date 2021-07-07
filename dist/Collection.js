@@ -67,13 +67,13 @@ export default class Collection {
     }
     addDefault() {
         if (this.type === Number)
-            return this.add(0);
+            return this.add(0, true);
         if (this.type === Boolean)
-            return this.add(false);
+            return this.add(false, true);
         if (this.type === String)
-            return this.add("");
+            return this.add("", true);
         if (isMozelClass(this.type))
-            return this.add({});
+            return this.add({}, true);
         throw new Error("Could not add default value.");
     }
     /**

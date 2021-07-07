@@ -92,10 +92,10 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	addDefault() {
-		if(this.type === Number) return this.add(0 as T);
-		if(this.type === Boolean) return this.add(false as T)
-		if(this.type === String) return this.add("" as T);
-		if(isMozelClass(this.type)) return this.add({} as T);
+		if(this.type === Number) return this.add(0 as T, true);
+		if(this.type === Boolean) return this.add(false as T, true)
+		if(this.type === String) return this.add("" as T, true);
+		if(isMozelClass(this.type)) return this.add({} as T, true);
 		throw new Error("Could not add default value.");
 	}
 

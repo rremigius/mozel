@@ -413,6 +413,7 @@ export default class Mozel {
 		this.parent = parent;
 		this.relation = relation;
 		this.parentLock = lock;
+		this.$strict = parent.$strict;
 	}
 
 	$remove(child:Mozel, includeReferences = false) {
@@ -648,14 +649,6 @@ export default class Mozel {
 			}
 		});
 	}
-
-	// $merge(data: Data) {
-	// 	forEach(this.properties, (property: Property, key: string) => {
-	// 		if(key in data) {
-	// 			this.
-	// 		}
-	// 	});
-	// }
 
 	/**
 	 * Watch changes to the given path.
@@ -991,6 +984,7 @@ export default class Mozel {
 				return callback(property.value, key);
 			}
 			if(property.value instanceof Collection) {
+				if(!property.value.isMozelType()) return;
 				return property.value.each((mozel, index) => callback(mozel, key + "." + index));
 			}
 		});

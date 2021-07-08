@@ -134,7 +134,7 @@ let Property = Property_1 = class Property {
     }
     set default(value) {
         if (!this.checkType(value)) {
-            log.error(`Default for ${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`, value);
+            log.error(`Default for ${this.parent.$name()}.${this.name} expects a ${this.getTypeName()}.`, value);
             return;
         }
         this._default = value;
@@ -283,7 +283,7 @@ let Property = Property_1 = class Property {
         this.parent.$notifyPropertyChanged([name]);
     }
     setErrorValue(value) {
-        let err = new Error(`${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`);
+        let err = new Error(`Must be a ${this.getTypeName()}.`);
         this.error = err;
         log.error(err.message, "Received: ", value);
     }

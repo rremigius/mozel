@@ -1,7 +1,7 @@
 import Mozel, {Data, isData, MozelData} from './Mozel';
 import Property, {isMozelClass, MozelClass, PropertyValue} from './Property';
 
-import {Class, isPrimitive, primitive} from 'validation-kit';
+import {Class, isClass, isPrimitive, primitive} from 'validation-kit';
 import {forEach, isFunction, isMatch, isPlainObject, isString, map, get, concat} from 'lodash';
 
 import Templater from "./Templater";
@@ -266,7 +266,7 @@ export default class Collection<T extends Mozel|primitive> {
 		try {
 			revised = this.revise(value, init);
 		} catch(e) {
-			const message = `Item ${index} could not be intialized to a valid value.`;
+			const message = `Must be a ${this.getTypeName()}.`;
 			log.error(message);
 			if (this.parent.$strict) {
 				throw new Error(message);

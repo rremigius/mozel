@@ -163,7 +163,7 @@ export default class Property {
 
 	set default(value:PropertyValue) {
 		if(!this.checkType(value)) {
-			log.error(`Default for ${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`, value);
+			log.error(`Default for ${this.parent.$name()}.${this.name} expects a ${this.getTypeName()}.`, value);
 			return;
 		}
 		this._default = value;
@@ -328,7 +328,7 @@ export default class Property {
 	}
 
 	setErrorValue(value:any) {
-		let err = new Error(`${this.parent.$name()}.${this.name} expects ${this.getTypeName()}.`);
+		let err = new Error(`Must be a ${this.getTypeName()}.`);
 		this.error = err;
 		log.error(err.message, "Received: ", value);
 	}

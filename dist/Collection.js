@@ -221,7 +221,7 @@ export default class Collection {
             revised = this.revise(value, init);
         }
         catch (e) {
-            const message = `Item ${index} could not be intialized to a valid value.`;
+            const message = `Must be a ${this.getTypeName()}.`;
             log.error(message);
             if (this.parent.$strict) {
                 throw new Error(message);

@@ -84,7 +84,7 @@ export default class Property {
 		if(type === Number) {
 			if(isString(value)) {
 				const parsed = parseFloat(value);
-				if(isNaN(parsed)) return value;
+				if(!isNaN(parsed)) return parsed;
 			}
 			if(isBoolean(value)) return value ? 1 : 0;
 		}
@@ -414,7 +414,7 @@ export default class Property {
 
 		// Parse primitives
 		if(this.type && this.isPrimitiveType() && isPrimitive(value)) {
-			value = this.parseValue(value);
+			value = this.tryParseValue(value);
 			if(this.checkType(value)) {
 				this._set(value);
 				return true;
@@ -424,7 +424,7 @@ export default class Property {
 		return false;
 	}
 
-	parseValue(value:unknown) {
+	tryParseValue(value:unknown) {
 		return Property.tryParseValue(value, this.type);
 	}
 

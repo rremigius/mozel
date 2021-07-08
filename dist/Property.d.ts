@@ -94,6 +94,6 @@ export default class Property {
      * @param merge
      */
     tryInit(value: any, merge?: boolean): boolean;
-    parseValue(value: unknown): unknown;
+    tryParseValue(value: unknown): unknown;
     getPathFrom(mozel: Mozel): string;
 }

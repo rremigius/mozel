@@ -67,7 +67,7 @@ export default class Property {
     checkType(value: any): value is PropertyValue;
     isPrimitiveType(): boolean;
     isMozelType(): boolean;
-    isCollectionType(): boolean;
+    isCollectionType(Type?: PropertyType): boolean;
     /**
      * Set value without runtime type checking
      * @param {PropertyValue} value

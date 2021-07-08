@@ -208,8 +208,15 @@ let Property = Property_1 = class Property {
     isMozelType() {
         return isMozelClass(this.type);
     }
-    isCollectionType() {
-        return this.type === Collection;
+    isCollectionType(Type) {
+        if (this.type !== Collection)
+            return false;
+        if (!Type)
+            return true;
+        const collection = this.value;
+        if (collection.getType() === Type)
+            return true;
+        return isSubClass(collection.getType(), Type);
     }
     /**
      * Set value without runtime type checking

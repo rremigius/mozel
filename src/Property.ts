@@ -246,8 +246,14 @@ export default class Property {
 		return isMozelClass(this.type);
 	}
 
-	isCollectionType() {
-		return this.type === Collection;
+	isCollectionType(Type?:PropertyType) {
+		if(this.type !== Collection) return false;
+		if(!Type) return true;
+
+		const collection = this.value as Collection<any>;
+		if(collection.getType() === Type) return true;
+
+		return isSubClass(collection.getType(), Type as Class);
 	}
 
 	/**

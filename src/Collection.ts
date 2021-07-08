@@ -1,8 +1,8 @@
-import Mozel, {Data, isData, MozelData} from './Mozel';
+import Mozel, {Data, isData} from './Mozel';
 import Property, {isMozelClass, MozelClass, PropertyValue} from './Property';
 
-import {Class, isClass, isPrimitive, primitive} from 'validation-kit';
-import {forEach, isFunction, isMatch, isPlainObject, isString, map, get, concat} from 'lodash';
+import {Class, isPrimitive, primitive} from 'validation-kit';
+import {concat, forEach, get, isFunction, isMatch, isPlainObject, isString, map} from 'lodash';
 
 import Templater from "./Templater";
 import Log from 'log-control';

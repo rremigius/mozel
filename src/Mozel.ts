@@ -919,6 +919,13 @@ export default class Mozel {
 		return this.strict !== false;
 	}
 
+	setStrict(strict:boolean, recursive = false) {
+		this.$strict = strict;
+		if(recursive) {
+			this.$forEachChild(mozel => mozel.setStrict(strict, recursive));
+		}
+	}
+
 	/**
 	 * Returns validation errors in the Mozel
 	 * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.

@@ -289,9 +289,6 @@ let Mozel = Mozel_1 = class Mozel {
         this.parent = parent;
         this.relation = relation;
         this.parentLock = lock;
-        if (parent) {
-            this.$strict = parent.$strict;
-        }
     }
     $remove(child, includeReferences = false) {
         for (let key in this.$properties) {

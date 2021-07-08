@@ -413,9 +413,6 @@ export default class Mozel {
 		this.parent = parent;
 		this.relation = relation;
 		this.parentLock = lock;
-		if(parent) {
-			this.$strict = parent.$strict;
-		}
 	}
 
 	$remove(child:Mozel, includeReferences = false) {

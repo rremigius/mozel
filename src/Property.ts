@@ -83,8 +83,8 @@ export default class Property {
 	static tryParseValue(value:unknown, type:PropertyType) {
 		if(type === Number) {
 			if(isString(value)) {
-				value = parseFloat(value);
-				if(isNaN(value as number)) return value;
+				const parsed = parseFloat(value);
+				if(isNaN(parsed)) return value;
 			}
 			if(isBoolean(value)) return value ? 1 : 0;
 		}

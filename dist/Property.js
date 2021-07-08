@@ -90,8 +90,8 @@ let Property = Property_1 = class Property {
     static tryParseValue(value, type) {
         if (type === Number) {
             if (isString(value)) {
-                value = parseFloat(value);
-                if (isNaN(value))
+                const parsed = parseFloat(value);
+                if (isNaN(parsed))
                     return value;
             }
             if (isBoolean(value))

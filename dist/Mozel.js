@@ -289,7 +289,9 @@ let Mozel = Mozel_1 = class Mozel {
         this.parent = parent;
         this.relation = relation;
         this.parentLock = lock;
-        this.$strict = parent.$strict;
+        if (parent) {
+            this.$strict = parent.$strict;
+        }
     }
     $remove(child, includeReferences = false) {
         for (let key in this.$properties) {
@@ -739,12 +741,6 @@ let Mozel = Mozel_1 = class Mozel {
             return this.parent.$strict;
         }
         return this.strict !== false;
-    }
-    $setStrict(strict, recursive = false) {
-        this.$strict = strict;
-        if (recursive) {
-            this.$forEachChild(mozel => mozel.$setStrict(strict, recursive));
-        }
     }
     /**
      * Returns validation errors in the Mozel

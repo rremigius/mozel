@@ -222,7 +222,7 @@ export default class Collection {
         }
         catch (e) {
             const message = `Must be a ${this.getTypeName()}.`;
-            log.error(message);
+            log.error(message, "Received: ", value);
             if (this.parent.$strict) {
                 throw new Error(message);
             }

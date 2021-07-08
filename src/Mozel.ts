@@ -413,7 +413,9 @@ export default class Mozel {
 		this.parent = parent;
 		this.relation = relation;
 		this.parentLock = lock;
-		this.$strict = parent.$strict;
+		if(parent) {
+			this.$strict = parent.$strict;
+		}
 	}
 
 	$remove(child:Mozel, includeReferences = false) {
@@ -911,13 +913,6 @@ export default class Mozel {
 			return this.parent.$strict;
 		}
 		return this.strict !== false;
-	}
-
-	$setStrict(strict:boolean, recursive = false) {
-		this.$strict = strict;
-		if(recursive) {
-			this.$forEachChild(mozel => mozel.$setStrict(strict, recursive));
-		}
 	}
 
 	/**

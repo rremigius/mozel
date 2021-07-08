@@ -353,7 +353,6 @@ export default class Mozel {
      */
     set $strict(strict: boolean);
     get $strict(): boolean;
-    $setStrict(strict: boolean, recursive?: boolean): void;
     /**
      * Returns validation errors in the Mozel
      * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.

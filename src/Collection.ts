@@ -98,7 +98,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Parse primitives
 		if(this.type && this.isPrimitiveType() && isPrimitive(item)) {
-			item = Property.parseValue(item, this.type);
+			item = Property.tryParseValue(item, this.type);
 			if(this.checkType(item)) {
 				return item;
 			}

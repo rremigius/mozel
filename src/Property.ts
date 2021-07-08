@@ -2,7 +2,7 @@ import Collection, {CollectionBeforeChangeEvent, CollectionChangedEvent} from '.
 
 import {find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString} from 'lodash';
 
-import {Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
+import {Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive, safeParseNumber} from "validation-kit"
 import Mozel from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
@@ -80,11 +80,11 @@ export default class Property {
 		}
 	}
 
-	static parseValue(value:unknown, type:PropertyType) {
+	static tryParseValue(value:unknown, type:PropertyType) {
 		if(type === Number) {
 			if(isString(value)) {
 				value = parseFloat(value);
-				if(isNaN(value as number)) return 0;
+				if(isNaN(value as number)) return value;
 			}
 			if(isBoolean(value)) return value ? 1 : 0;
 		}
@@ -93,8 +93,14 @@ export default class Property {
 			if(isBoolean(value)) return value ? "true" : "false";
 		}
 		if(type === Boolean) {
-			if(isNumber(value)) return value >= 1;
-			if(isString(value)) return value === "true";
+			if(isNumber(value)) {
+				if(value === 1) return true;
+				if(value === 0) return false;
+			}
+			if(isString(value)) {
+				if(value === "true") return true;
+				if(value === "false") return false;
+			}
 		}
 		return value;
 	}
@@ -419,7 +425,7 @@ export default class Property {
 	}
 
 	parseValue(value:unknown) {
-		return Property.parseValue(value, this.type);
+		return Property.tryParseValue(value, this.type);
 	}
 
 	getPathFrom(mozel:Mozel) {

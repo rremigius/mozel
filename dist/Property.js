@@ -87,12 +87,12 @@ let Property = Property_1 = class Property {
                     type === Collection && value instanceof Collection;
         }
     }
-    static parseValue(value, type) {
+    static tryParseValue(value, type) {
         if (type === Number) {
             if (isString(value)) {
                 value = parseFloat(value);
                 if (isNaN(value))
-                    return 0;
+                    return value;
             }
             if (isBoolean(value))
                 return value ? 1 : 0;
@@ -104,10 +104,18 @@ let Property = Property_1 = class Property {
                 return value ? "true" : "false";
         }
         if (type === Boolean) {
-            if (isNumber(value))
-                return value >= 1;
-            if (isString(value))
-                return value === "true";
+            if (isNumber(value)) {
+                if (value === 1)
+                    return true;
+                if (value === 0)
+                    return false;
+            }
+            if (isString(value)) {
+                if (value === "true")
+                    return true;
+                if (value === "false")
+                    return false;
+            }
         }
         return value;
     }
@@ -362,7 +370,7 @@ let Property = Property_1 = class Property {
         return false;
     }
     parseValue(value) {
-        return Property_1.parseValue(value, this.type);
+        return Property_1.tryParseValue(value, this.type);
     }
     getPathFrom(mozel) {
         return [...this.parent.$getPathArrayFrom(mozel), this.name].join('.');

@@ -346,12 +346,14 @@ export default class Mozel {
      */
     $cloneDeep<T extends Mozel>(): T;
     /**
-     * Can disable strict type checking, so properties can have invalid values.
+     * Can disable strict type checking, so properties can have invalid values. Errors will be stored in the Properties
+     * with invalid states.
      * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
      * @param strict
      */
     set $strict(strict: boolean);
     get $strict(): boolean;
+    $setStrict(strict: boolean, recursive?: boolean): void;
     /**
      * Returns validation errors in the Mozel
      * @param {boolean} deep	If set to `true`, will return all errors of all submozels recursively.

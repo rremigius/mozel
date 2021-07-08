@@ -903,7 +903,8 @@ export default class Mozel {
 	}
 
 	/**
-	 * Can disable strict type checking, so properties can have invalid values.
+	 * Can disable strict type checking, so properties can have invalid values. Errors will be stored in the Properties
+	 * with invalid states.
 	 * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
 	 * @param strict
 	 */
@@ -919,10 +920,10 @@ export default class Mozel {
 		return this.strict !== false;
 	}
 
-	setStrict(strict:boolean, recursive = false) {
+	$setStrict(strict:boolean, recursive = false) {
 		this.$strict = strict;
 		if(recursive) {
-			this.$forEachChild(mozel => mozel.setStrict(strict, recursive));
+			this.$forEachChild(mozel => mozel.$setStrict(strict, recursive));
 		}
 	}
 

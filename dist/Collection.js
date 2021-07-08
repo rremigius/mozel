@@ -1,7 +1,7 @@
 import Mozel, { isData } from './Mozel';
 import Property, { isMozelClass } from './Property';
 import { isPrimitive } from 'validation-kit';
-import { forEach, isFunction, isMatch, isPlainObject, isString, map, get, concat } from 'lodash';
+import { concat, forEach, get, isFunction, isMatch, isPlainObject, isString, map } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
 import EventInterface, { Event } from "event-interface-mixin";

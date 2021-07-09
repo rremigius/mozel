@@ -265,7 +265,7 @@ export default class Collection {
             }
         });
         // Remove end of current list if new list is shorter
-        for (let i = this.list.length; i > items.length; i--) {
+        for (let i = this.list.length - 1; i >= items.length; i--) {
             const item = this.list[i];
             this.events.fire(new CollectionBeforeChangeEvent({ item, index: i }));
             this.list.splice(i, 1);

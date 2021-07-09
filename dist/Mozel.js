@@ -213,7 +213,7 @@ let Mozel = Mozel_1 = class Mozel {
      */
     static create(data) {
         const factory = this.createFactory();
-        return factory.create(this, data);
+        return factory.createAndResolveReferences(this, data);
     }
     static getParentClass() {
         return Object.getPrototypeOf(this);

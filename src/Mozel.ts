@@ -309,7 +309,7 @@ export default class Mozel {
 	 */
 	static create<T extends Mozel>(data?: MozelData<T>):T {
 		const factory = this.createFactory();
-		return <T>factory.create(this, data as any);
+		return <T>factory.createAndResolveReferences(this, data as any);
 	}
 
 	static getParentClass() {

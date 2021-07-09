@@ -367,7 +367,5 @@ export default class Mozel {
      */
     $renderTemplates(templater: Templater | Data): void;
     $forEachChild(callback: (mozel: Mozel, key: string) => void): void;
-    $name(): string;
-    $plural(): string;
-    $uriPart(): string;
+    get $name(): string;
 }

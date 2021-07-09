@@ -163,7 +163,7 @@ export default class Property {
 
 	set default(value:PropertyValue) {
 		if(!this.checkType(value)) {
-			log.error(`Default for ${this.parent.$name()}.${this.name} expects a ${this.getTypeName()}.`, value);
+			log.error(`Default for ${this.parent.static.type}.${this.name} expects a ${this.getTypeName()}.`, value);
 			return;
 		}
 		this._default = value;

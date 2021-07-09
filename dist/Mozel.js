@@ -386,7 +386,7 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $set(property, value, init = true, merge = false) {
         if (!(property in this.properties)) {
-            throw new Error(`Could not set non-existing property '${property}' on ${this.$name()}.`);
+            throw new Error(`Could not set non-existing property '${property}' on ${this.$name}.`);
         }
         this.properties[property].set(value, init, merge);
         return this.properties[property].value;
@@ -399,7 +399,7 @@ let Mozel = Mozel_1 = class Mozel {
         if (property === '')
             return this;
         if (!(property in this.properties)) {
-            throw new Error(`Could not get non-existing property '${property}' on ${this.$name()}.`);
+            throw new Error(`Could not get non-existing property '${property}' on ${this.$name}.`);
         }
         return this.properties[property].value;
     }
@@ -806,14 +806,8 @@ let Mozel = Mozel_1 = class Mozel {
         });
     }
     // For override
-    $name() {
-        return this.static.type;
-    }
-    $plural() {
-        return this.$name() + 's';
-    }
-    $uriPart() {
-        return this.$plural().toLowerCase();
+    get $name() {
+        return `${this.static.type} (${this.gid})`;
     }
 };
 Mozel._classPropertyDefinitions = {};

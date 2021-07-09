@@ -255,7 +255,9 @@ let Mozel = Mozel_1 = class Mozel {
     $create(Class, data, asReference = false) {
         if (this.factory) {
             // Preferably, use DI-injected factory
-            return this.factory.create(Class, data, asReference);
+            const mozel = this.factory.create(Class, data, asReference);
+            mozel.$resolveReferences();
+            return mozel;
         }
         // Otherwise, just create an instance of this class.
         return Class.create(data);
@@ -721,7 +723,10 @@ let Mozel = Mozel_1 = class Mozel {
      * Creates a deep clone of the mozel.
      */
     $cloneDeep() {
-        return this.static.create(this.$export());
+        // Use new factory with same dependencies but different Registry.
+        const dependencies = this.factory ? this.factory.dependencies : undefined;
+        const factory = new MozelFactory(dependencies, new Registry());
+        return factory.create(this.static, this.$export());
     }
     /**
      * Can disable strict type checking, so properties can have invalid values. Errors will be stored in the Properties

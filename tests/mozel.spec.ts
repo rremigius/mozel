@@ -330,35 +330,6 @@ describe('Mozel', () => {
 		});
 	});
 
-	describe("$cloneDeep", () => {
-		it("creates a new instance of the Mozel, with all nested properties having the same values.", () => {
-			class Bar extends Mozel {
-				@property(String)
-				bar?:string;
-			}
-			class Foo extends Mozel {
-				@property(Number, {required})
-				foo!:number;
-
-				@property(Foo)
-				other?:Foo;
-
-				@collection(Bar)
-				bars!:Collection<Bar>
-			}
-			const foo = Foo.create<Foo>({
-				foo:1,
-				other:{foo:2},
-				bars:[{bar:'a'},{bar:'b'}]
-			});
-			const clone = foo.$cloneDeep<Foo>();
-			assert.equal(foo.foo, clone.foo);
-			assert.equal(get(foo, 'other.foo'), get(clone, 'other.foo'));
-			const fooExport = foo.$export();
-			const cloneExport = clone.$export();
-			assert.deepEqual(fooExport, cloneExport);
-		});
-	});
 	describe("$defineProperty", () => {
 		it("with type argument creates setter that only accepts type-checked values or undefined and throws an error otherwise.", () => {
 			// TS: Ignore mozel[property] access

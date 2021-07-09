@@ -376,7 +376,9 @@ export default class Mozel {
 	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, asReference: boolean = false) {
 		if (this.factory) {
 			// Preferably, use DI-injected factory
-			return this.factory.create(Class, data, asReference);
+			const mozel = this.factory.create(Class, data, asReference);
+			mozel.$resolveReferences();
+			return mozel;
 		}
 		// Otherwise, just create an instance of this class.
 		return Class.create(data);
@@ -890,8 +892,11 @@ export default class Mozel {
 	/**
 	 * Creates a deep clone of the mozel.
 	 */
-	$cloneDeep<T extends Mozel>() {
-		return this.static.create(this.$export() as MozelData<T>);
+	$cloneDeep<T extends Mozel>():T {
+		// Use new factory with same dependencies but different Registry.
+		const dependencies = this.factory ? this.factory.dependencies : undefined;
+		const factory = new MozelFactory(dependencies, new Registry<Mozel>());
+		return factory.create(this.static, this.$export() as MozelData<any>) as T;
 	}
 
 	/**

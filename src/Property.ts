@@ -403,10 +403,11 @@ export default class Property {
 
 		// Init Mozel
 		if(this.type && isMozelClass(this.type) && isPlainObject(value)) {
-			if(current instanceof Mozel
-				&& (
-					value.gid === current.gid // new data has same gid
-					|| (merge && !value.gid)) // or new data has no gid and we merge
+			if(this.isReference && current instanceof Mozel && value.gid === current.gid) return true; // nothing to do
+
+			if(current instanceof Mozel && (
+				value.gid === current.gid // new data has same gid
+				|| (merge && !value.gid)) // or new data has no gid and we merge
 			) {
 				// Same Mozel, different data
 				current.$setData(value, merge);

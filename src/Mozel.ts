@@ -234,7 +234,7 @@ export default class Mozel {
 				}
 				const subDefinition = {
 					type: def.type,
-					reference: get(def, 'options.required', false),
+					reference: get(def, 'options.reference', false),
 					required: get(def, 'options.required', false),
 					collection: collection,
 					path: [...definition.path, key]

@@ -278,6 +278,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Set new value
 		this.events.fire(new CollectionBeforeChangeEvent({item: revised, index}));
+		// TODO: watch for DestroyedEvent to remove
 		this.list[index] = revised;
 		if(revised instanceof Mozel && !this.isReference) {
 			revised.$setParent(this.parent, this.relation);

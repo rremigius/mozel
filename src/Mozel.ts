@@ -257,7 +257,7 @@ export default class Mozel {
 	private static _classCollectionDefinitions: Record<string, CollectionDefinition> = {};
 
 	// Injected properties
-	private readonly factory?: MozelFactoryInterface;
+	private readonly factory: MozelFactoryInterface;
 	private readonly registry?: Registry<Mozel>;
 
 	private properties: Record<string, Property> = {};
@@ -309,6 +309,15 @@ export default class Mozel {
 	 */
 	static create<T extends Mozel>(data?: MozelData<T>):T {
 		const factory = this.createFactory();
+		return <T>factory.create(this, data as any);
+	}
+
+	/**
+	 * Instantiate a Mozel based on raw data, and resolve any references of (nested) Mozels.
+	 * @param {Data} [data]
+	 */
+	static createAndResolveReferences<T extends Mozel>(data?: MozelData<T>):T {
+		const factory = this.createFactory();
 		return <T>factory.createAndResolveReferences(this, data as any);
 	}
 
@@ -342,7 +351,7 @@ export default class Mozel {
 		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface,
 		@inject(Registry) @optional() registry?: Registry<Mozel>
 	) {
-		this.factory = mozelFactory;
+		this.factory = mozelFactory || this.static.createFactory();
 		this.registry = registry;
 		this.watchers = [];
 
@@ -374,14 +383,8 @@ export default class Mozel {
 	 * @param asReference		If true, will not be registered.
 	 */
 	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, asReference: boolean = false) {
-		if (this.factory) {
-			// Preferably, use DI-injected factory
-			const mozel = this.factory.create(Class, data, asReference);
-			mozel.$resolveReferences();
-			return mozel;
-		}
-		// Otherwise, just create an instance of this class.
-		return Class.create(data);
+		// Preferably, use DI-injected factory
+		return this.factory.create(Class, data, asReference);
 	}
 
 	$destroy() {
@@ -389,12 +392,12 @@ export default class Mozel {
 		// First remove watchers to avoid confusing them with the break-down
 		this.watchers.splice(0, this.watchers.length);
 
+		// TODO: remove from all Collections (Collections should probably watch the DestroyedEvent)
+
 		if(this.$parent) {
 			this.$parent.$remove(this);
 		}
-		if (this.factory) {
-			this.factory.destroy(this);
-		}
+		this.factory.destroy(this);
 		this.$forEachChild(mozel => mozel.$destroy());
 		this.$events.fire(new DestroyedEvent());
 	}
@@ -894,7 +897,7 @@ export default class Mozel {
 	 */
 	$cloneDeep<T extends Mozel>():T {
 		// Use new factory with same dependencies but different Registry.
-		const dependencies = this.factory ? this.factory.dependencies : undefined;
+		const dependencies = this.factory.dependencies;
 		const factory = new MozelFactory(dependencies, new Registry<Mozel>());
 		return factory.create(this.static, this.$export() as MozelData<any>) as T;
 	}

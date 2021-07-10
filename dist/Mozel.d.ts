@@ -110,7 +110,7 @@ export default class Mozel {
     static $<M extends Mozel>(definition?: SchemaDefinition): MozelSchema<M>;
     private static _classPropertyDefinitions;
     private static _classCollectionDefinitions;
-    private readonly factory?;
+    private readonly factory;
     private readonly registry?;
     private properties;
     private parent;
@@ -143,6 +143,11 @@ export default class Mozel {
      * @param {Data} [data]
      */
     static create<T extends Mozel>(data?: MozelData<T>): T;
+    /**
+     * Instantiate a Mozel based on raw data, and resolve any references of (nested) Mozels.
+     * @param {Data} [data]
+     */
+    static createAndResolveReferences<T extends Mozel>(data?: MozelData<T>): T;
     static getParentClass(): any;
     /**
      * Definitions of Properties made at class level.

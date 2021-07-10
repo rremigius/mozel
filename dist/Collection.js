@@ -1,18 +1,33 @@
 import Mozel, { isData } from './Mozel';
 import Property, { isMozelClass } from './Property';
+import EventInterface from "event-interface-mixin";
 import { isPrimitive } from 'validation-kit';
 import { concat, forEach, get, isFunction, isMatch, isPlainObject, isString, map } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
-import EventInterface, { Event } from "event-interface-mixin";
 const log = Log.instance("mozel/collection");
-export class CollectionChangedEvent extends Event {
+export class CollectionItemEvent {
+    constructor(item, index) {
+        this.item = item;
+        this.index = index;
+    }
 }
-export class CollectionBeforeChangeEvent extends Event {
+export class CollectionChangedEvent extends CollectionItemEvent {
 }
-export class CollectionItemAddedEvent extends Event {
+export class CollectionBeforeChangeEvent extends CollectionItemEvent {
 }
-export class CollectionItemRemovedEvent extends Event {
+export class CollectionItemAddedEvent extends CollectionItemEvent {
+}
+export class CollectionItemRemovedEvent extends CollectionItemEvent {
+}
+export class CollectionEvents extends EventInterface {
+    constructor() {
+        super(...arguments);
+        this.changed = this.$event(CollectionChangedEvent);
+        this.added = this.$event(CollectionItemAddedEvent);
+        this.removed = this.$event(CollectionItemRemovedEvent);
+        this.beforeChange = this.$event(CollectionBeforeChangeEvent);
+    }
 }
 export default class Collection {
     constructor(parent, relation, type, list = []) {
@@ -21,9 +36,7 @@ export default class Collection {
          */
         this._errors = {};
         this.isReference = false;
-        this.events = new EventInterface();
-        this.on = this.events.getOnMethod();
-        this.off = this.events.getOffMethod();
+        this.events = new CollectionEvents();
         this.type = type;
         this.parent = parent;
         this.relation = relation;
@@ -102,7 +115,7 @@ export default class Collection {
         let item = this.list[index];
         // All items from the removed index will change
         for (let i = index; i < this.list.length; i++) {
-            this.events.fire(new CollectionBeforeChangeEvent({ item: this.list[index], index }));
+            this.events.beforeChange.fire(new CollectionBeforeChangeEvent(this.list[index], index));
         }
         this.list.splice(index, 1);
         delete this._errors[index];
@@ -111,9 +124,9 @@ export default class Collection {
         }
         // All items from the removed index have changed
         for (let i = index; i < this.list.length + 1; i++) {
-            this.events.fire(new CollectionChangedEvent({ item: this.list[index], index }));
+            this.events.changed.fire(new CollectionChangedEvent(this.list[index], index));
         }
-        this.events.fire(new CollectionItemRemovedEvent({ item, index }));
+        this.events.removed.fire(new CollectionItemRemovedEvent(item, index));
         return item;
     }
     /**
@@ -231,18 +244,18 @@ export default class Collection {
             revised = value;
         }
         // Set new value
-        this.events.fire(new CollectionBeforeChangeEvent({ item: revised, index }));
+        this.events.beforeChange.fire(new CollectionBeforeChangeEvent(revised, index));
         // TODO: watch for DestroyedEvent to remove
         this.list[index] = revised;
         if (revised instanceof Mozel && !this.isReference) {
             revised.$setParent(this.parent, this.relation);
         }
-        this.events.fire(new CollectionChangedEvent({ item: revised, index }));
+        this.events.changed.fire(new CollectionChangedEvent(revised, index));
         if (notifyAddRemove) {
             if (current)
-                this.events.fire(new CollectionItemRemovedEvent({ item: current, index }));
+                this.events.removed.fire(new CollectionItemRemovedEvent(current, index));
             if (revised)
-                this.events.fire(new CollectionItemAddedEvent({ item: revised, index }));
+                this.events.added.fire(new CollectionItemAddedEvent(revised, index));
         }
         return revised;
     }
@@ -268,9 +281,9 @@ export default class Collection {
         // Remove end of current list if new list is shorter
         for (let i = this.list.length - 1; i >= items.length; i--) {
             const item = this.list[i];
-            this.events.fire(new CollectionBeforeChangeEvent({ item, index: i }));
+            this.events.beforeChange.fire(new CollectionBeforeChangeEvent(item, i));
             this.list.splice(i, 1);
-            this.events.fire(new CollectionChangedEvent({ item, index: i }));
+            this.events.changed.fire(new CollectionChangedEvent(item, i));
         }
         // Compare before/after
         const after = this.list;
@@ -283,13 +296,13 @@ export default class Collection {
             let countBefore = countsBefore.get(after[i]);
             let countAfter = countsAfter.get(after[i]);
             if (countAfter && (!countBefore || countAfter > countBefore)) {
-                this.events.fire(new CollectionItemAddedEvent({ item: after[i], index: i }));
+                this.events.added.fire(new CollectionItemAddedEvent(after[i], i));
             }
             // Was old value deleted? Or just moved?
             countBefore = countsBefore.get(before[i]);
             countAfter = countsAfter.get(before[i]);
             if (countBefore && (!countAfter || countBefore > countAfter)) {
-                this.events.fire(new CollectionItemRemovedEvent({ item: before[i], index: i }));
+                this.events.removed.fire(new CollectionItemRemovedEvent(before[i], i));
             }
         }
     }

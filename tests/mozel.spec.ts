@@ -562,13 +562,11 @@ describe('Mozel', () => {
 			const newValues:number[][] = [];
 			foo.$watch('bars', ({newValue, oldValue}) => {
 				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
+				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "oldValue");
 				newValues.push(value.toArray());
 				oldValues.push(old.toArray());
 				count++;
-			}, {
-				deep: true,
-			});
+			}, { deep });
 			foo.bars.setData([4,5,6]);
 			assert.equal(count, 3, "Correct number of watchers called.");
 			assert.deepEqual(newValues, [

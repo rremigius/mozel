@@ -20,8 +20,8 @@ describe("Collection", () => {
 			let bar = FooMozel.create<FooMozel>();
 
 			let assertions = 0;
-			foo.other.on(CollectionChangedEvent, event => {
-				assert.ok(event.data.item instanceof FooMozel);
+			foo.other.events.changed.on(event => {
+				assert.ok(event.item instanceof FooMozel);
 				assertions++;
 			});
 			foo.other.add(bar);
@@ -38,7 +38,7 @@ describe("Collection", () => {
 			foo.other.add(bar);
 
 			let assertions = 0;
-			foo.other.on(CollectionChangedEvent, () => {
+			foo.other.events.changed.on(() => {
 				assertions++;
 			});
 			foo.other.remove(bar);
@@ -69,14 +69,14 @@ describe("Collection", () => {
 			foo.$watch('items.*.*', ({valuePath}) => {
 				modifiedPaths.push(valuePath);
 			});
-			foo.items.on(CollectionChangedEvent, event => {
-				assert.instanceOf(event.data.item, FooMozel);
-				const model = event.data.item as FooMozel;
+			foo.items.events.changed.on(event => {
+				assert.instanceOf(event.item, FooMozel);
+				const model = event.item as FooMozel;
 				added.push(model.gid);
 			});
-			foo.items.on(CollectionItemRemovedEvent, event => {
-				assert.instanceOf(event.data.item, FooMozel);
-				const model = event.data.item as FooMozel;
+			foo.items.events.removed.on(event => {
+				assert.instanceOf(event.item, FooMozel);
+				const model = event.item as FooMozel;
 				removed.push(model.gid);
 			});
 
@@ -101,9 +101,9 @@ describe("Collection", () => {
 		it("is fired if `add` is called", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
 			let count = 0;
-			foo.items.on(CollectionItemAddedEvent, event => {
-				assert.equal(event.data.item, 5);
-				assert.equal(event.data.index, 3);
+			foo.items.events.added.on(event => {
+				assert.equal(event.item, 5);
+				assert.equal(event.index, 3);
 				count++;
 			});
 			foo.items.add(5);
@@ -112,9 +112,9 @@ describe("Collection", () => {
 		it("is fired if setData added an item to the collection that was not there before", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
 			let count = 0;
-			foo.items.on(CollectionItemAddedEvent, event => {
-				assert.equal(event.data.item, 4);
-				assert.equal(event.data.index, 2);
+			foo.items.events.added.on(event => {
+				assert.equal(event.item, 4);
+				assert.equal(event.index, 2);
 				count++;
 			});
 			foo.items.setData([2,3,4]);
@@ -129,9 +129,9 @@ describe("Collection", () => {
 		it("is fired if `remove` is called", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
 			let count = 0;
-			foo.items.on(CollectionItemRemovedEvent, event => {
-				assert.equal(event.data.item, 1);
-				assert.equal(event.data.index, 0);
+			foo.items.events.removed.on(event => {
+				assert.equal(event.item, 1);
+				assert.equal(event.index, 0);
 				count++;
 			});
 			foo.items.remove(1);
@@ -140,9 +140,9 @@ describe("Collection", () => {
 		it("is fired if setData did not include an item in the collection that was there before", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
 			let count = 0;
-			foo.items.on(CollectionItemRemovedEvent, event => {
-				assert.equal(event.data.item, 1);
-				assert.equal(event.data.index, 0);
+			foo.items.events.removed.on(event => {
+				assert.equal(event.item, 1);
+				assert.equal(event.index, 0);
 				count++;
 			});
 			foo.items.setData([2,3,4]);

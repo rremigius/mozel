@@ -13,7 +13,7 @@ import { LogLevel } from "log-control";
 import log from "./log";
 import PropertyWatcher from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
-import EventInterface, { Event } from "event-interface-mixin";
+import EventInterface from "event-interface-mixin";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
 export { LogLevel };
@@ -55,7 +55,13 @@ export function schema(MozelClass) {
     return MozelClass.$schema();
 }
 export const $s = schema; // shorter alias
-export class DestroyedEvent extends Event {
+export class DestroyedEvent {
+}
+export class MozelEvents extends EventInterface {
+    constructor() {
+        super(...arguments);
+        this.destroyed = this.$event(DestroyedEvent);
+    }
 }
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
@@ -69,9 +75,6 @@ let Mozel = Mozel_1 = class Mozel {
         this.gid = 0; // a non-database ID that can be used to reference other mozels
         this.$destroyed = false;
         this.$isReference = false;
-        this.$events = new EventInterface();
-        this.$on = this.$events.getOnMethod();
-        this.$off = this.$events.getOffMethod();
         /**
          * Alias of $property
          */
@@ -80,6 +83,7 @@ let Mozel = Mozel_1 = class Mozel {
         this.registry = registry;
         this.watchers = [];
         this.$define();
+        this.$events = new this.static.Events();
         this.$applyDefaults();
         this.$init();
     }
@@ -274,7 +278,7 @@ let Mozel = Mozel_1 = class Mozel {
         }
         this.factory.destroy(this);
         this.$forEachChild(mozel => mozel.$destroy());
-        this.$events.fire(new DestroyedEvent());
+        this.$events.destroyed.fire(new DestroyedEvent());
     }
     /**
      * Set the Mozel's parent Mozel.
@@ -816,6 +820,7 @@ let Mozel = Mozel_1 = class Mozel {
         return `${this.static.type} (${this.gid})`;
     }
 };
+Mozel.Events = MozelEvents;
 Mozel._classPropertyDefinitions = {};
 Mozel._classCollectionDefinitions = {};
 __decorate([

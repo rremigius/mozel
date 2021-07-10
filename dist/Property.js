@@ -1,6 +1,6 @@
 var Property_1;
 import { __decorate } from "tslib";
-import Collection, { CollectionBeforeChangeEvent, CollectionChangedEvent } from './Collection';
+import Collection from './Collection';
 import { find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString } from 'lodash';
 import { isAlphanumeric, isClass, isPrimitive, isSubClass } from "validation-kit";
 import Mozel from "./Mozel";
@@ -42,8 +42,8 @@ let Property = Property_1 = class Property {
         this._reference = false;
         this._required = false;
         this._isDefault = false;
-        this._collectionBeforeChangeListener = (event) => this.notifyBeforeChange(event.data.index.toString());
-        this._collectionChangedListener = (event) => this.notifyChange(event.data.index.toString());
+        this._collectionBeforeChangeListener = (event) => this.notifyBeforeChange(event.index.toString());
+        this._collectionChangedListener = (event) => this.notifyChange(event.index.toString());
         if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
             log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
             type = undefined;
@@ -227,16 +227,12 @@ let Property = Property_1 = class Property {
         if (value === this._value)
             return;
         if (this._value instanceof Collection) {
+            // If we do replace Collections, we need to consider all the event listeners attached to it
             log.error("Collections cannot be replaced.");
             return;
         }
         // Notify watchers before the change, so they can get the old value
         this.notifyBeforeChange();
-        // Stop listening to current collection
-        if (this._value instanceof Collection) {
-            this._value.off(CollectionChangedEvent, this._collectionChangedListener);
-            this._value.off(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
-        }
         // Set value on parent
         this._value = value;
         this._isDefault = false;
@@ -251,8 +247,8 @@ let Property = Property_1 = class Property {
         }
         // If value is Collection, should listen to changes in Collection
         if (value instanceof Collection) {
-            value.on(CollectionChangedEvent, this._collectionChangedListener);
-            value.on(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
+            value.events.beforeChange.on(this._collectionBeforeChangeListener);
+            value.events.changed.on(this._collectionChangedListener);
         }
         this.notifyChange();
     }

@@ -29,7 +29,7 @@ import PropertyWatcher, {
 	PropertyWatcherOptionsArgument
 } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
-import EventInterface, {Event} from "event-interface-mixin";
+import EventInterface from "event-interface-mixin";
 
 // TYPES
 
@@ -137,7 +137,11 @@ export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof 
 }
 export const $s = schema; // shorter alias
 
-export class DestroyedEvent extends Event<void> {}
+export class DestroyedEvent {}
+
+export class MozelEvents extends EventInterface {
+	destroyed = this.$event(DestroyedEvent);
+}
 
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
@@ -145,6 +149,8 @@ export class DestroyedEvent extends Event<void> {}
 @injectable()
 export default class Mozel {
 	public _type?: string; // just for MozelData typing
+	static Events = MozelEvents;
+
 	static get type() {
 		return this.name; // Try using class name (will not work when uglified).
 	};
@@ -275,7 +281,7 @@ export default class Mozel {
 	$destroyed: boolean = false;
 	$isReference: boolean = false;
 
-	$events = new EventInterface();
+	$events:MozelEvents;
 
 	/**
 	 * Define a property for the mozel.
@@ -356,6 +362,7 @@ export default class Mozel {
 		this.watchers = [];
 
 		this.$define();
+		this.$events = new this.static.Events();
 
 		this.$applyDefaults();
 
@@ -372,9 +379,6 @@ export default class Mozel {
 	get $properties() {
 		return this.properties;
 	}
-
-	$on = this.$events.getOnMethod();
-	$off = this.$events.getOffMethod();
 
 	/**
 	 * Instantiate a Mozel based on the given class and the data.
@@ -399,7 +403,7 @@ export default class Mozel {
 		}
 		this.factory.destroy(this);
 		this.$forEachChild(mozel => mozel.$destroy());
-		this.$events.fire(new DestroyedEvent());
+		this.$events.destroyed.fire(new DestroyedEvent());
 	}
 
 	/**

@@ -8,7 +8,7 @@ import { alphanumeric, primitive } from 'validation-kit';
 import { LogLevel } from "log-control";
 import PropertyWatcher, { PropertyChangeHandler, PropertyWatcherOptionsArgument } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
-import EventInterface, { Event } from "event-interface-mixin";
+import EventInterface from "event-interface-mixin";
 export declare type Data = {
     [key: string]: any;
 };
@@ -86,13 +86,17 @@ export declare const deep = true;
 export declare const reference = true;
 export declare function schema<M extends Mozel>(MozelClass: MozelConstructor<M> & typeof Mozel): MozelSchema<M>;
 export declare const $s: typeof schema;
-export declare class DestroyedEvent extends Event<void> {
+export declare class DestroyedEvent {
+}
+export declare class MozelEvents extends EventInterface {
+    destroyed: import("event-interface-mixin").EventEmitter<DestroyedEvent>;
 }
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */
 export default class Mozel {
     _type?: string;
+    static Events: typeof MozelEvents;
     static get type(): string;
     static test<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>): T;
     static createFactory(): MozelFactory;
@@ -121,7 +125,7 @@ export default class Mozel {
     gid: alphanumeric;
     $destroyed: boolean;
     $isReference: boolean;
-    $events: EventInterface;
+    $events: MozelEvents;
     /**
      * Define a property for the mozel.
      * @param {string} name					Name of the property
@@ -161,8 +165,6 @@ export default class Mozel {
     get static(): typeof Mozel;
     $init(): void;
     get $properties(): Record<string, Property>;
-    $on: <T, E extends Event<T>>(event: import("event-interface-mixin").EventConstructor<T, E>, callback: import("event-interface-mixin").Callback<E>) => void;
-    $off: <T, E extends Event<T>>(event: import("event-interface-mixin").EventConstructor<T, E>, callback: import("event-interface-mixin").Callback<E>) => void;
     /**
      * Instantiate a Mozel based on the given class and the data.
      * @param Class

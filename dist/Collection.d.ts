@@ -1,32 +1,31 @@
 import Mozel, { Data } from './Mozel';
 import { MozelClass, PropertyValue } from './Property';
+import EventInterface from "event-interface-mixin";
 import { Class, primitive } from 'validation-kit';
 import Templater from "./Templater";
-import EventInterface, { Event } from "event-interface-mixin";
 export declare type CollectionType = MozelClass | Class;
 export declare type CollectionOptions = {
     reference?: boolean;
 };
 declare type FindFunction<T> = (item: T, index: number) => boolean;
-export declare class CollectionChangedEvent<T> extends Event<{
+export declare class CollectionItemEvent<T> {
     item: T;
     index: number;
-}> {
+    constructor(item: T, index: number);
 }
-export declare class CollectionBeforeChangeEvent<T> extends Event<{
-    item: T;
-    index: number;
-}> {
+export declare class CollectionChangedEvent<T> extends CollectionItemEvent<T> {
 }
-export declare class CollectionItemAddedEvent<T> extends Event<{
-    item: T;
-    index: number;
-}> {
+export declare class CollectionBeforeChangeEvent<T> extends CollectionItemEvent<T> {
 }
-export declare class CollectionItemRemovedEvent<T> extends Event<{
-    item: T;
-    index: number;
-}> {
+export declare class CollectionItemAddedEvent<T> extends CollectionItemEvent<T> {
+}
+export declare class CollectionItemRemovedEvent<T> extends CollectionItemEvent<T> {
+}
+export declare class CollectionEvents extends EventInterface {
+    changed: import("event-interface-mixin").EventEmitter<CollectionChangedEvent<any>>;
+    added: import("event-interface-mixin").EventEmitter<CollectionItemAddedEvent<any>>;
+    removed: import("event-interface-mixin").EventEmitter<CollectionItemRemovedEvent<any>>;
+    beforeChange: import("event-interface-mixin").EventEmitter<CollectionBeforeChangeEvent<any>>;
 }
 export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
@@ -40,9 +39,7 @@ export default class Collection<T extends Mozel | primitive> {
     parent: Mozel;
     relation: string;
     isReference: boolean;
-    events: EventInterface;
-    on: <T_1, E extends Event<T_1>>(event: import("event-interface-mixin").EventConstructor<T_1, E>, callback: import("event-interface-mixin").Callback<E>) => void;
-    off: <T_1, E extends Event<T_1>>(event: import("event-interface-mixin").EventConstructor<T_1, E>, callback: import("event-interface-mixin").Callback<E>) => void;
+    events: CollectionEvents;
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
     getTypeName(): string;
     getType(): CollectionType | undefined;

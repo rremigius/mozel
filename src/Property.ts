@@ -119,8 +119,8 @@ export default class Property {
 	private _value:PropertyValue;
 	private _isDefault = false;
 
-	private _collectionBeforeChangeListener = (event:CollectionBeforeChangeEvent<any>) => this.notifyBeforeChange(event.data.index.toString());
-	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => this.notifyChange(event.data.index.toString());
+	private _collectionBeforeChangeListener = (event:CollectionBeforeChangeEvent<any>) => this.notifyBeforeChange(event.index.toString());
+	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => this.notifyChange(event.index.toString());
 
 	private readonly parent:Mozel;
 
@@ -264,18 +264,13 @@ export default class Property {
 	private _set(value:PropertyValue) {
 		if(value === this._value) return;
 		if(this._value instanceof Collection) {
+			// If we do replace Collections, we need to consider all the event listeners attached to it
 			log.error("Collections cannot be replaced.");
 			return;
 		}
 
 		// Notify watchers before the change, so they can get the old value
 		this.notifyBeforeChange();
-
-		// Stop listening to current collection
-		if(this._value instanceof Collection) {
-			this._value.off(CollectionChangedEvent, this._collectionChangedListener);
-			this._value.off(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
-		}
 
 		// Set value on parent
 		this._value = value;
@@ -293,8 +288,8 @@ export default class Property {
 
 		// If value is Collection, should listen to changes in Collection
 		if(value instanceof Collection) {
-			value.on(CollectionChangedEvent, this._collectionChangedListener);
-			value.on(CollectionBeforeChangeEvent, this._collectionBeforeChangeListener);
+			value.events.beforeChange.on(this._collectionBeforeChangeListener);
+			value.events.changed.on(this._collectionChangedListener);
 		}
 
 		this.notifyChange();

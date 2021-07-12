@@ -80,9 +80,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 	}
 
 	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
-		const mozels = data.map(item => this.create<T>(ExpectedClass, item));
-		mozels.forEach(item => item.$resolveReferences());
-		return mozels;
+		return data.map(item => this.create<T>(ExpectedClass, item));
 	}
 
 	/**
@@ -92,9 +90,8 @@ export default class MozelFactory implements MozelFactoryInterface {
 	 * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
 	 * @param {Class} ExpectedClass
 	 * @param {mozel} data
-	 * @param {boolean} asReference		Set to true if the Mozel will only be a reference to another Mozel. It will not be registered.
 	 */
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, asReference:boolean = false) {
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
 		function isT(mozel:any) : mozel is T {
 			return mozel instanceof ExpectedClass;
 		}
@@ -129,8 +126,6 @@ export default class MozelFactory implements MozelFactoryInterface {
 			throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
 		}
 
-		mozel.$isReference = asReference;
-
 		if(data) {
 			mozel.$setData(data);
 		}
@@ -139,16 +134,8 @@ export default class MozelFactory implements MozelFactoryInterface {
 		if(!mozel.gid) {
 			mozel.gid = this.nextGID();
 		}
-		if(!mozel.$isReference) {
-			this.registry.register(mozel);
-		}
+		this.registry.register(mozel);
 
-		return mozel;
-	}
-
-	createAndResolveReferences<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
-		const mozel = this.create(ExpectedClass, data);
-		mozel.$resolveReferences();
 		return mozel;
 	}
 }

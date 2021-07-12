@@ -1,12 +1,13 @@
 import Mozel, {Data, DestroyedEvent, isData} from './Mozel';
-import Property, {isMozelClass, MozelClass, PropertyValue} from './Property';
+import Property, {isMozelClass, MozelClass, PropertyValue, Reference} from './Property';
 import EventInterface from "event-interface-mixin";
 
-import {Class, isPrimitive, primitive} from 'validation-kit';
+import {alphanumeric, Class, isAlphanumeric, isPrimitive, primitive} from 'validation-kit';
 import {concat, forEach, get, isFunction, isMatch, isPlainObject, isString, map} from 'lodash';
 
 import Templater from "./Templater";
 import Log from 'log-control';
+import {has} from "./utils";
 
 const log = Log.instance("mozel/collection");
 
@@ -36,7 +37,8 @@ export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
 
 	private readonly type?:CollectionType;
-	private list:T[];
+	private readonly _list:T[];
+	private references:Reference[] = [];
 	private readonly removed:T[];
 
 	private _errors:Record<string, Error> = {};
@@ -53,10 +55,17 @@ export default class Collection<T extends Mozel|primitive> {
 		this.parent = parent;
 		this.relation = relation;
 
-		this.list = [];
+		this._list = [];
 		this.setData(list);
 
 		this.removed = [];
+	}
+
+	protected get list() {
+		if(this.isReference && this.references.length) {
+			this.resolveReferences();
+		}
+		return this._list;
 	}
 
 	getTypeName() {
@@ -96,11 +105,12 @@ export default class Collection<T extends Mozel|primitive> {
 		if(this.checkType(item)) {
 			return item;
 		}
+		if(this.isReference) throw new Error(`Collection of references can only accept Mozels or References.`);
 
 		// Try to initialize
 		if(init && isPlainObject(item) && isMozelClass(this.type)) {
 			// If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
-			return <T><any>this.parent.$create(this.type, item, this.isReference);
+			return <T><any>this.parent.$create(this.type, item);
 		}
 
 		// Parse primitives
@@ -110,7 +120,7 @@ export default class Collection<T extends Mozel|primitive> {
 				return item;
 			}
 		}
-		throw new Error("Could not revise value.");
+		throw new Error("Invalid value for Collection.");
 	}
 
 	add(item:object|T, init = true) {
@@ -257,11 +267,24 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param notifyAddRemove	If set to false, will not fire add/remove events
 	 */
 	set(index:number, value:object|T, init = true, merge = false, notifyAddRemove = true) {
-		const current = this.list[index];
+		const current = this._list[index];
+
+		// Handle references
+		if(this.isReference && isPlainObject(value) && isAlphanumeric(get(value, 'gid'))) {
+			this.references[index] = value as Reference;
+			const resolved = this.parent.$resolveReference(value as Reference);
+			if(!resolved) {
+				// cannot be resolved yet; wait for lazy resolve
+				return true;
+			} else {
+				value = resolved;
+			}
+		}
+
 		if(value === current) return value;
 
 		// New value replaces current Mozel with same GID, but may change data
-		if(current instanceof Mozel && isPlainObject(value)
+		if(init && !this.isReference && current instanceof Mozel && isPlainObject(value)
 			&& (get(value, 'gid') === current.gid || (merge && !get(value, 'gid')))
 		) {
 			current.$setData(value as Data, merge);
@@ -289,7 +312,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Set new value
 		this.events.beforeChange.fire(new CollectionBeforeChangeEvent(revised, index));
-		this.list[index] = revised;
+		this._list[index] = revised;
 		if(revised instanceof Mozel) {
 			revised.$events.destroyed.on(this._mozelDestroyedListener);
 			if(!this.isReference) {
@@ -315,7 +338,7 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
 	 */
 	setData(items:Array<object|T>, init = true, merge = false) {
-		const before = this.list.slice();
+		const before = this._list.slice();
 
 		let skipped = 0;
 		items.forEach((item, i) => {
@@ -330,15 +353,15 @@ export default class Collection<T extends Mozel|primitive> {
 		});
 
 		// Remove end of current list if new list is shorter
-		for(let i = this.list.length-1; i >= items.length; i--) {
-			const item = this.list[i];
+		for(let i = this._list.length-1; i >= items.length; i--) {
+			const item = this._list[i];
 			this.events.beforeChange.fire(new CollectionBeforeChangeEvent(item, i));
-			this.list.splice(i, 1);
+			this._list.splice(i, 1);
 			this.events.changed.fire(new CollectionChangedEvent(item, i));
 		}
 
 		// Compare before/after
-		const after = this.list;
+		const after = this._list;
 		const countsBefore = this.getCounts(before);
 		const countsAfter = this.getCounts(after);
 		for(let i = 0; i < Math.max(before.length, after.length); i++) {
@@ -378,11 +401,25 @@ export default class Collection<T extends Mozel|primitive> {
 		return this.length === 0;
 	}
 
-	resolveReferences() {
+	resolveReference(index:number, errorOnNotFound = true) {
+		const reference = this.references[index];
+		const current = this._list[index];
+		if(!reference) return;
+		if(current instanceof Mozel && current.gid === reference.gid) return current;
+
+		const resolved = this.parent.$resolveReference(reference);
+		if(!resolved && errorOnNotFound) {
+			log.error(`Could not resolve reference with GID ${reference.gid}.`);
+			return;
+		}
+		this.set(index, resolved as T);
+	}
+
+	resolveReferences(recursive = false) {
 		if(!isMozelClass(this.type)) {
 			return; // nothing to resolve
 		}
-		if(!this.isReference) {
+		if(!this.isReference && recursive) {
 			// Have all Mozels resolve their references
 			this.each((item:T) => {
 				// The Collection type is a Mozel class, so our items are Mozels
@@ -391,30 +428,23 @@ export default class Collection<T extends Mozel|primitive> {
 			return;
 		}
 
+		if(!this.references.length) return;
+
 		// Resolve all references in the list
-		for(let i = this.list.length-1; i >= 0; i--) {
-			let item = this.list[i];
-
-			if(item instanceof Mozel) {
-				let resolved = this.parent.$resolveReference(item);
-
-				if(!resolved) {
-					log.error(`No Mozel found with GID ${item.gid}.`);
-				} else if (!this.checkType(resolved)) {
-					log.error(`Mozel with GID ${item.gid} was not a ${this.type}.`);
-					resolved = undefined;
-				}
-
-				if(!resolved) {
-					// Reference was not resolved: remove it from the list
-					this.list.splice(i,1);
-					continue;
-				}
-
-				// Replace placeholder Mozel with resolved reference
-				this.set(i, resolved);
+		const items = [];
+		for(let i = 0; i < this.references.length; i++) {
+			const ref = this.references[i];
+			const resolved = this.parent.$resolveReference(ref);
+			if(!resolved) {
+				log.error(`Could not resolve Mozel with GID '${ref.gid}'`);
+				continue;
 			}
+			if(resolved) items.push(resolved);
 		}
+
+		this.references = []; // reset references
+		this.setData(items);
+		return;
 	}
 
 	equals(other:Collection<any>) {

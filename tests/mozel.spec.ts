@@ -927,7 +927,7 @@ describe('Mozel', () => {
 				ref?:Foo;
 			}
 			const factory = Foo.createFactory();
-			const root = factory.createAndResolveReferences(Foo, {
+			const root = factory.create(Foo, {
 				name: 'root',
 				extra: 'ROOT_EXTRA',
 				other: {gid: 'root.other', name: 'root.other', extra: 'ROOT_OTHER_EXTRA'},
@@ -965,6 +965,7 @@ describe('Mozel', () => {
 
 	describe("$destroy", () => {
 		it("removes the Mozel from any Collections and Properties it is in", () => {
+			// TODO: passes but logs a few errors
 			class Foo extends Mozel {
 				@property(Foo)
 				foo?:Foo;
@@ -977,7 +978,7 @@ describe('Mozel', () => {
 				@collection(Foo, {reference})
 				refs!:Collection<Foo>;
 			}
-			const foo = Foo.createAndResolveReferences<Foo>({
+			const foo = Foo.create<Foo>({
 				foo: {gid: 1},
 				foos: [{gid: 2}, {gid: 3}],
 				ref: {gid: 3},

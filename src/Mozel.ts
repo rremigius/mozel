@@ -281,7 +281,6 @@ export default class Mozel {
 	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
 
 	$destroyed: boolean = false;
-	$isReference: boolean = false;
 
 	$events:MozelEvents;
 
@@ -318,17 +317,6 @@ export default class Mozel {
 	static create<T extends Mozel>(data?: MozelData<T>):T {
 		const factory = this.createFactory();
 		return <T>factory.create(this, data as any);
-	}
-
-	/**
-	 * Instantiate a Mozel based on raw data, and resolve any references of (nested) Mozels.
-	 * @param {Data} [data]
-	 */
-	static createAndResolveReferences<T extends Mozel>(data?: MozelData<T>):T {
-		// TODO: use lazy reference loading
-		// when `get` is called and reference is not yet resolved, resolve at that moment
-		const factory = this.createFactory();
-		return <T>factory.createAndResolveReferences(this, data as any);
 	}
 
 	static getParentClass() {
@@ -387,11 +375,10 @@ export default class Mozel {
 	 * Instantiate a Mozel based on the given class and the data.
 	 * @param Class
 	 * @param data
-	 * @param asReference		If true, will not be registered.
 	 */
-	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, asReference: boolean = false) {
+	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>) {
 		// Preferably, use DI-injected factory
-		return this.factory.create(Class, data, asReference);
+		return this.factory.create(Class, data);
 	}
 
 	$destroy() {
@@ -399,9 +386,10 @@ export default class Mozel {
 		// First remove watchers to avoid confusing them with the break-down
 		this.watchers.splice(0, this.watchers.length);
 
-		this.factory.destroy(this);
 		this.$forEachChild(mozel => mozel.$destroy());
 		this.$events.destroyed.fire(new DestroyedEvent(this));
+
+		this.factory.destroy(this);
 
 		// TODO: Automatic cleanup of orphaned Mozels (configurable)
 		// Mozels can be kept alive explicitly if necessary
@@ -504,12 +492,12 @@ export default class Mozel {
 	/**
 	 * Defines a property and instantiates it as a Collection.
 	 * @param {string} relation       				The relation name.
-	 * @param {Mozel} [type]       						The class of the items in the Collection.
+	 * @param {Mozel} [type]       					The class of the items in the Collection.
 	 * @param {CollectionOptions} [options]
 	 * @return {Collection}
 	 */
 	$defineCollection(relation: string, type?: CollectionType, options?: CollectionOptions) {
-		let collection = new Collection(this, relation, type);
+		let collection = new Collection(this, relation, type) as Collection<any>;
 		collection.isReference = (options && options.reference) === true;
 
 		this.$defineProperty(relation, Collection, {
@@ -530,8 +518,7 @@ export default class Mozel {
 		if (!(property in this.properties)) {
 			throw new Error(`Could not set non-existing property '${property}' on ${this.$name}.`);
 		}
-		this.properties[property].set(value, init, merge);
-		return this.properties[property].value;
+		return this.properties[property].set(value, init, merge);
 	}
 
 	/**
@@ -761,19 +748,11 @@ export default class Mozel {
 	}
 
 	/**
-	 * Resolves the given reference, or its own if no data is provided and it's marked as one.
-	 * @param ref
+	 * Resolves the given reference.
+	 * @param {{gid:alphanumeric}} ref
 	 */
-	$resolveReference(ref?: { gid: alphanumeric }) {
+	$resolveReference(ref: { gid: alphanumeric }) {
 		if (!this.registry) return;
-
-		if (!ref) {
-			if (!this.$isReference) {
-				// Mozel is already resolved
-				return this;
-			}
-			return this.registry.byGid(this.gid);
-		}
 
 		// Resolve provided reference
 		return this.registry.byGid(ref.gid);

@@ -100,8 +100,6 @@ describe("MozelFactory", () => {
 			assert.deepEqual(gids, uniq(gids), "All GIDs are unique");
 			assert.equal(mozel3.gid, 'bar');
 		});
-	});
-	describe("createAndResolveReferences", () => {
 		it('resolves reference Properties from Registry.', ()=> {
 			class FooMozel extends Mozel {
 				@collection(FooMozel)
@@ -114,7 +112,7 @@ describe("MozelFactory", () => {
 			const factory = new MozelFactory();
 			factory.register(FooMozel);
 
-			const foo = factory.createAndResolveReferences<FooMozel>(FooMozel, {
+			const foo = factory.create<FooMozel>(FooMozel, {
 				gid: 1,
 				fooChildren: [
 					{ gid: 11 },

@@ -137,7 +137,9 @@ export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof 
 }
 export const $s = schema; // shorter alias
 
-export class DestroyedEvent {}
+export class DestroyedEvent {
+	constructor(public mozel:Mozel) {}
+}
 
 export class MozelEvents extends EventInterface {
 	destroyed = this.$event(DestroyedEvent);
@@ -263,8 +265,8 @@ export default class Mozel {
 	private static _classCollectionDefinitions: Record<string, CollectionDefinition> = {};
 
 	// Injected properties
-	private readonly factory: MozelFactoryInterface;
-	private readonly registry?: Registry<Mozel>;
+	public readonly factory: MozelFactoryInterface;
+	public readonly registry: Registry<Mozel>;
 
 	private properties: Record<string, Property> = {};
 
@@ -323,6 +325,8 @@ export default class Mozel {
 	 * @param {Data} [data]
 	 */
 	static createAndResolveReferences<T extends Mozel>(data?: MozelData<T>):T {
+		// TODO: use lazy reference loading
+		// when `get` is called and reference is not yet resolved, resolve at that moment
 		const factory = this.createFactory();
 		return <T>factory.createAndResolveReferences(this, data as any);
 	}
@@ -354,11 +358,10 @@ export default class Mozel {
 	}
 
 	constructor(
-		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface,
-		@inject(Registry) @optional() registry?: Registry<Mozel>
+		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface
 	) {
 		this.factory = mozelFactory || this.static.createFactory();
-		this.registry = registry;
+		this.registry = this.factory.registry;
 		this.watchers = [];
 
 		this.$define();
@@ -396,14 +399,12 @@ export default class Mozel {
 		// First remove watchers to avoid confusing them with the break-down
 		this.watchers.splice(0, this.watchers.length);
 
-		// TODO: remove from all Collections (Collections should probably watch the DestroyedEvent)
-
-		if(this.$parent) {
-			this.$parent.$remove(this);
-		}
 		this.factory.destroy(this);
 		this.$forEachChild(mozel => mozel.$destroy());
-		this.$events.destroyed.fire(new DestroyedEvent());
+		this.$events.destroyed.fire(new DestroyedEvent(this));
+
+		// TODO: Automatic cleanup of orphaned Mozels (configurable)
+		// Mozels can be kept alive explicitly if necessary
 	}
 
 	/**

@@ -3,7 +3,7 @@ import Collection, {CollectionBeforeChangeEvent, CollectionChangedEvent} from '.
 import {find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString} from 'lodash';
 
 import {Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive, safeParseNumber} from "validation-kit"
-import Mozel from "./Mozel";
+import Mozel, {DestroyedEvent} from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
 
@@ -121,6 +121,8 @@ export default class Property {
 
 	private _collectionBeforeChangeListener = (event:CollectionBeforeChangeEvent<any>) => this.notifyBeforeChange(event.index.toString());
 	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => this.notifyChange(event.index.toString());
+
+	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
 
 	private readonly parent:Mozel;
 
@@ -269,6 +271,10 @@ export default class Property {
 			return;
 		}
 
+		if(this._value instanceof Mozel) {
+			this._value.$events.destroyed.off(this._mozelDestroyedListener);
+		}
+
 		// Notify watchers before the change, so they can get the old value
 		this.notifyBeforeChange();
 
@@ -286,10 +292,12 @@ export default class Property {
 			}
 		}
 
-		// If value is Collection, should listen to changes in Collection
+		// New value is Mozel or Collection, listen to changes
 		if(value instanceof Collection) {
 			value.events.beforeChange.on(this._collectionBeforeChangeListener);
 			value.events.changed.on(this._collectionChangedListener);
+		} else if (value instanceof Mozel) {
+			value.$events.destroyed.on(this._mozelDestroyedListener);
 		}
 
 		this.notifyChange();

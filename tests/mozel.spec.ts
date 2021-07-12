@@ -962,4 +962,45 @@ describe('Mozel', () => {
 			assert.notEqual(newRootList2, rootList2, "'root.list.2' replaced");
 		});
 	});
+
+	describe("$destroy", () => {
+		it("removes the Mozel from any Collections and Properties it is in", () => {
+			class Foo extends Mozel {
+				@property(Foo)
+				foo?:Foo;
+				@collection(Foo)
+				foos!:Collection<Foo>;
+
+				@property(Foo, {reference})
+				ref?:Foo;
+
+				@collection(Foo, {reference})
+				refs!:Collection<Foo>;
+			}
+			const foo = Foo.createAndResolveReferences<Foo>({
+				foo: {gid: 1},
+				foos: [{gid: 2}, {gid: 3}],
+				ref: {gid: 3},
+				refs: [{gid: 1}, {gid: 3}]
+			});
+			const gid1 = foo.foo;
+			const gid3 = foo.foos.get(1);
+
+			gid1!.$destroy();
+			gid3!.$destroy();
+
+			assert.notExists(foo.foo, "Foo property removed");
+			assert.notExists(foo.foos.get(1), "Foos item removed");
+			assert.notExists(foo.ref, "Foo reference removed");
+			assert.notExists(foo.refs.get(1), "Reference collection item removed");
+		});
+		it("removes the Mozel from the registry", () => {
+			const mozel = Mozel.create();
+			const registry = mozel.registry;
+			assert.exists(registry!.byGid(mozel.gid), "Mozel is registered after creation");
+
+			mozel.$destroy();
+			assert.notExists(registry!.byGid(mozel.gid), "Mozel is not registered after destroy");
+		});
+	})
 });

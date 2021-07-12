@@ -1,4 +1,4 @@
-import Mozel, {Data, isData} from './Mozel';
+import Mozel, {Data, DestroyedEvent, isData} from './Mozel';
 import Property, {isMozelClass, MozelClass, PropertyValue} from './Property';
 import EventInterface from "event-interface-mixin";
 
@@ -39,10 +39,8 @@ export default class Collection<T extends Mozel|primitive> {
 	private list:T[];
 	private readonly removed:T[];
 
-	/**
-	 * Type errors of items in the collection.
-	 */
 	private _errors:Record<string, Error> = {};
+	private _mozelDestroyedListener = (event:DestroyedEvent) => this.remove(event.mozel as T);
 
 	parent:Mozel;
 	relation:string;
@@ -285,12 +283,18 @@ export default class Collection<T extends Mozel|primitive> {
 			revised = value as T;
 		}
 
+		if(current instanceof Mozel) {
+			current.$events.destroyed.off(this._mozelDestroyedListener);
+		}
+
 		// Set new value
 		this.events.beforeChange.fire(new CollectionBeforeChangeEvent(revised, index));
-		// TODO: watch for DestroyedEvent to remove
 		this.list[index] = revised;
-		if(revised instanceof Mozel && !this.isReference) {
-			revised.$setParent(this.parent, this.relation);
+		if(revised instanceof Mozel) {
+			revised.$events.destroyed.on(this._mozelDestroyedListener);
+			if(!this.isReference) {
+				revised.$setParent(this.parent, this.relation);
+			}
 		}
 		this.events.changed.fire(new CollectionChangedEvent(revised, index));
 

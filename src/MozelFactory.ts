@@ -76,7 +76,16 @@ export default class MozelFactory implements MozelFactoryInterface {
 	}
 
 	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
-		return data.map(item => this.create<T>(ExpectedClass, item));
+		return data.map(item => this.create<T>(ExpectedClass, item, true));
+	}
+
+	/**
+	 * Alias for `create`, with `root = true`
+	 * @param ExpectedClass
+	 * @param data
+	 */
+	createRoot<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
+		return this.create(ExpectedClass, data, true);
 	}
 
 	/**
@@ -86,8 +95,9 @@ export default class MozelFactory implements MozelFactoryInterface {
 	 * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
 	 * @param {Class} ExpectedClass
 	 * @param {mozel} data
+	 * @param {boolean} root			Unless set to true, orphaned Mozels will destroy themselves.
 	 */
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root = false) {
 		function isT(mozel:any) : mozel is T {
 			return mozel instanceof ExpectedClass;
 		}
@@ -125,6 +135,7 @@ export default class MozelFactory implements MozelFactoryInterface {
 		if(data) {
 			mozel.$setData(data);
 		}
+		mozel.$root = root;
 
 		// Register
 		if(!mozel.gid) {

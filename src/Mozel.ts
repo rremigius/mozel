@@ -277,12 +277,12 @@ export default class Mozel {
 
 	private readonly watchers: PropertyWatcher[];
 
+	public $root:boolean = false;
+	public $destroyed: boolean = false;
+	public $events:MozelEvents;
+
 	@property(Alphanumeric, {required})
 	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
-
-	$destroyed: boolean = false;
-
-	$events:MozelEvents;
 
 	/**
 	 * Define a property for the mozel.
@@ -311,12 +311,13 @@ export default class Mozel {
 	}
 
 	/**
-	 * Instantiate a Mozel based on raw data.
+	 * Instantiate a Mozel, based on raw data.
+	 * Set as $root, so will not destroy itself when removed from hierarchy.
 	 * @param {Data} [data]
 	 */
 	static create<T extends Mozel>(data?: MozelData<T>):T {
 		const factory = this.createFactory();
-		return <T>factory.create(this, data as any);
+		return <T>factory.createRoot(this, data as any);
 	}
 
 	static getParentClass() {
@@ -382,6 +383,8 @@ export default class Mozel {
 	}
 
 	$destroy() {
+		log.log(`Destroying ${this.static.type} (${this.gid}).`);
+
 		this.$destroyed = true;
 		// First remove watchers to avoid confusing them with the break-down
 		this.watchers.splice(0, this.watchers.length);
@@ -390,9 +393,31 @@ export default class Mozel {
 		this.$events.destroyed.fire(new DestroyedEvent(this));
 
 		this.factory.destroy(this);
+	}
 
-		// TODO: Automatic cleanup of orphaned Mozels (configurable)
-		// Mozels can be kept alive explicitly if necessary
+	/**
+	 * Will destroy itself if not root and without parent.
+	 */
+	$maybeCleanUp() {
+		if(!this.$root && !this.parent) {
+			log.log(`Cleaning up ${this.static.type} (${this.gid}).`);
+			this.$destroy();
+		}
+	}
+
+	$detach() {
+		if (this.parentLock) {
+			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
+		}
+		if(this.parent) {
+			this.parent.$remove(this);
+		}
+		this.parent = null;
+		this.relation = "";
+
+		setTimeout(() => {
+			this.$maybeCleanUp();
+		});
 	}
 
 	/**
@@ -526,6 +551,10 @@ export default class Mozel {
 	 * @param {string} property
 	 */
 	$get(property: string) {
+		if(this.$destroyed && property !== 'gid') { // we accept gid because it may still be needed to identify
+			throw new Error(`Accessing Mozel after it has been destroyed.`);
+		}
+
 		if(property === '') return this;
 
 		if (!(property in this.properties)) {

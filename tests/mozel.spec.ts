@@ -965,7 +965,6 @@ describe('Mozel', () => {
 
 	describe("$destroy", () => {
 		it("removes the Mozel from any Collections and Properties it is in", () => {
-			// TODO: passes but logs a few errors
 			class Foo extends Mozel {
 				@property(Foo)
 				foo?:Foo;
@@ -1003,5 +1002,40 @@ describe('Mozel', () => {
 			mozel.$destroy();
 			assert.notExists(registry!.byGid(mozel.gid), "Mozel is not registered after destroy");
 		});
-	})
+	});
+
+	describe("$root", () => {
+		it("determines whether or not a Mozel will destroy itself without parent", async () => {
+			class Foo extends Mozel {
+				@property(Foo)
+				foo?:Foo;
+				@property(Foo)
+				bar?:Foo;
+				@property(Foo, {reference})
+				ref?:Foo;
+			}
+			const root = Foo.create<Foo>({
+				gid: 'root',
+				foo: {gid: 'foo'},
+				bar: {gid: 'bar'},
+				ref: {gid: 'foo'}
+			});
+
+			const foo = root.foo;
+			const bar = root.bar;
+			assert.instanceOf(foo, Foo, "'foo' property set");
+			assert.instanceOf(bar, Foo, "'bar' property set");
+
+			return new Promise((resolve, reject) => {
+				root.foo = undefined;
+				setTimeout(()=>{
+					assert.notOk(root.$destroyed, "'root' untouched");
+					assert.ok(foo!.$destroyed, "'foo' destroyed");
+					assert.notOk(bar!.$destroyed, "'bar' untouched");
+					assert.notExists(root.ref, "'foo' reference removed");
+					resolve();
+				});
+			});
+		});
+	});
 });

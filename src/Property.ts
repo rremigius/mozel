@@ -297,7 +297,9 @@ export default class Property {
 			return;
 		}
 
-		if(this._value instanceof Mozel) {
+		let detach:Mozel|undefined;
+		if(this._value instanceof Mozel && !this.isReference) {
+			detach = this._value; // keep for later
 			this._value.$events.destroyed.off(this._mozelDestroyedListener);
 		}
 
@@ -307,6 +309,9 @@ export default class Property {
 		// Set value on parent
 		this._value = value;
 		this._isDefault = false;
+
+		// Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
+		if(detach) detach.$detach();
 
 		// If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
 		if (!this.isReference) {

@@ -26,13 +26,9 @@ export default class MozelFactory implements MozelFactoryInterface {
 	) {
 		this.registry = mozelRegistry || new Registry<Mozel>();
 
+		this.dependencies = dependencies || MozelFactory.createDependencyContainer();
 		this.localDependencies = MozelFactory.createDependencyContainer();
-		if(dependencies) {
-			this.dependencies = dependencies;
-			this.dependencies.parent = this.localDependencies;
-		} else {
-			this.dependencies = this.localDependencies;
-		}
+		this.localDependencies.parent = this.dependencies;
 
 		// Set scoped globals
 		this.localDependencies.bind(MozelFactoryType).toConstantValue(this);
@@ -98,12 +94,12 @@ export default class MozelFactory implements MozelFactoryInterface {
 
 		let mozel;
 		try {
-			if (data && data._type && this.dependencies.isBoundNamed(Mozel, data._type)) {
+			if (data && data._type && this.localDependencies.isBoundNamed(Mozel, data._type)) {
 				// Try to get most specific class
-				mozel = this.dependencies.getNamed<Mozel>(Mozel, data._type);
+				mozel = this.localDependencies.getNamed<Mozel>(Mozel, data._type);
 			} else if (ExpectedClass) {
 				// Try to resolve class from dependencies
-				mozel = this.dependencies.get<Mozel>(ExpectedClass);
+				mozel = this.localDependencies.get<Mozel>(ExpectedClass);
 			}
 			if(!mozel && ExpectedClass) {
 				log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);

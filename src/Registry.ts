@@ -1,23 +1,17 @@
 import {Class, alphanumeric} from "validation-kit";
 import logRoot from "./log";
 import {isNil} from 'lodash';
+import {uniqueId} from "./utils";
 
 const log = logRoot.instance("registry");
 
 export type Registerable = {id?:alphanumeric, gid?:alphanumeric};
 
 export default class Registry<T extends Registerable> {
-	private indexById:Record<alphanumeric,T> = {};
+	public readonly id = uniqueId('registry-');
 	private indexByGid:Record<alphanumeric,T> = {};
 
 	register(item:T) {
-		if(!isNil(item.id)) {
-			if(item.id in this.indexById) {
-				log.error(`Duplicate registration for ID: ${item.id}.`);
-			} else {
-				this.indexById[item.id] = item;
-			}
-		}
 		if(!isNil(item.gid)) {
 			if(item.gid in this.indexByGid) {
 				log.error(`Duplicate registration for GID: ${item.gid}.`);
@@ -28,34 +22,19 @@ export default class Registry<T extends Registerable> {
 	}
 
 	remove(item:T) {
-		if(!isNil(item.id)) {
-			delete this.indexById[item.id];
-		}
 		if(!isNil(item.gid)) {
 			delete this.indexByGid[item.gid];
 		}
 	}
 
-	find(ids:{id?:alphanumeric, gid?:alphanumeric}) {
-		if(!isNil(ids.id)) {
-			let item = this.byId(ids.id);
-			if(item) return item;
-		}
-		if(!isNil(ids.gid)) {
-			let item = this.byGid(ids.gid);
+	find(gid?:alphanumeric) {
+		if(!isNil(gid)) {
+			let item = this.byGid(gid);
 			if(item) return item;
 		}
 		return; // not found
 	}
 
-	byId<E extends T>(id:alphanumeric, ExpectedClass?:Class):E|undefined {
-		const found = this.indexById[id];
-		if(ExpectedClass && !(found instanceof ExpectedClass)) {
-			log.error(`Object with ID ${id} was found, but was not a ${ExpectedClass.name}.`);
-			return undefined;
-		}
-		return <E>found;
-	}
 	byGid<E extends T>(gid:alphanumeric, ExpectedClass?:Class):E|undefined {
 		const found = this.indexByGid[gid];
 		if(ExpectedClass && !(found instanceof ExpectedClass)) {

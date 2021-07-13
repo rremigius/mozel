@@ -125,7 +125,7 @@ export default class Property {
 	 * If set to `false`, no parent will be set on its value.
 	 */
 	private readonly _reference:boolean = false;
-	private _referenceGID?:alphanumeric = undefined;
+	private _ref?:Reference|null = null; // null means no reference to be resolved
 	private readonly _required:boolean = false;
 	private _default?:PropertyValue|PropertyValueFactory;
 	private _value:PropertyValue;
@@ -199,31 +199,35 @@ export default class Property {
 		if(!this.isReference) {
 			throw new Error("Property is not a reference. Cannot resolve.");
 		}
-		// No reference set, value should be undefined
-		if(!this._referenceGID && this._value) {
+		if(!isMozelClass(this.type)) {
+			throw new Error("Property is not of Mozel type. Cannot resolve reference.");
+		}
+
+		// Reference set to undefined: value should be undefined
+		if(this._ref === undefined) {
+			this._ref = null;
 			this.set(undefined);
 			return;
 		}
-		// No reference set, no value set: nothing to do
-		if(!this._referenceGID) return;
+		// No reference to resolve, nothing to do.
+		if(!this._ref) return;
 
-		// Reference is still the same as the Mozel in value
-		if(this._value instanceof Mozel && this._value.gid === this._referenceGID) {
+		// Reference is the same as the current Mozel in value
+		if(this._value instanceof Mozel && this._value.gid === this._ref.gid) {
+			this._ref = null;
 			return; // nothing
 		}
-		if(isMozelClass(this.type)) {
-			// Replace placeholder mozel with the resolved reference
-			let mozel = this.parent.$resolveReference({gid: this._referenceGID});
-			if(!mozel && errorIfNotFound) {
-				log.error(`No Mozel found with GID ${this._referenceGID}`);
-			} else if (!this.checkType(mozel)) {
-				log.error(`Referenced Mozel with GID ${this._referenceGID} was not a ${this.type.name}.`);
-				mozel = undefined;
-			}
-			this.set(mozel);
-			return;
+
+		// Replace placeholder mozel with the resolved reference
+		let mozel = this.parent.$resolveReference(this._ref);
+		if(!mozel && errorIfNotFound) {
+			log.error(`No Mozel found with GID ${this._ref.gid}`);
+		} else if (!this.checkType(mozel)) {
+			log.error(`Referenced Mozel with GID ${this._ref.gid} was not a ${this.type.name}.`);
+			mozel = undefined;
 		}
-		throw new Error("Property is not of Mozel type. Cannot resolve reference.");
+		this._ref = null;
+		this.set(mozel);
 	}
 
 	/**
@@ -345,7 +349,8 @@ export default class Property {
 		this._set(<PropertyValue>value);
 
 		if(this.isReference) {
-			this._referenceGID = get(value, 'gid');
+			const gid = get(value, 'gid');
+			this._ref = gid ? {gid} : undefined;
 		}
 		return value;
 	}
@@ -426,7 +431,8 @@ export default class Property {
 
 		// Init reference
 		if(this.isReference && isPlainObject(value)) {
-			this._referenceGID = get(value, 'gid');
+			const gid = get(value, 'gid');
+			this._ref = gid ? {gid} : undefined;
 			this.resolveReference(false); // it is possible that it is not yet created
 			return true;
 		}

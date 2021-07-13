@@ -38,7 +38,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 	private readonly type?:CollectionType;
 	private readonly _list:T[];
-	private references:Reference[] = [];
+	private refs:Reference[] = [];
 	private readonly removed:T[];
 
 	private _errors:Record<string, Error> = {};
@@ -62,7 +62,7 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	protected get list() {
-		if(this.isReference && this.references.length) {
+		if(this.isReference && this.refs.length) {
 			this.resolveReferences();
 		}
 		return this._list;
@@ -271,7 +271,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Handle references
 		if(this.isReference && isPlainObject(value) && isAlphanumeric(get(value, 'gid'))) {
-			this.references[index] = value as Reference;
+			this.refs[index] = value as Reference;
 			const resolved = this.parent.$resolveReference(value as Reference);
 			if(!resolved) {
 				// cannot be resolved yet; wait for lazy resolve
@@ -402,7 +402,7 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	resolveReference(index:number, errorOnNotFound = true) {
-		const reference = this.references[index];
+		const reference = this.refs[index];
 		const current = this._list[index];
 		if(!reference) return;
 		if(current instanceof Mozel && current.gid === reference.gid) return current;
@@ -428,12 +428,12 @@ export default class Collection<T extends Mozel|primitive> {
 			return;
 		}
 
-		if(!this.references.length) return;
+		if(!this.refs.length) return;
 
 		// Resolve all references in the list
 		const items = [];
-		for(let i = 0; i < this.references.length; i++) {
-			const ref = this.references[i];
+		for(let i = 0; i < this.refs.length; i++) {
+			const ref = this.refs[i];
 			const resolved = this.parent.$resolveReference(ref);
 			if(!resolved) {
 				log.error(`Could not resolve Mozel with GID '${ref.gid}'`);
@@ -442,7 +442,7 @@ export default class Collection<T extends Mozel|primitive> {
 			if(resolved) items.push(resolved);
 		}
 
-		this.references = []; // reset references
+		this.refs = []; // reset references
 		this.setData(items);
 		return;
 	}

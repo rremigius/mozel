@@ -1,5 +1,1 @@
-- Validation errors
-- Change detection in Collection
-- Adding non-Mozel properties/methods
 - Document/test templating
-- Document Collection

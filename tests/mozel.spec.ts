@@ -9,7 +9,7 @@ import Mozel, {
 	schema,
 	$s,
 	deep,
-	reference
+	reference, Data
 } from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
@@ -327,6 +327,59 @@ describe('Mozel', () => {
 			const reconstructed = FooMozel.create<FooMozel>(foo.$export());
 			assert.equal(reconstructed.foo, foo.foo);
 			assert.deepEqual(reconstructed.bar.toArray(), foo.bar.toArray());
+		});
+		it("with 'keys' option only exports properties included in the given array (but only first level)", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Number)
+				number?:number;
+				@property(Foo)
+				foo?:Foo;
+			}
+			const foo = Foo.create<Foo>({
+				name: 'foo',
+				number: 123,
+				foo: {
+					gid: 'foofoo',
+					name: 'foofoo',
+					number: 456
+				}
+			});
+			const exported = foo.$export({keys: ['foo', 'number']});
+			assert.deepEqual(exported, {
+				number: 123,
+				foo: {gid: 'foofoo', name: 'foofoo', number: 456, foo: undefined},
+			});
+		});
+		it("with 'type' option calls $export recursively with that option.", () => {
+			class Bar extends Mozel {
+				@property(String)
+				name?:string;
+
+				$export(options?: { type?: string; keys?: string[] }): Data {
+					if(get(options, 'type') === 'foo') {
+						return this.$export({keys: ['name']})
+					}
+					return super.$export(options);
+				}
+			}
+			class Foo extends Mozel {
+				@property(Bar)
+				bar?:Bar;
+			}
+			const foo = Foo.create<Foo>({
+				gid: 'foo',
+				bar: {
+					gid: 'bar',
+					name: 'bar'
+				}
+			});
+			const exported = foo.$export({type: 'foo'});
+			assert.deepEqual(exported, {
+				gid: 'foo',
+				bar: {name: 'bar'}
+			});
 		});
 	});
 
@@ -996,7 +1049,7 @@ describe('Mozel', () => {
 		});
 		it("removes the Mozel from the registry", () => {
 			const mozel = Mozel.create();
-			const registry = mozel.registry;
+			const registry = mozel.$registry;
 			assert.exists(registry!.byGid(mozel.gid), "Mozel is registered after creation");
 
 			mozel.$destroy();

@@ -512,10 +512,14 @@ export default class Collection<T extends Mozel|primitive> {
 		return item.$path(path.slice(1));
 	}
 
-	export():(Data|primitive)[] {
+	/**
+	 *
+	 * @param options Options to pass to each of the Mozel.$export calls.
+	 */
+	export(options:{type?:string, keys?:string[]}):(Data|primitive)[] {
 		return map(this.list, (item:T) => {
 			if(item instanceof Mozel) {
-				return item.$export();
+				return item.$export(options);
 			}
 			return item;
 		});

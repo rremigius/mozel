@@ -10,5 +10,6 @@ export {
 	isEmpty,
 	uniqueId,
 	debounce,
-	has
+	has,
+	includes
 } from "lodash";

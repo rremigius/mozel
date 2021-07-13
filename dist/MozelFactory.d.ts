@@ -20,14 +20,19 @@ export default class MozelFactory implements MozelFactoryInterface {
     destroy(mozel: Mozel): void;
     createSet<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data: MozelData<T>[]): T[];
     /**
+     * Alias for `create`, with `root = true`
+     * @param ExpectedClass
+     * @param data
+     */
+    createRoot<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>): T;
+    /**
      * Creates a Mozel
      * If <T> matches ExpectedClass, is guaranteed to provide the correct class (or throw).
      *
      * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
      * @param {Class} ExpectedClass
      * @param {mozel} data
-     * @param {boolean} asReference		Set to true if the Mozel will only be a reference to another Mozel. It will not be registered.
+     * @param {boolean} root			Unless set to true, orphaned Mozels will destroy themselves.
      */
-    create<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>, asReference?: boolean): T;
-    createAndResolveReferences<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>): T;
+    create<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data?: MozelData<T>, root?: boolean): T;
 }

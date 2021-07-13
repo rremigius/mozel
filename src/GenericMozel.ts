@@ -37,10 +37,9 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
 	initialized = false;
 
 	constructor(
-		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface,
-		@inject(Registry) @optional() registry?: Registry<Mozel>
+		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface
 	) {
-		super(mozelFactory, registry);
+		super(mozelFactory);
 
 		// All inherited properties and methods have been set; for all future properties, define Properties.
 		this.initialized = true;

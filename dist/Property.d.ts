@@ -1,5 +1,5 @@
 import Collection from './Collection';
-import { Class, primitive } from "validation-kit";
+import { alphanumeric, Class, primitive } from "validation-kit";
 import Mozel from "./Mozel";
 export declare type MozelClass = typeof Mozel;
 export declare type ComplexValue = Mozel | Collection<any>;
@@ -8,6 +8,9 @@ export declare type PropertyValue = primitive | ComplexValue | undefined;
 export declare type PropertyInput = PropertyValue | object | any[];
 export declare type PropertyType = MozelClass | Class | Collection<any> | undefined;
 export declare type PrimitiveObject = Record<string, primitive | undefined | null>;
+export declare type Reference = {
+    gid: alphanumeric;
+};
 export declare type PropertyValueFactory = () => PropertyValue;
 export declare type PropertyOptions = {
     default?: PropertyValue | PropertyValueFactory;
@@ -39,12 +42,14 @@ export default class Property {
      * If set to `false`, no parent will be set on its value.
      */
     private readonly _reference;
+    private _ref?;
     private readonly _required;
     private _default?;
     private _value;
     private _isDefault;
     private _collectionBeforeChangeListener;
     private _collectionChangedListener;
+    private _mozelDestroyedListener;
     private readonly parent;
     constructor(parent: Mozel, name: string, type?: PropertyType, options?: PropertyOptions);
     get value(): PropertyValue;
@@ -54,16 +59,16 @@ export default class Property {
     get required(): boolean;
     get isReference(): boolean;
     /**
-     * Attempts to resolve the current value as a reference.
+     * Attempts to resolve the current reference GID to a value.
      * Will replace the current value with the result (even if reference was not found!)
      */
-    resolveReference(): void;
+    resolveReference(errorIfNotFound?: boolean): void;
     /**
      * Either resolves its own reference if it is marked as one, or resolves all references of its value (only for complex values).
      */
     resolveReferences(): void;
     isDefault(): boolean;
-    get(): PropertyValue;
+    get(resolveReference?: boolean): PropertyValue;
     checkType(value: any): value is PropertyValue;
     isPrimitiveType(): boolean;
     isMozelType(): boolean;
@@ -80,7 +85,7 @@ export default class Property {
      * @param {boolean} init			If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
      * @param {boolean} merge			If set to true, will set data to existing mozels rather than creating new ones.
      */
-    set(value: PropertyInput, init?: boolean, merge?: boolean): boolean;
+    set(value: PropertyInput, init?: boolean, merge?: boolean): PropertyInput;
     notifyBeforeChange(path?: string): void;
     notifyChange(path?: string): void;
     setErrorValue(value: any): void;

@@ -1,6 +1,5 @@
 import Mozel, { Data, MozelData } from './Mozel';
 import MozelFactoryInterface from "./MozelFactoryInterface";
-import Registry from "./Registry";
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
@@ -15,14 +14,14 @@ export default class GenericMozel<K extends Data = Data> extends Mozel {
     private genericProperties;
     static create<T extends Mozel>(data?: MozelData<T>): T;
     initialized: boolean;
-    constructor(mozelFactory?: MozelFactoryInterface, registry?: Registry<Mozel>);
+    constructor(mozelFactory?: MozelFactoryInterface);
     /**
      * Sets a Property value on the GenericMozel. If the Property did not exist, it will be initialized first.
      * @param {string} property
      * @param value
      * @param {boolean} [init]			Allow intialization of Mozels and Collections.
      */
-    $set(property: string, value: any, init?: boolean): import("./Property").PropertyValue;
+    $set(property: string, value: any, init?: boolean): import("./Property").PropertyInput;
     $setData(data: Data): void;
     exportGeneric(): {
         [x: string]: import("./Property").PropertyValue;

@@ -3,7 +3,6 @@ import Mozel from './Mozel';
 import { forEach, mapValues } from 'lodash';
 import { inject, optional } from "inversify";
 import { MozelFactoryType } from "./MozelFactoryInterface";
-import Registry from "./Registry";
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.
  * Any keys passed to the `create` argument object, or defined after construction, are initialized as Properties,
@@ -11,8 +10,8 @@ import Registry from "./Registry";
  *
  */
 let GenericMozel = class GenericMozel extends Mozel {
-    constructor(mozelFactory, registry) {
-        super(mozelFactory, registry);
+    constructor(mozelFactory) {
+        super(mozelFactory);
         this.MozelDataType = {};
         this.genericProperties = {};
         this.initialized = false;
@@ -90,8 +89,7 @@ let GenericMozel = class GenericMozel extends Mozel {
     }
 };
 GenericMozel = __decorate([
-    __param(0, inject(MozelFactoryType)), __param(0, optional()),
-    __param(1, inject(Registry)), __param(1, optional())
+    __param(0, inject(MozelFactoryType)), __param(0, optional())
 ], GenericMozel);
 export default GenericMozel;
 //# sourceMappingURL=GenericMozel.js.map

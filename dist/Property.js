@@ -6,6 +6,7 @@ import { isAlphanumeric, isClass, isPrimitive, isSubClass } from "validation-kit
 import Mozel from "./Mozel";
 import { injectable } from "inversify";
 import logRoot from "./log";
+import { get } from "./utils";
 const log = logRoot.instance("property");
 /**
  * Placeholder class for runtime Property type definition
@@ -40,10 +41,12 @@ let Property = Property_1 = class Property {
          * If set to `false`, no parent will be set on its value.
          */
         this._reference = false;
+        this._ref = null; // null means no reference to be resolved
         this._required = false;
         this._isDefault = false;
         this._collectionBeforeChangeListener = (event) => this.notifyBeforeChange(event.index.toString());
         this._collectionChangedListener = (event) => this.notifyChange(event.index.toString());
+        this._mozelDestroyedListener = (event) => this.set(undefined);
         if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
             log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
             type = undefined;
@@ -146,32 +149,41 @@ let Property = Property_1 = class Property {
         return this._reference;
     }
     /**
-     * Attempts to resolve the current value as a reference.
+     * Attempts to resolve the current reference GID to a value.
      * Will replace the current value with the result (even if reference was not found!)
      */
-    resolveReference() {
+    resolveReference(errorIfNotFound = true) {
         if (!this.isReference) {
-            log.error("Property is not a reference. Cannot resolve.");
+            throw new Error("Property is not a reference. Cannot resolve.");
+        }
+        if (!isMozelClass(this.type)) {
+            throw new Error("Property is not of Mozel type. Cannot resolve reference.");
+        }
+        // Reference set to undefined: value should be undefined
+        if (this._ref === undefined) {
+            this._ref = null;
+            this.set(undefined);
             return;
         }
-        if (this.value === undefined) {
-            return; // no error necessary, undefined is fine.
-        }
-        if (isMozelClass(this.type) && this.value instanceof Mozel) {
-            // Replace placeholder mozel with the resolved reference
-            let mozel = this.value.$resolveReference();
-            if (!mozel) {
-                log.error(`No Mozel found with GID ${this.value.gid}`);
-            }
-            else if (!this.checkType(mozel)) {
-                log.error(`Referenced Mozel with GID ${this.value.gid} was not a ${this.type.name}.`);
-                mozel = undefined;
-            }
-            this.set(mozel);
+        // No reference to resolve, nothing to do.
+        if (!this._ref)
             return;
+        // Reference is the same as the current Mozel in value
+        if (this._value instanceof Mozel && this._value.gid === this._ref.gid) {
+            this._ref = null;
+            return; // nothing
         }
-        log.error("Property is not of Mozel type. Cannot resolve reference.");
-        return;
+        // Replace placeholder mozel with the resolved reference
+        let mozel = this.parent.$resolveReference(this._ref);
+        if (!mozel && errorIfNotFound) {
+            log.error(`No Mozel found with GID ${this._ref.gid}`);
+        }
+        else if (!this.checkType(mozel)) {
+            log.error(`Referenced Mozel with GID ${this._ref.gid} was not a ${this.type.name}.`);
+            mozel = undefined;
+        }
+        this._ref = null;
+        this.set(mozel);
     }
     /**
      * Either resolves its own reference if it is marked as one, or resolves all references of its value (only for complex values).
@@ -196,7 +208,10 @@ let Property = Property_1 = class Property {
         }
         return this._value === this._default;
     }
-    get() {
+    get(resolveReference = true) {
+        if (this.isReference && resolveReference) {
+            this.resolveReference(true);
+        }
         return this._value;
     }
     checkType(value) {
@@ -231,13 +246,21 @@ let Property = Property_1 = class Property {
             log.error("Collections cannot be replaced.");
             return;
         }
+        let detach;
+        if (this._value instanceof Mozel && !this.isReference) {
+            detach = this._value; // keep for later
+            this._value.$events.destroyed.off(this._mozelDestroyedListener);
+        }
         // Notify watchers before the change, so they can get the old value
         this.notifyBeforeChange();
         // Set value on parent
         this._value = value;
         this._isDefault = false;
+        // Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
+        if (detach)
+            detach.$detach();
         // If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
-        if (!this._reference) {
+        if (!this.isReference) {
             if (value instanceof Mozel) {
                 value.$setParent(this.parent, this.name);
             }
@@ -245,10 +268,13 @@ let Property = Property_1 = class Property {
                 value.setParent(this.parent);
             }
         }
-        // If value is Collection, should listen to changes in Collection
+        // New value is Mozel or Collection, listen to changes
         if (value instanceof Collection) {
             value.events.beforeChange.on(this._collectionBeforeChangeListener);
             value.events.changed.on(this._collectionChangedListener);
+        }
+        else if (value instanceof Mozel) {
+            value.$events.destroyed.on(this._mozelDestroyedListener);
         }
         this.notifyChange();
     }
@@ -271,7 +297,11 @@ let Property = Property_1 = class Property {
         }
         // TS: we did the type checking. If the Model is not strict, we allow non-checked types.
         this._set(value);
-        return true;
+        if (this.isReference) {
+            const gid = get(value, 'gid');
+            this._ref = gid ? { gid } : undefined;
+        }
+        return value;
     }
     notifyBeforeChange(path) {
         if (!this.parent)
@@ -340,7 +370,14 @@ let Property = Property_1 = class Property {
      * @param merge
      */
     tryInit(value, merge = false) {
-        let current = this.value;
+        let current = this._value;
+        // Init reference
+        if (this.isReference && isPlainObject(value)) {
+            const gid = get(value, 'gid');
+            this._ref = gid ? { gid } : undefined;
+            this.resolveReference(false); // it is possible that it is not yet created
+            return true;
+        }
         // Init Collection
         if (this.type === Collection && current instanceof Collection && isArray(value)) {
             current.setData(value, true, merge);
@@ -348,8 +385,6 @@ let Property = Property_1 = class Property {
         }
         // Init Mozel
         if (this.type && isMozelClass(this.type) && isPlainObject(value)) {
-            if (this.isReference && current instanceof Mozel && value.gid === current.gid)
-                return true; // nothing to do
             if (current instanceof Mozel && (value.gid === current.gid // new data has same gid
                 || (merge && !value.gid)) // or new data has no gid and we merge
             ) {
@@ -358,7 +393,7 @@ let Property = Property_1 = class Property {
             }
             else {
                 // Create mozel and try to set again, without type check
-                let mozel = this.parent.$create(this.type, value, this.isReference);
+                let mozel = this.parent.$create(this.type, value);
                 this._set(mozel);
             }
             return true;

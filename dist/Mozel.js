@@ -14,6 +14,7 @@ import log from "./log";
 import PropertyWatcher from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
+import { includes, isArray } from "./utils";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
 export { LogLevel };
@@ -56,6 +57,9 @@ export function schema(MozelClass) {
 }
 export const $s = schema; // shorter alias
 export class DestroyedEvent {
+    constructor(mozel) {
+        this.mozel = mozel;
+    }
 }
 export class MozelEvents extends EventInterface {
     constructor() {
@@ -67,21 +71,21 @@ export class MozelEvents extends EventInterface {
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
  */
 let Mozel = Mozel_1 = class Mozel {
-    constructor(mozelFactory, registry) {
-        this.properties = {};
-        this.parent = null;
-        this.parentLock = false;
-        this.relation = null;
-        this.gid = 0; // a non-database ID that can be used to reference other mozels
+    constructor(mozelFactory) {
+        this._properties = {};
+        this._parent = null;
+        this._relation = null;
+        this.$parentLock = false;
+        this.$root = false;
         this.$destroyed = false;
-        this.$isReference = false;
+        this.gid = 0; // a non-database ID that can be used to reference other mozels
         /**
          * Alias of $property
          */
         this.$ = this.$property;
-        this.factory = mozelFactory || this.static.createFactory();
-        this.registry = registry;
-        this.watchers = [];
+        this.$factory = mozelFactory || this.static.createFactory();
+        this.$registry = this.$factory.registry;
+        this._watchers = [];
         this.$define();
         this.$events = new this.static.Events();
         this.$applyDefaults();
@@ -212,20 +216,13 @@ let Mozel = Mozel_1 = class Mozel {
         this.classCollectionDefinitions[name] = { name, type: runtimeType, options };
     }
     /**
-     * Instantiate a Mozel based on raw data.
+     * Instantiate a Mozel, based on raw data.
+     * Set as $root, so will not destroy itself when removed from hierarchy.
      * @param {Data} [data]
      */
     static create(data) {
         const factory = this.createFactory();
-        return factory.create(this, data);
-    }
-    /**
-     * Instantiate a Mozel based on raw data, and resolve any references of (nested) Mozels.
-     * @param {Data} [data]
-     */
-    static createAndResolveReferences(data) {
-        const factory = this.createFactory();
-        return factory.createAndResolveReferences(this, data);
+        return factory.createRoot(this, data);
     }
     static getParentClass() {
         return Object.getPrototypeOf(this);
@@ -256,29 +253,47 @@ let Mozel = Mozel_1 = class Mozel {
     $init() {
     } // for override
     get $properties() {
-        return this.properties;
+        return this._properties;
     }
     /**
      * Instantiate a Mozel based on the given class and the data.
      * @param Class
      * @param data
-     * @param asReference		If true, will not be registered.
      */
-    $create(Class, data, asReference = false) {
+    $create(Class, data) {
         // Preferably, use DI-injected factory
-        return this.factory.create(Class, data, asReference);
+        return this.$factory.create(Class, data);
     }
     $destroy() {
+        log.log(`Destroying ${this.static.type} (${this.gid}).`);
         this.$destroyed = true;
-        // First remove watchers to avoid confusing them with the break-down
-        this.watchers.splice(0, this.watchers.length);
-        // TODO: remove from all Collections (Collections should probably watch the DestroyedEvent)
-        if (this.$parent) {
-            this.$parent.$remove(this);
-        }
-        this.factory.destroy(this);
+        // First remove _watchers to avoid confusing them with the break-down
+        this._watchers.splice(0, this._watchers.length);
         this.$forEachChild(mozel => mozel.$destroy());
-        this.$events.destroyed.fire(new DestroyedEvent());
+        this.$events.destroyed.fire(new DestroyedEvent(this));
+        this.$factory.destroy(this);
+    }
+    /**
+     * Will destroy itself if not root and without parent.
+     */
+    $maybeCleanUp() {
+        if (!this.$root && !this._parent) {
+            log.log(`Cleaning up ${this.static.type} (${this.gid}).`);
+            this.$destroy();
+        }
+    }
+    $detach() {
+        if (this.$parentLock) {
+            throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
+        }
+        if (this._parent) {
+            this._parent.$remove(this);
+        }
+        this._parent = null;
+        this._relation = "";
+        setTimeout(() => {
+            this.$maybeCleanUp();
+        });
     }
     /**
      * Set the Mozel's parent Mozel.
@@ -287,15 +302,15 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
     $setParent(parent, relation, lock = false) {
-        if (this.parentLock) {
+        if (this.$parentLock) {
             throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
         }
-        if (this.parent) {
-            this.parent.$remove(this);
+        if (this._parent) {
+            this._parent.$remove(this);
         }
-        this.parent = parent;
-        this.relation = relation;
-        this.parentLock = lock;
+        this._parent = parent;
+        this._relation = relation;
+        this.$parentLock = lock;
     }
     $remove(child, includeReferences = false) {
         for (let key in this.$properties) {
@@ -314,13 +329,13 @@ let Mozel = Mozel_1 = class Mozel {
      * The Mozel's parent.
      */
     get $parent() {
-        return this.parent;
+        return this._parent;
     }
     /**
      * The Mozel's relation to its parent.
      */
     get $relation() {
-        return this.relation;
+        return this._relation;
     }
     /**
      * @protected
@@ -354,7 +369,7 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $defineProperty(name, type, options) {
         let property = new Property(this, name, type, options);
-        this.properties[name] = property;
+        this._properties[name] = property;
         // Create getter/setter
         let currentValue = get(this, name);
         Object.defineProperty(this, name, {
@@ -371,7 +386,7 @@ let Mozel = Mozel_1 = class Mozel {
     /**
      * Defines a property and instantiates it as a Collection.
      * @param {string} relation       				The relation name.
-     * @param {Mozel} [type]       						The class of the items in the Collection.
+     * @param {Mozel} [type]       					The class of the items in the Collection.
      * @param {CollectionOptions} [options]
      * @return {Collection}
      */
@@ -392,30 +407,32 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {boolean} merge					If set to true, Mozels will be kept if gid did not change; data will be set instead
      */
     $set(property, value, init = true, merge = false) {
-        if (!(property in this.properties)) {
+        if (!(property in this._properties)) {
             throw new Error(`Could not set non-existing property '${property}' on ${this.$name}.`);
         }
-        this.properties[property].set(value, init, merge);
-        return this.properties[property].value;
+        return this._properties[property].set(value, init, merge);
     }
     /**
      * Get type-safe value of the given property.
      * @param {string} property
      */
     $get(property) {
+        if (this.$destroyed && property !== 'gid') { // we accept gid because it may still be needed to identify
+            throw new Error(`Accessing Mozel after it has been destroyed.`);
+        }
         if (property === '')
             return this;
-        if (!(property in this.properties)) {
+        if (!(property in this._properties)) {
             throw new Error(`Could not get non-existing property '${property}' on ${this.$name}.`);
         }
-        return this.properties[property].value;
+        return this._properties[property].value;
     }
     /**
      * Get the Property object with the given name.
      * @param property
      */
     $property(property) {
-        return this.properties[property];
+        return this._properties[property];
     }
     /**
      * Get value at given path (not type-safe).
@@ -450,7 +467,7 @@ let Mozel = Mozel_1 = class Mozel {
         if (pathPattern.length === 0)
             return { [startingPath.join('.')]: this };
         const step = pathPattern[0];
-        const properties = step === '*' ? Object.keys(this.properties) : [step];
+        const properties = step === '*' ? Object.keys(this._properties) : [step];
         if (pathPattern.length === 1) {
             let values = {};
             for (let name of properties) {
@@ -482,10 +499,10 @@ let Mozel = Mozel_1 = class Mozel {
         return this.$getPathArray().join('.');
     }
     $getPathArray() {
-        if (!this.parent || !this.relation) {
+        if (!this._parent || !this._relation) {
             return [];
         }
-        return [...this.parent.$getPathArray(), this.relation];
+        return [...this._parent.$getPathArray(), this._relation];
     }
     $getPathFrom(mozel) {
         return this.$getPathArrayFrom(mozel).join('.');
@@ -493,9 +510,9 @@ let Mozel = Mozel_1 = class Mozel {
     $getPathArrayFrom(mozel) {
         if (this === mozel)
             return [];
-        if (!this.parent || !this.relation)
+        if (!this._parent || !this._relation)
             throw new Error("No path from given Mozel found.");
-        return [...this.parent.$getPathArrayFrom(mozel), this.relation];
+        return [...this._parent.$getPathArrayFrom(mozel), this._relation];
     }
     /**
      * Sets all registered properties from the given data.
@@ -503,7 +520,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {boolean} merge		If set to `true`, only defined keys will be set.
      */
     $setData(data, merge = false) {
-        forEach(this.properties, (property, key) => {
+        forEach(this._properties, (property, key) => {
             if (!merge || key in data) {
                 this.$set(key, data[key], true, merge);
             }
@@ -527,19 +544,19 @@ let Mozel = Mozel_1 = class Mozel {
         return watcher;
     }
     /**
-     * Get watchers matching the given path.
+     * Get _watchers matching the given path.
      * @param {string} path
      */
     $watchers(path) {
-        return this.watchers.filter(watcher => watcher.matches(path));
+        return this._watchers.filter(watcher => watcher.matches(path));
     }
     $addWatcher(watcher) {
-        this.watchers.push(watcher);
+        this._watchers.push(watcher);
         if (watcher.immediate)
             watcher.execute(watcher.path);
     }
     $removeWatcher(watcher) {
-        remove(this.watchers, w => w === watcher);
+        remove(this._watchers, w => w === watcher);
     }
     /**
      * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to
@@ -564,7 +581,7 @@ let Mozel = Mozel_1 = class Mozel {
         return [relation, index.toString(), ...path.slice(1)];
     }
     /**
-     * Notify that a property is about to change. Will set the current value for any relevant watchers, so they can
+     * Notify that a property is about to change. Will set the current value for any relevant _watchers, so they can
      * compare the new value to the old value, and provide the old value to the handler.
      *
      * This just-in-time approach has the slight advantage that we don't have to keep copies of values that will
@@ -582,12 +599,12 @@ let Mozel = Mozel_1 = class Mozel {
         this.$watchers(pathString).forEach(watcher => {
             watcher.updateValues(pathString);
         });
-        if (this.parent && this.relation) {
-            this.parent.$notifyPropertyBeforeChange([this.relation, ...path], this);
+        if (this._parent && this._relation) {
+            this._parent.$notifyPropertyBeforeChange([this._relation, ...path], this);
         }
     }
     /**
-     * Notify that a property has changed. Will activate relevant watchers.
+     * Notify that a property has changed. Will activate relevant _watchers.
      * @param {string[]} path		Path at which the property changed.
      * @param {Mozel} [submozel]	The direct submozel reporting the change.
      */
@@ -599,32 +616,25 @@ let Mozel = Mozel_1 = class Mozel {
         this.$watchers(pathString).forEach(watcher => {
             watcher.execute(pathString);
         });
-        if (this.parent && this.relation) {
-            this.parent.$notifyPropertyChanged([this.relation, ...path], this);
+        if (this._parent && this._relation) {
+            this._parent.$notifyPropertyChanged([this._relation, ...path], this);
         }
     }
     /**
-     * Resolves the given reference, or its own if no data is provided and it's marked as one.
-     * @param ref
+     * Resolves the given reference.
+     * @param {{gid:alphanumeric}} ref
      */
     $resolveReference(ref) {
-        if (!this.registry)
+        if (!this.$registry)
             return;
-        if (!ref) {
-            if (!this.$isReference) {
-                // Mozel is already resolved
-                return this;
-            }
-            return this.registry.byGid(this.gid);
-        }
         // Resolve provided reference
-        return this.registry.byGid(ref.gid);
+        return this.$registry.byGid(ref.gid);
     }
     /**
      * Resolves all reference Properties and Collections
      */
     $resolveReferences() {
-        forEach(this.properties, (property, key) => {
+        forEach(this._properties, (property, key) => {
             property.resolveReferences();
         });
     }
@@ -632,7 +642,7 @@ let Mozel = Mozel_1 = class Mozel {
      * Applies all defined defaults to the properties.
      */
     $applyDefaults() {
-        forEach(this.properties, (property) => {
+        forEach(this._properties, (property) => {
             property.applyDefault();
         });
     }
@@ -640,7 +650,7 @@ let Mozel = Mozel_1 = class Mozel {
      * Check if any property has received a different value than its default.
      */
     $isDefault() {
-        return !!find(this.properties, (property) => {
+        return !!find(this._properties, (property) => {
             return !property.isDefault();
         });
     }
@@ -649,7 +659,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {Data} properties
      */
     $setPrimitiveProperties(properties) {
-        forEach(this.properties, (value, key) => {
+        forEach(this._properties, (value, key) => {
             if (!(key in properties) || !this.$isPrimitiveProperty(key)) {
                 return;
             }
@@ -662,9 +672,9 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $getPrimitiveProperties() {
         let properties = {};
-        forEach(this.properties, (property, key) => {
+        forEach(this._properties, (property, key) => {
             if (this.$isPrimitiveProperty(key)) {
-                properties[key] = this.properties[key].value;
+                properties[key] = this._properties[key].value;
             }
         });
         return properties;
@@ -675,9 +685,9 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $getComplexProperties() {
         let relations = {};
-        forEach(this.properties, (property, key) => {
+        forEach(this._properties, (property, key) => {
             if (!this.$isPrimitiveProperty(key)) {
-                relations[key] = this.properties[key].value;
+                relations[key] = this._properties[key].value;
             }
         });
         return relations;
@@ -687,7 +697,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param key
      */
     $isPrimitiveProperty(key) {
-        let type = this.properties[key].type;
+        let type = this._properties[key].type;
         return !isMozelClass(type) && type !== Collection;
     }
     /**
@@ -695,7 +705,7 @@ let Mozel = Mozel_1 = class Mozel {
      * @param property
      */
     $has(property) {
-        return property in this.properties;
+        return property in this._properties;
     }
     $eachProperty(callback) {
         for (let name in this.$properties) {
@@ -707,17 +717,23 @@ let Mozel = Mozel_1 = class Mozel {
     }
     /**
      * Export defined properties to a plain (nested) object.
+     * @param {string} [options.type]				Passed on recursively to each $export, based on which Mozel classes
+     * 												can determine the keys they should export.
+     * @param {string|string[]} [options.keys]		Only the given keys will be exported. This is not passed down the hierarchy.
      * @return {Data}
      */
-    $export() {
+    $export(options) {
+        const $options = options || {};
         let exported = {};
         if (this.static.hasOwnProperty('type')) {
             exported._type = this.static.type; // using parent's type confuses any factory trying to instantiate based on this export
         }
-        forEach(this.properties, (property, name) => {
+        forEach(this._properties, (property, name) => {
+            if (isArray($options.keys) && !includes($options.keys, name))
+                return;
             let value = property.value;
             if (isComplexValue(value)) {
-                exported[name] = value instanceof Mozel_1 ? value.$export() : value.export();
+                exported[name] = value instanceof Mozel_1 ? value.$export({ type: $options.type }) : value.export({ type: $options.type });
                 return;
             }
             exported[name] = value;
@@ -729,25 +745,25 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $cloneDeep() {
         // Use new factory with same dependencies but different Registry.
-        const dependencies = this.factory.dependencies;
+        const dependencies = this.$factory.dependencies;
         const factory = new MozelFactory(dependencies, new Registry());
         return factory.create(this.static, this.$export());
     }
     /**
-     * Can disable strict type checking, so properties can have invalid values. Errors will be stored in the Properties
+     * Can disable _strict type checking, so properties can have invalid values. Errors will be stored in the Properties
      * with invalid states.
-     * When using the properties in non-strict mode, always use type checking at runtime. Typescript will not complain.
-     * @param strict
+     * When using the properties in non-_strict mode, always use type checking at runtime. Typescript will not complain.
+     * @param _strict
      */
     set $strict(strict) {
-        this.strict = strict;
+        this._strict = strict;
     }
     get $strict() {
         // Get
-        if (this.strict === undefined && this.parent) {
-            return this.parent.$strict;
+        if (this._strict === undefined && this._parent) {
+            return this._parent.$strict;
         }
-        return this.strict !== false;
+        return this._strict !== false;
     }
     /**
      * Returns validation errors in the Mozel
@@ -756,8 +772,8 @@ let Mozel = Mozel_1 = class Mozel {
      */
     get $errors() {
         const errors = {};
-        for (let name in this.properties) {
-            const property = this.properties[name];
+        for (let name in this._properties) {
+            const property = this._properties[name];
             if (property.error) {
                 errors[name] = property.error;
             }
@@ -766,8 +782,8 @@ let Mozel = Mozel_1 = class Mozel {
     }
     $errorsDeep() {
         const errors = this.$errors;
-        for (let name in this.properties) {
-            const property = this.properties[name];
+        for (let name in this._properties) {
+            const property = this._properties[name];
             if (isComplexValue(property.value)) {
                 const subErrors = property.value instanceof Mozel_1 ? property.value.$errorsDeep() : property.value.errorsDeep();
                 for (let path in subErrors) {
@@ -787,7 +803,7 @@ let Mozel = Mozel_1 = class Mozel {
             // Instantiate new Templater with given data.
             templater = new Templater(templater);
         }
-        forEach(this.properties, (property, key) => {
+        forEach(this._properties, (property, key) => {
             let value = property.value;
             if (value instanceof Mozel_1) {
                 value.$renderTemplates(templater);
@@ -804,7 +820,7 @@ let Mozel = Mozel_1 = class Mozel {
         });
     }
     $forEachChild(callback) {
-        forEach(this.properties, (property, key) => {
+        forEach(this._properties, (property, key) => {
             if (property.value instanceof Mozel_1) {
                 return callback(property.value, key);
             }
@@ -828,8 +844,7 @@ __decorate([
 ], Mozel.prototype, "gid", void 0);
 Mozel = Mozel_1 = __decorate([
     injectable(),
-    __param(0, inject(MozelFactoryType)), __param(0, optional()),
-    __param(1, inject(Registry)), __param(1, optional())
+    __param(0, inject(MozelFactoryType)), __param(0, optional())
 ], Mozel);
 export default Mozel;
 //# sourceMappingURL=Mozel.js.map

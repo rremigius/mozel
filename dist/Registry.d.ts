@@ -4,15 +4,11 @@ export declare type Registerable = {
     gid?: alphanumeric;
 };
 export default class Registry<T extends Registerable> {
-    private indexById;
+    readonly id: string;
     private indexByGid;
     register(item: T): void;
     remove(item: T): void;
-    find(ids: {
-        id?: alphanumeric;
-        gid?: alphanumeric;
-    }): T | undefined;
-    byId<E extends T>(id: alphanumeric, ExpectedClass?: Class): E | undefined;
+    find(gid?: alphanumeric): T | undefined;
     byGid<E extends T>(gid: alphanumeric, ExpectedClass?: Class): E | undefined;
     /**
      * Find the current maximum numeric GID in the Registry. String values are ignored.

@@ -30,17 +30,17 @@ export declare class CollectionEvents extends EventInterface {
 export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
     private readonly type?;
-    private list;
+    private readonly _list;
+    private refs;
     private readonly removed;
-    /**
-     * Type errors of items in the collection.
-     */
     private _errors;
+    private _mozelDestroyedListener;
     parent: Mozel;
     relation: string;
     isReference: boolean;
     events: CollectionEvents;
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
+    protected get list(): T[];
     getTypeName(): string;
     getType(): CollectionType | undefined;
     isPrimitiveType(): boolean;
@@ -54,8 +54,8 @@ export default class Collection<T extends Mozel | primitive> {
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
     revise(item: any, init?: boolean): T;
-    add(item: object | T, init?: boolean): object | T;
-    addDefault(): object | T;
+    add(item: object | T, init?: boolean): true | object | T;
+    addDefault(): true | object | T;
     /**
      * Removes the item at the given index from the list. Returns the item.
      * @param {number} index			The index to remove.
@@ -100,7 +100,7 @@ export default class Collection<T extends Mozel | primitive> {
      * @param merge				If set to true, will keep the current mozel value if possible, only changing its data
      * @param notifyAddRemove	If set to false, will not fire add/remove events
      */
-    set(index: number, value: object | T, init?: boolean, merge?: boolean, notifyAddRemove?: boolean): object | T;
+    set(index: number, value: object | T, init?: boolean, merge?: boolean, notifyAddRemove?: boolean): true | object | T;
     /**
      *
      * @param items
@@ -111,13 +111,21 @@ export default class Collection<T extends Mozel | primitive> {
     getCounts(items: T[]): Map<T, number>;
     setParent(parent: Mozel): void;
     isDefault(): boolean;
-    resolveReferences(): void;
+    resolveReference(index: number, errorOnNotFound?: boolean): (T & Mozel) | undefined;
+    resolveReferences(recursive?: boolean): void;
     equals(other: Collection<any>): boolean;
     clone(): Collection<T>;
     cloneDeep(): Collection<T>;
     renderTemplates(templater: Templater | Data): void;
     path(path: string | string[]): PropertyValue;
-    export(): (Data | primitive)[];
+    /**
+     *
+     * @param options Options to pass to each of the Mozel.$export calls.
+     */
+    export(options: {
+        type?: string;
+        keys?: string[];
+    }): (Data | primitive)[];
     pathPattern(path: string | string[], startingPath?: string[]): {};
     get errors(): {
         [x: string]: Error;

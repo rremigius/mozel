@@ -1,20 +1,13 @@
 import logRoot from "./log";
 import { isNil } from 'lodash';
+import { uniqueId } from "./utils";
 const log = logRoot.instance("registry");
 export default class Registry {
     constructor() {
-        this.indexById = {};
+        this.id = uniqueId('registry-');
         this.indexByGid = {};
     }
     register(item) {
-        if (!isNil(item.id)) {
-            if (item.id in this.indexById) {
-                log.error(`Duplicate registration for ID: ${item.id}.`);
-            }
-            else {
-                this.indexById[item.id] = item;
-            }
-        }
         if (!isNil(item.gid)) {
             if (item.gid in this.indexByGid) {
                 log.error(`Duplicate registration for GID: ${item.gid}.`);
@@ -25,33 +18,17 @@ export default class Registry {
         }
     }
     remove(item) {
-        if (!isNil(item.id)) {
-            delete this.indexById[item.id];
-        }
         if (!isNil(item.gid)) {
             delete this.indexByGid[item.gid];
         }
     }
-    find(ids) {
-        if (!isNil(ids.id)) {
-            let item = this.byId(ids.id);
-            if (item)
-                return item;
-        }
-        if (!isNil(ids.gid)) {
-            let item = this.byGid(ids.gid);
+    find(gid) {
+        if (!isNil(gid)) {
+            let item = this.byGid(gid);
             if (item)
                 return item;
         }
         return; // not found
-    }
-    byId(id, ExpectedClass) {
-        const found = this.indexById[id];
-        if (ExpectedClass && !(found instanceof ExpectedClass)) {
-            log.error(`Object with ID ${id} was found, but was not a ${ExpectedClass.name}.`);
-            return undefined;
-        }
-        return found;
     }
     byGid(gid, ExpectedClass) {
         const found = this.indexByGid[gid];

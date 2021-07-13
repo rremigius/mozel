@@ -10,14 +10,9 @@ const log = logRoot.instance("factory");
 let MozelFactory = MozelFactory_1 = class MozelFactory {
     constructor(dependencies, mozelRegistry) {
         this.registry = mozelRegistry || new Registry();
+        this.dependencies = dependencies || MozelFactory_1.createDependencyContainer();
         this.localDependencies = MozelFactory_1.createDependencyContainer();
-        if (dependencies) {
-            this.dependencies = dependencies;
-            this.dependencies.parent = this.localDependencies;
-        }
-        else {
-            this.dependencies = this.localDependencies;
-        }
+        this.localDependencies.parent = this.dependencies;
         // Set scoped globals
         this.localDependencies.bind(MozelFactoryType).toConstantValue(this);
         this.localDependencies.bind(Registry).toConstantValue(this.registry);
@@ -61,9 +56,15 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         this.registry.remove(mozel);
     }
     createSet(ExpectedClass, data) {
-        const mozels = data.map(item => this.create(ExpectedClass, item));
-        mozels.forEach(item => item.$resolveReferences());
-        return mozels;
+        return data.map(item => this.create(ExpectedClass, item, true));
+    }
+    /**
+     * Alias for `create`, with `root = true`
+     * @param ExpectedClass
+     * @param data
+     */
+    createRoot(ExpectedClass, data) {
+        return this.create(ExpectedClass, data, true);
     }
     /**
      * Creates a Mozel
@@ -72,21 +73,21 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
      * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
      * @param {Class} ExpectedClass
      * @param {mozel} data
-     * @param {boolean} asReference		Set to true if the Mozel will only be a reference to another Mozel. It will not be registered.
+     * @param {boolean} root			Unless set to true, orphaned Mozels will destroy themselves.
      */
-    create(ExpectedClass, data, asReference = false) {
+    create(ExpectedClass, data, root = false) {
         function isT(mozel) {
             return mozel instanceof ExpectedClass;
         }
         let mozel;
         try {
-            if (data && data._type && this.dependencies.isBoundNamed(Mozel, data._type)) {
+            if (data && data._type && this.localDependencies.isBoundNamed(Mozel, data._type)) {
                 // Try to get most specific class
-                mozel = this.dependencies.getNamed(Mozel, data._type);
+                mozel = this.localDependencies.getNamed(Mozel, data._type);
             }
             else if (ExpectedClass) {
                 // Try to resolve class from dependencies
-                mozel = this.dependencies.get(ExpectedClass);
+                mozel = this.localDependencies.get(ExpectedClass);
             }
             if (!mozel && ExpectedClass) {
                 log.warn(`${ExpectedClass.type} dependency could not be resolved; using constructor directly.`);
@@ -107,22 +108,15 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         if (!mozel) {
             throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
         }
-        mozel.$isReference = asReference;
         if (data) {
             mozel.$setData(data);
         }
+        mozel.$root = root;
         // Register
         if (!mozel.gid) {
             mozel.gid = this.nextGID();
         }
-        if (!mozel.$isReference) {
-            this.registry.register(mozel);
-        }
-        return mozel;
-    }
-    createAndResolveReferences(ExpectedClass, data) {
-        const mozel = this.create(ExpectedClass, data);
-        mozel.$resolveReferences();
+        this.registry.register(mozel);
         return mozel;
     }
 };

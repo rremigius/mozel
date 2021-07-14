@@ -149,4 +149,5 @@ describe("Collection", () => {
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
 	});
+	// TODO: test lazy-loading of references
 });

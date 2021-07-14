@@ -584,7 +584,7 @@ export default class Collection<T extends Mozel|primitive> {
 	 *
 	 * @param options Options to pass to each of the Mozel.$export calls.
 	 */
-	export(options:{type?:string, keys?:string[]}):(Data|primitive)[] {
+	export(options?:{type?:string, keys?:string[]}):(Data|primitive)[] {
 		return map(this.list, (item:T) => {
 			if(item instanceof Mozel) {
 				return item.$export(options);

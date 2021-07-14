@@ -1104,6 +1104,7 @@ describe('Mozel', () => {
 				ref: {gid: 3},
 				refs: [{gid: 1}, {gid: 3}]
 			});
+
 			const gid1 = foo.foo;
 			const gid3 = foo.foos.get(1);
 

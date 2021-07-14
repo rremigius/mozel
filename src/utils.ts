@@ -11,5 +11,9 @@ export {
 	uniqueId,
 	debounce,
 	has,
-	includes
+	includes,
+	forEach,
+	remove,
+	mapValues,
+	values
 } from "lodash";

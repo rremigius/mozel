@@ -16,6 +16,7 @@ import Mozel, {DestroyedEvent} from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
 import {get} from "./utils";
+import {callback} from "event-interface-mixin";
 
 const log = logRoot.instance("property");
 
@@ -130,6 +131,7 @@ export default class Property {
 	private _default?:PropertyValue|PropertyValueFactory;
 	private _value:PropertyValue;
 	private _isDefault = false;
+	private _registryReferenceListener?:callback<any>;
 
 	private _collectionBeforeChangeListener = (event:CollectionBeforeChangeEvent<any>) => this.notifyBeforeChange(event.index.toString());
 	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => this.notifyChange(event.index.toString());
@@ -199,7 +201,7 @@ export default class Property {
 	 * Attempts to resolve the current reference GID to a value.
 	 * Will replace the current value with the result (even if reference was not found!)
 	 */
-	resolveReference(errorIfNotFound = true) {
+	resolveReference() {
 		if(!this.isReference) {
 			throw new Error("Property is not a reference. Cannot resolve.");
 		}
@@ -224,9 +226,6 @@ export default class Property {
 		// Replace placeholder mozel with the resolved reference
 		let mozel = this.parent.$resolveReference(this._ref);
 		if(!mozel){
-			if(errorIfNotFound) {
-				log.error(`Could not resolve reference with GID ${this._ref.gid}. Either the reference is faulty, or a read was attempted before the referenced object was created.`);
-			}
 			return;
 		} else if (!this.checkType(mozel)) {
 			log.error(`Referenced Mozel with GID ${this._ref.gid} was not a ${this.type.name}.`);
@@ -262,7 +261,7 @@ export default class Property {
 
 	get(resolveReference = true) {
 		if(this.isReference && resolveReference) {
-			this.resolveReference(true);
+			this.resolveReference();
 		}
 		return this._value;
 	}
@@ -447,7 +446,7 @@ export default class Property {
 		if(this.isReference && isPlainObject(value)) {
 			const gid = get(value, 'gid');
 			this._ref = gid ? {gid} : undefined;
-			this.resolveReference(false); // it is possible that it is not yet created
+			this.resolveReference(); // it is possible that it is not yet created
 			return true;
 		}
 

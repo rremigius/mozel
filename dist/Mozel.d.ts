@@ -261,7 +261,6 @@ export default class Mozel {
      * @param {boolean} merge		If set to `true`, only defined keys will be set.
      */
     $setData(data: Data, merge?: boolean): void;
-    $applyChanges(changes: Record<string, any>): void;
     /**
      * Watch changes to the given path.
      * @param {PropertyWatcherOptionsArgument} options

@@ -407,6 +407,9 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {boolean} merge					If set to true, Mozels will be kept if gid did not change; data will be set instead
      */
     $set(property, value, init = true, merge = false) {
+        if (this.$destroyed) {
+            throw new Error(`Trying to set Mozel property value after it has been destroyed.`);
+        }
         if (!(property in this._properties)) {
             throw new Error(`Could not set non-existing property '${property}' on ${this.$name}.`);
         }
@@ -555,10 +558,6 @@ let Mozel = Mozel_1 = class Mozel {
             if (!merge || key in data) {
                 this.$set(key, data[key], true, merge);
             }
-        });
-    }
-    $applyChanges(changes) {
-        forEach(changes, (value, path) => {
         });
     }
     /**

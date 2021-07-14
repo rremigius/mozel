@@ -130,7 +130,7 @@ export default class Collection<T extends Mozel | primitive> {
      *
      * @param options Options to pass to each of the Mozel.$export calls.
      */
-    export(options: {
+    export(options?: {
         type?: string;
         keys?: string[];
     }): (Data | primitive)[];

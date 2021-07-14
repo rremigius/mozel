@@ -155,7 +155,7 @@ let Property = Property_1 = class Property {
      * Attempts to resolve the current reference GID to a value.
      * Will replace the current value with the result (even if reference was not found!)
      */
-    resolveReference(errorIfNotFound = true) {
+    resolveReference() {
         if (!this.isReference) {
             throw new Error("Property is not a reference. Cannot resolve.");
         }
@@ -178,9 +178,6 @@ let Property = Property_1 = class Property {
         // Replace placeholder mozel with the resolved reference
         let mozel = this.parent.$resolveReference(this._ref);
         if (!mozel) {
-            if (errorIfNotFound) {
-                log.error(`Could not resolve reference with GID ${this._ref.gid}. Either the reference is faulty, or a read was attempted before the referenced object was created.`);
-            }
             return;
         }
         else if (!this.checkType(mozel)) {
@@ -214,7 +211,7 @@ let Property = Property_1 = class Property {
     }
     get(resolveReference = true) {
         if (this.isReference && resolveReference) {
-            this.resolveReference(true);
+            this.resolveReference();
         }
         return this._value;
     }
@@ -384,7 +381,7 @@ let Property = Property_1 = class Property {
         if (this.isReference && isPlainObject(value)) {
             const gid = get(value, 'gid');
             this._ref = gid ? { gid } : undefined;
-            this.resolveReference(false); // it is possible that it is not yet created
+            this.resolveReference(); // it is possible that it is not yet created
             return true;
         }
         // Init Collection

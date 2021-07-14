@@ -1,14 +1,24 @@
 import {Class, alphanumeric} from "validation-kit";
 import logRoot from "./log";
 import {isNil} from 'lodash';
-import {uniqueId} from "./utils";
+import {mapValues, uniqueId, values} from "./utils";
+import EventInterface, {EventEmitter} from "event-interface-mixin";
 
 const log = logRoot.instance("registry");
 
 export type Registerable = {id?:alphanumeric, gid?:alphanumeric};
 
+export class RegistryItemAdded<T> { constructor(public item:T) {} }
+export class RegistryItemRemoved<T> { constructor(public item:T) {} }
+export class RegistryEvents<T> extends EventInterface {
+	added = this.$event(RegistryItemAdded) as EventEmitter<RegistryItemAdded<T>>;
+	removed = this.$event(RegistryItemRemoved) as EventEmitter<RegistryItemRemoved<T>>;
+}
+
 export default class Registry<T extends Registerable> {
 	public readonly id = uniqueId('registry-');
+	public readonly events = new RegistryEvents();
+
 	private indexByGid:Record<alphanumeric,T> = {};
 
 	register(item:T) {
@@ -19,12 +29,14 @@ export default class Registry<T extends Registerable> {
 				this.indexByGid[item.gid] = item;
 			}
 		}
+		this.events.added.fire(new RegistryItemAdded(item));
 	}
 
 	remove(item:T) {
 		if(!isNil(item.gid)) {
 			delete this.indexByGid[item.gid];
 		}
+		this.events.removed.fire(new RegistryItemRemoved(item));
 	}
 
 	find(gid?:alphanumeric) {
@@ -56,4 +68,9 @@ export default class Registry<T extends Registerable> {
 		});
 		return max;
 	}
+
+	all() {
+		return values(this.indexByGid);
+	}
+
 }

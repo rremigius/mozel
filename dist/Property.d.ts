@@ -47,6 +47,7 @@ export default class Property {
     private _default?;
     private _value;
     private _isDefault;
+    private _registryReferenceListener?;
     private _collectionBeforeChangeListener;
     private _collectionChangedListener;
     private _mozelDestroyedListener;
@@ -63,7 +64,7 @@ export default class Property {
      * Attempts to resolve the current reference GID to a value.
      * Will replace the current value with the result (even if reference was not found!)
      */
-    resolveReference(errorIfNotFound?: boolean): void;
+    resolveReference(): void;
     /**
      * Either resolves its own reference if it is marked as one, or resolves all references of its value (only for complex values).
      */

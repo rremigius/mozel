@@ -540,6 +540,9 @@ export default class Mozel {
 	 * @param {boolean} merge					If set to true, Mozels will be kept if gid did not change; data will be set instead
 	 */
 	$set(property: string, value: PropertyInput, init = true, merge = false) {
+		if(this.$destroyed) {
+			throw new Error(`Trying to set Mozel property value after it has been destroyed.`);
+		}
 		if (!(property in this._properties)) {
 			throw new Error(`Could not set non-existing property '${property}' on ${this.$name}.`);
 		}
@@ -705,12 +708,6 @@ export default class Mozel {
 			if (!merge || key in data) {
 				this.$set(key, data[key], true, merge);
 			}
-		});
-	}
-
-	$applyChanges(changes:Record<string, any>) {
-		forEach(changes, (value, path) => {
-
 		});
 	}
 

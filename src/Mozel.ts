@@ -1022,4 +1022,8 @@ export default class Mozel {
 	get $name() {
 		return `${this.static.type} (${this.gid})`;
 	}
+
+	toString() {
+		return this.$name;
+	}
 }

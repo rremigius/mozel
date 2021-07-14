@@ -842,6 +842,9 @@ let Mozel = Mozel_1 = class Mozel {
     get $name() {
         return `${this.static.type} (${this.gid})`;
     }
+    toString() {
+        return this.$name;
+    }
 };
 Mozel.Events = MozelEvents;
 Mozel._classPropertyDefinitions = {};

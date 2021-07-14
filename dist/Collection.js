@@ -363,7 +363,7 @@ export default class Collection {
             return current;
         const resolved = this.parent.$resolveReference(reference);
         if (!resolved && errorOnNotFound) {
-            log.error(`Could not resolve reference with GID ${reference.gid}.`);
+            log.error(`Could not resolve reference with GID ${reference.gid}. Either the reference is faulty, or a read was attempted before the referenced object was created.`);
             return;
         }
         this.set(index, resolved);

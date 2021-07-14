@@ -225,7 +225,7 @@ export default class Property {
 		let mozel = this.parent.$resolveReference(this._ref);
 		if(!mozel){
 			if(errorIfNotFound) {
-				log.error(`Could not resolve Mozel with GID ${this._ref.gid}. Either the reference is faulty, or a read was attempted before the referenced Mozel was created.`);
+				log.error(`Could not resolve reference with GID ${this._ref.gid}. Either the reference is faulty, or a read was attempted before the referenced object was created.`);
 			}
 			return;
 		} else if (!this.checkType(mozel)) {

@@ -489,7 +489,7 @@ let Mozel = Mozel_1 = class Mozel {
                 continue; // cannot continue on this path
             }
             const subValues = value instanceof Mozel_1
-                ? value.$pathPattern(pathPattern.slice(1), [...startingPath, name])
+                ? value.$pathPattern(pathPattern.slice(1), [...startingPath, name], resolveReferences)
                 : value.pathPattern(pathPattern.slice(1), [...startingPath, name]);
             values = {
                 ...values,

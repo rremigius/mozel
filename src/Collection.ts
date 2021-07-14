@@ -534,7 +534,7 @@ export default class Collection<T extends Mozel|primitive> {
 		});
 	}
 
-	pathPattern(path:string|string[], startingPath:string[] = []) {
+	pathPattern(path:string|string[], startingPath:string[] = [], resolveReferences = true) {
 		if(isString(path)) {
 			path = path.split('.');
 		}
@@ -546,11 +546,11 @@ export default class Collection<T extends Mozel|primitive> {
 		const step = path[0];
 		let items;
 		if(step === '*') {
-			items = this.list.map((item, index) => ({item, index}));
+			items = this.getList(resolveReferences).map((item, index) => ({item, index}));
 		} else {
 			const index = parseInt(step);
 			if(isNaN(index)) return {}; // we don't have non-number indices
-			items = [{item: this.list[index], index}];
+			items = [{item: this.getList(resolveReferences)[index], index}];
 		}
 
 		let values = {};
@@ -559,7 +559,7 @@ export default class Collection<T extends Mozel|primitive> {
 			if(item instanceof Mozel) {
 				values = {
 					...values,
-					...item.$pathPattern(path.slice(1), [...startingPath, index.toString()])
+					...item.$pathPattern(path.slice(1), [...startingPath, index.toString()], resolveReferences)
 				}
 			} else if (path.length === 1) {
 				values = { ...values, [indexPath]: item };

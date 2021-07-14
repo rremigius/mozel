@@ -132,7 +132,7 @@ export default class Collection<T extends Mozel | primitive> {
         type?: string;
         keys?: string[];
     }): (Data | primitive)[];
-    pathPattern(path: string | string[], startingPath?: string[]): {};
+    pathPattern(path: string | string[], startingPath?: string[], resolveReferences?: boolean): {};
     get errors(): {
         [x: string]: Error;
     };

@@ -175,8 +175,9 @@ let Property = Property_1 = class Property {
         // Replace placeholder mozel with the resolved reference
         let mozel = this.parent.$resolveReference(this._ref);
         if (!mozel) {
-            if (errorIfNotFound)
+            if (errorIfNotFound) {
                 log.error(`No Mozel found with GID ${this._ref.gid}`);
+            }
             return;
         }
         else if (!this.checkType(mozel)) {

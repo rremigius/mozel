@@ -220,7 +220,9 @@ export default class Property {
 		// Replace placeholder mozel with the resolved reference
 		let mozel = this.parent.$resolveReference(this._ref);
 		if(!mozel){
-			if(errorIfNotFound) log.error(`No Mozel found with GID ${this._ref.gid}`);
+			if(errorIfNotFound) {
+				log.error(`No Mozel found with GID ${this._ref.gid}`);
+			}
 			return;
 		} else if (!this.checkType(mozel)) {
 			log.error(`Referenced Mozel with GID ${this._ref.gid} was not a ${this.type.name}.`);

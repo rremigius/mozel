@@ -62,7 +62,11 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	protected get list() {
-		if(this.isReference && this.refs.length) {
+		return this.getList()
+	}
+
+	protected getList(resolveReferences = true) {
+		if(resolveReferences && this.isReference && this.refs.length) {
 			this.resolveReferences();
 		}
 		return this._list;
@@ -242,8 +246,12 @@ export default class Collection<T extends Mozel|primitive> {
 		return this.list.indexOf(item);
 	}
 
-	toArray() {
-		return this.list.slice();
+	/**
+	 *
+	 * @param {boolean} resolveReferences	If set to false, will not try to resolve any references.
+	 */
+	toArray(resolveReferences = true) {
+		return this.getList(resolveReferences).slice();
 	}
 
 	getRemovedItems() {
@@ -251,11 +259,12 @@ export default class Collection<T extends Mozel|primitive> {
 	}
 
 	/**
-   	* @param index
-   	* @return {Mozel}
+   	 * @param index
+	 * @param {boolean} resolveReferences	If set to false, will not try to resolve references first.
+   	 * @return {Mozel}
    	*/
-	get(index:number):T|undefined {
-		return this.list[index];
+	get(index:number, resolveReferences = true):T|undefined {
+		return this.getList(resolveReferences)[index];
 	}
 
 	/**

@@ -46,7 +46,10 @@ export default class Collection {
     static get type() { return 'Collection'; }
     ;
     get list() {
-        if (this.isReference && this.refs.length) {
+        return this.getList();
+    }
+    getList(resolveReferences = true) {
+        if (resolveReferences && this.isReference && this.refs.length) {
             this.resolveReferences();
         }
         return this._list;
@@ -204,18 +207,23 @@ export default class Collection {
     indexOf(item) {
         return this.list.indexOf(item);
     }
-    toArray() {
-        return this.list.slice();
+    /**
+     *
+     * @param {boolean} resolveReferences	If set to false, will not try to resolve any references.
+     */
+    toArray(resolveReferences = true) {
+        return this.getList(resolveReferences).slice();
     }
     getRemovedItems() {
         return this.removed;
     }
     /**
-    * @param index
-    * @return {Mozel}
+     * @param index
+     * @param {boolean} resolveReferences	If set to false, will not try to resolve references first.
+     * @return {Mozel}
     */
-    get(index) {
-        return this.list[index];
+    get(index, resolveReferences = true) {
+        return this.getList(resolveReferences)[index];
     }
     /**
      *

@@ -54,6 +54,7 @@ export default class Property {
     constructor(parent: Mozel, name: string, type?: PropertyType, options?: PropertyOptions);
     get value(): PropertyValue;
     set value(value: PropertyValue);
+    get ref(): Reference | null | undefined;
     get default(): PropertyValue;
     set default(value: PropertyValue);
     get required(): boolean;

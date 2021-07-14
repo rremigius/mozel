@@ -128,6 +128,9 @@ let Property = Property_1 = class Property {
     set value(value) {
         this.set(value);
     }
+    get ref() {
+        return this._ref;
+    }
     get default() {
         if (isFunction(this._default)) {
             // Compute the default

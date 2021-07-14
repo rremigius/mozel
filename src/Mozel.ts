@@ -904,6 +904,10 @@ export default class Mozel {
 		forEach(this._properties, (property: Property, name: string) => {
 			if(isArray($options.keys) && !includes($options.keys, name)) return;
 
+			if(property.isReference) {
+				// If property was not yet resolved, just use the reference instead. Will prevent infinite loops with deep watchers
+				exported[name] = property.ref || property.value;
+			}
 			let value = property.value;
 			if (isComplexValue(value)) {
 				exported[name] = value instanceof Mozel ? value.$export({type: $options.type}) : value.export({type: $options.type});

@@ -57,7 +57,7 @@ export default class PropertyWatcher {
     }
     updateValues(path) {
         const appliedPath = this.applyMatchedPath(path);
-        const values = this.mozel.$pathPattern(appliedPath);
+        const values = this.mozel.$pathPattern(appliedPath, [], false); // prevent infinite loops
         for (let path in values) {
             let value = values[path];
             this.currentValues[path] = value;

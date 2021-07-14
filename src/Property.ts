@@ -167,6 +167,10 @@ export default class Property {
 		this.set(value);
 	}
 
+	get ref() {
+		return this._ref;
+	}
+
 	get default():PropertyValue {
 		if(isFunction(this._default)) {
 			// Compute the default

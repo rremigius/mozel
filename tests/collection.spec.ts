@@ -151,14 +151,17 @@ describe("Collection", () => {
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@collection(Foo)
-			foos!:Collection<Foo>;
 			@collection(Foo, {reference})
 			refs!:Collection<Foo>;
+			@collection(Foo)
+			foos!:Collection<Foo>;
 		}
 		const foo = Foo.create<Foo>({
 			refs: [{gid: 1}],
 			foos: [{gid: 1}]
 		});
+		assert.notExists(foo.refs.get(0, false), "Reference not yet resolved.");
+		assert.exists(foo.refs.get(0), "Reference can be accessed");
+		assert.exists(foo.refs.get(0, false), "Reference resolved.");
 	});
 });

@@ -41,6 +41,7 @@ export default class Collection<T extends Mozel | primitive> {
     events: CollectionEvents;
     constructor(parent: Mozel, relation: string, type?: CollectionType, list?: T[]);
     protected get list(): T[];
+    protected getList(resolveReferences?: boolean): T[];
     getTypeName(): string;
     getType(): CollectionType | undefined;
     isPrimitiveType(): boolean;
@@ -85,13 +86,18 @@ export default class Collection<T extends Mozel | primitive> {
     map<V>(func: (item: T, index: number) => V): V[];
     filter(func: (item: T, index: number) => boolean): T[];
     indexOf(item: T): number;
-    toArray(): T[];
+    /**
+     *
+     * @param {boolean} resolveReferences	If set to false, will not try to resolve any references.
+     */
+    toArray(resolveReferences?: boolean): T[];
     getRemovedItems(): T[];
     /**
-    * @param index
-    * @return {Mozel}
+     * @param index
+     * @param {boolean} resolveReferences	If set to false, will not try to resolve references first.
+     * @return {Mozel}
     */
-    get(index: number): T | undefined;
+    get(index: number, resolveReferences?: boolean): T | undefined;
     /**
      *
      * @param index

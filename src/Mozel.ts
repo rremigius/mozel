@@ -633,7 +633,7 @@ export default class Mozel {
 			}
 			const subValues = value instanceof Mozel
 				? value.$pathPattern(pathPattern.slice(1), [...startingPath, name], resolveReferences)
-				: value.pathPattern(pathPattern.slice(1), [...startingPath, name])
+				: value.pathPattern(pathPattern.slice(1), [...startingPath, name], resolveReferences)
 			values = {
 				...values,
 				...subValues

@@ -161,7 +161,6 @@ let Property = Property_1 = class Property {
         }
         // Reference set to undefined: value should be undefined
         if (this._ref === undefined) {
-            this._ref = null;
             this.set(undefined);
             return;
         }
@@ -175,14 +174,15 @@ let Property = Property_1 = class Property {
         }
         // Replace placeholder mozel with the resolved reference
         let mozel = this.parent.$resolveReference(this._ref);
-        if (!mozel && errorIfNotFound) {
-            log.error(`No Mozel found with GID ${this._ref.gid}`);
+        if (!mozel) {
+            if (errorIfNotFound)
+                log.error(`No Mozel found with GID ${this._ref.gid}`);
+            return;
         }
         else if (!this.checkType(mozel)) {
             log.error(`Referenced Mozel with GID ${this._ref.gid} was not a ${this.type.name}.`);
             mozel = undefined;
         }
-        this._ref = null;
         this.set(mozel);
     }
     /**
@@ -298,8 +298,13 @@ let Property = Property_1 = class Property {
         // TS: we did the type checking. If the Model is not strict, we allow non-checked types.
         this._set(value);
         if (this.isReference) {
-            const gid = get(value, 'gid');
-            this._ref = gid ? { gid } : undefined;
+            if (value instanceof Mozel) {
+                this._ref = null;
+            }
+            else {
+                const gid = get(value, 'gid');
+                this._ref = gid ? { gid } : undefined;
+            }
         }
         return value;
     }

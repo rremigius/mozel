@@ -427,6 +427,7 @@ export default class Mozel {
 	 * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
 	 */
 	$setParent(parent: Mozel, relation: string, lock: boolean = false) {
+		// TODO: should not be possible to mix Mozel hierarchies from different Registries
 		if (this.$parentLock) {
 			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
 		}

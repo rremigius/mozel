@@ -28,7 +28,7 @@ export default class PropertyWatcher {
             // Only fire if changed
             if (this.hasChanged(newValue, valuePath, path)) {
                 const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
-                this.handler({ newValue, oldValue, valuePath, changePath: path });
+                this.handler({ newValue, oldValue, valuePath: valuePath, changePath: path });
             }
         }
     }
@@ -46,7 +46,8 @@ export default class PropertyWatcher {
         }
         // Compare deep value with our deep clone
         const currentDeep = this.deepValues[watcherPath];
-        const deeperPath = changePath.substring(watcherPath.length + 1); // remove watcher path, including final '.'
+        // remove watcher path, including final '.' (for empty watcherPath, do not expect '.')
+        const deeperPath = changePath.substring(watcherPath.length ? watcherPath.length + 1 : 0);
         // If the change happened deep, but current or new value is not a Mozel, then it must be different
         // (although it should not even be possible, actually)
         if (!(currentDeep instanceof Mozel) || !(newWatcherValue instanceof Mozel))
@@ -105,6 +106,8 @@ export default class PropertyWatcher {
     applyMatchedPath(matchedPath) {
         if (matchedPath === this.path)
             return matchedPath;
+        if (this.path === '')
+            return [];
         // We use the matched path until:
         // - end of matched path
         // - end of watcher path

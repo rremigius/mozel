@@ -517,6 +517,34 @@ let Mozel = Mozel_1 = class Mozel {
             throw new Error("No path from given Mozel found.");
         return [...this._parent.$getPathArrayFrom(mozel), this._relation];
     }
+    $setPath(path, value, initAlongPath = true) {
+        const pathArray = isArray(path) ? path : path.split('.');
+        if (pathArray.length === 0) {
+            throw new Error("Cannot set 0-length path.");
+        }
+        if (pathArray.length === 1) {
+            return this.$set(pathArray[0], value);
+        }
+        const property = this.$property(pathArray[0]);
+        if (!property.isMozelType() && !property.isCollectionType()) {
+            throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}.'`);
+        }
+        // Initialize property value if necessary
+        if (!property.value && property.isMozelType() && initAlongPath) {
+            property.set({}, true);
+        }
+        // Continue path
+        const sub = property.value;
+        const newPath = pathArray.slice(1);
+        if (sub instanceof Mozel_1) {
+            return sub.$setPath(newPath, value, initAlongPath);
+        }
+        else if (sub instanceof Collection) {
+            return sub.setPath(newPath, value, initAlongPath);
+        }
+        // Should not be possible:
+        throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}. Unexpected error.'`);
+    }
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
@@ -527,6 +555,10 @@ let Mozel = Mozel_1 = class Mozel {
             if (!merge || key in data) {
                 this.$set(key, data[key], true, merge);
             }
+        });
+    }
+    $applyChanges(changes) {
+        forEach(changes, (value, path) => {
         });
     }
     /**

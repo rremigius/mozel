@@ -124,6 +124,8 @@ export default class Collection<T extends Mozel | primitive> {
     cloneDeep(): Collection<T>;
     renderTemplates(templater: Templater | Data): void;
     path(path: string | string[]): PropertyValue;
+    pathPattern(path: string | string[], startingPath?: string[], resolveReferences?: boolean): {};
+    setPath(path: string | string[], value: any, initAlongPath?: boolean): true | object | T | undefined;
     /**
      *
      * @param options Options to pass to each of the Mozel.$export calls.
@@ -132,7 +134,6 @@ export default class Collection<T extends Mozel | primitive> {
         type?: string;
         keys?: string[];
     }): (Data | primitive)[];
-    pathPattern(path: string | string[], startingPath?: string[], resolveReferences?: boolean): {};
     get errors(): {
         [x: string]: Error;
     };

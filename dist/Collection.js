@@ -5,6 +5,7 @@ import { isAlphanumeric, isPrimitive } from 'validation-kit';
 import { concat, forEach, get, isFunction, isMatch, isPlainObject, isString, map } from 'lodash';
 import Templater from "./Templater";
 import Log from 'log-control';
+import { isArray } from "./utils";
 const log = Log.instance("mozel/collection");
 export class CollectionItemEvent {
     constructor(item, index) {
@@ -460,18 +461,6 @@ export default class Collection {
         }
         return item.$path(path.slice(1));
     }
-    /**
-     *
-     * @param options Options to pass to each of the Mozel.$export calls.
-     */
-    export(options) {
-        return map(this.list, (item) => {
-            if (item instanceof Mozel) {
-                return item.$export(options);
-            }
-            return item;
-        });
-    }
     pathPattern(path, startingPath = [], resolveReferences = true) {
         if (isString(path)) {
             path = path.split('.');
@@ -508,6 +497,37 @@ export default class Collection {
             }
         });
         return values;
+    }
+    setPath(path, value, initAlongPath = true) {
+        const pathArray = isArray(path) ? path : path.split('.');
+        if (pathArray.length === 0) {
+            throw new Error("Cannot set 0-length path.");
+        }
+        const index = parseInt(pathArray[0]);
+        if (isNaN(index))
+            throw new Error(`Index should be a number. Received: ${index}`);
+        if (pathArray.length === 1) {
+            return this.set(index, value);
+        }
+        let sub = this.get(index);
+        // Initialize if necessary
+        if (!(sub instanceof Mozel) && initAlongPath) {
+            sub = this.set(index, {}, true);
+        }
+        const newPath = pathArray.slice(1);
+        sub.$setPath(newPath, value);
+    }
+    /**
+     *
+     * @param options Options to pass to each of the Mozel.$export calls.
+     */
+    export(options) {
+        return map(this.list, (item) => {
+            if (item instanceof Mozel) {
+                return item.$export(options);
+            }
+            return item;
+        });
     }
     get errors() {
         return { ...this._errors };

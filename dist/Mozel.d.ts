@@ -232,11 +232,11 @@ export default class Mozel {
      * Get the Property object with the given name.
      * @param property
      */
-    $property<K extends PropertyKeys<this> & string>(property: K): Property;
+    $property(property: string): Property;
     /**
      * Alias of $property
      */
-    $: <K extends PropertyKeys<this> & string>(property: K) => Property;
+    $: (property: string) => Property;
     /**
      * Get value at given path (not type-safe).
      * @param {string|string[]} path
@@ -254,12 +254,14 @@ export default class Mozel {
     $getPathArray(): string[];
     $getPathFrom(mozel: Mozel): string;
     $getPathArrayFrom(mozel: Mozel): string[];
+    $setPath(path: string | string[], value: any, initAlongPath?: boolean): unknown;
     /**
      * Sets all registered properties from the given data.
      * @param {object} data			The data to set into the mozel.
      * @param {boolean} merge		If set to `true`, only defined keys will be set.
      */
     $setData(data: Data, merge?: boolean): void;
+    $applyChanges(changes: Record<string, any>): void;
     /**
      * Watch changes to the given path.
      * @param {PropertyWatcherOptionsArgument} options

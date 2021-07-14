@@ -1016,6 +1016,74 @@ describe('Mozel', () => {
 		});
 	});
 
+	describe("$setPath", () => {
+		it("sets the given value at the given path", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo
+				@collection(Foo)
+				foos!:Collection<Foo>
+			}
+			const root = Foo.create<Foo>({
+				name: 'root',
+				foo: {
+					name: 'root.foo'
+				},
+				foos: [{}]
+			});
+			root.$setPath('foo.name', 'root.name2');
+			root.$setPath('foos.0.name', 'root.foos.0.name');
+			assert.equal(root.foo!.name, 'root.name2');
+			assert.equal(root.foos.get(0)!.name, 'root.foos.0.name');
+		});
+		it("initializes any non-existing values along the path", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo
+				@collection(Foo)
+				foos!:Collection<Foo>
+			}
+			const root = Foo.create<Foo>({
+				name: 'root'
+			});
+			root.$setPath('foo.name', 'root.name2');
+			root.$setPath('foos.0.name', 'root.foos.0.name');
+			assert.equal(root.foo!.name, 'root.name2');
+			assert.equal(root.foos.get(0)!.name, 'root.foos.0.name');
+		});
+		it("with `initAlongPath: false` does not initialize any non-existing values along the path", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo
+				@collection(Foo)
+				foos!:Collection<Foo>
+			}
+			const root = Foo.create<Foo>({
+				name: 'root'
+			});
+			try {
+				root.$setPath('foo.name', 'root.name2', false);
+				assert.notOk(false, "Error thrown");
+			} catch(e) {
+				assert.ok(true, "Error thrown");
+			}
+			try {
+				root.$setPath('foos.0.name', 'root.foos.0.name', false);
+				assert.notOk(false, "Error thrown");
+			} catch(e) {
+				assert.ok(true, "Error thrown");
+			}
+			assert.notExists(root.foo, 'root.foo not created');
+			assert.notExists(root.foos.get(0), 'root.foos.0 not created');
+		});
+	});
+
 	describe("$destroy", () => {
 		it("removes the Mozel from any Collections and Properties it is in", () => {
 			class Foo extends Mozel {
@@ -1104,27 +1172,6 @@ describe('Mozel', () => {
 			foos: [{gid: 'foo'}]
 		});
 
-		assert.notExists(foo.$property('ref').get(false), "Reference not yet resolved.");
-		assert.exists(foo.ref, "Reference can be accessed");
-		assert.exists(foo.$property('ref').get(false), "Reference resolved.");
-	})
-
-	it("references are lazy-loaded (2)", () => {
-		class Foo extends Mozel {
-			@property(Foo, {reference})
-			ref?:Foo;
-			@collection(Foo)
-			foos!:Collection<Foo>;
-		}
-		const foo = Foo.create<Foo>({
-			gid: 'a',
-			ref: {
-				gid: 'a0'
-			},
-			foos: [{
-				gid: 'a0', ref: {gid: 'a'}
-			}]
-		});
 		assert.notExists(foo.$property('ref').get(false), "Reference not yet resolved.");
 		assert.exists(foo.ref, "Reference can be accessed");
 		assert.exists(foo.$property('ref').get(false), "Reference resolved.");

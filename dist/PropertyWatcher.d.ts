@@ -35,5 +35,5 @@ export default class PropertyWatcher {
     updateValues(path: string): void;
     resetValues(): void;
     matches(path: string): boolean | undefined;
-    applyMatchedPath(matchedPath: string): string;
+    applyMatchedPath(matchedPath: string): string | never[];
 }

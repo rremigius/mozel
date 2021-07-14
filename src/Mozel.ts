@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import Property, {
 	Alphanumeric,
-	ComplexValue,
+	ComplexValue, isComplexType,
 	isComplexValue,
 	isMozelClass,
 	MozelClass,
@@ -568,7 +568,7 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	$property<K extends PropertyKeys<this> & string>(property:K) {
+	$property(property:string) {
 		return this._properties[property];
 	}
 
@@ -665,6 +665,36 @@ export default class Mozel {
 		return [...this._parent.$getPathArrayFrom(mozel), this._relation];
 	}
 
+	$setPath(path:string|string[], value:any, initAlongPath = true):unknown {
+		const pathArray = isArray(path) ? path : path.split('.');
+		if(pathArray.length === 0) {
+			throw new Error("Cannot set 0-length path.");
+		}
+		if(pathArray.length === 1) {
+			return this.$set(pathArray[0], value);
+		}
+		const property = this.$property(pathArray[0]);
+		if(!property.isMozelType() && !property.isCollectionType()) {
+			throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}.'`);
+		}
+
+		// Initialize property value if necessary
+		if(!property.value && property.isMozelType() && initAlongPath) {
+			property.set({}, true);
+		}
+
+		// Continue path
+		const sub = property.value;
+		const newPath = pathArray.slice(1);
+		if(sub instanceof Mozel) {
+			return sub.$setPath(newPath, value, initAlongPath);
+		} else if (sub instanceof Collection) {
+			return sub.setPath(newPath, value, initAlongPath);
+		}
+		// Should not be possible:
+		throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}. Unexpected error.'`);
+	}
+
 	/**
 	 * Sets all registered properties from the given data.
 	 * @param {object} data			The data to set into the mozel.
@@ -675,6 +705,12 @@ export default class Mozel {
 			if (!merge || key in data) {
 				this.$set(key, data[key], true, merge);
 			}
+		});
+	}
+
+	$applyChanges(changes:Record<string, any>) {
+		forEach(changes, (value, path) => {
+
 		});
 	}
 

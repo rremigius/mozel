@@ -426,7 +426,7 @@ let Mozel = Mozel_1 = class Mozel {
         if (!(property in this._properties)) {
             throw new Error(`Could not get non-existing property '${property}' on ${this.$name}.`);
         }
-        return this._properties[property].value;
+        return this._properties[property].get(resolveReference);
     }
     /**
      * Get the Property object with the given name.

@@ -561,7 +561,7 @@ export default class Mozel {
 		if (!(property in this._properties)) {
 			throw new Error(`Could not get non-existing property '${property}' on ${this.$name}.`);
 		}
-		return this._properties[property].value;
+		return this._properties[property].get(resolveReference);
 	}
 
 	/**

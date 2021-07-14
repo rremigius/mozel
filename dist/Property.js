@@ -379,7 +379,8 @@ let Property = Property_1 = class Property {
         let current = this._value;
         // Init reference
         if (this.isReference && isPlainObject(value)) {
-            this._ref = value;
+            const gid = get(value, 'gid');
+            this._ref = gid ? { gid } : undefined;
             this.resolveReference(false); // it is possible that it is not yet created
             return true;
         }

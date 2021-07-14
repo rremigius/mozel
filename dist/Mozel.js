@@ -415,8 +415,9 @@ let Mozel = Mozel_1 = class Mozel {
     /**
      * Get type-safe value of the given property.
      * @param {string} property
+     * @param {boolean} resolveReference	If set to false, will not try to resolve any references.
      */
-    $get(property) {
+    $get(property, resolveReference = true) {
         if (this.$destroyed && property !== 'gid') { // we accept gid because it may still be needed to identify
             throw new Error(`Accessing Mozel after it has been destroyed.`);
         }
@@ -436,9 +437,10 @@ let Mozel = Mozel_1 = class Mozel {
     }
     /**
      * Get value at given path (not type-safe).
-     * @param path
+     * @param {string|string[]} path
+     * @param {boolean}	resolveReferences	If false, will not try to resolve any encountered references.
      */
-    $path(path) {
+    $path(path, resolveReferences = true) {
         if (isString(path)) {
             path = path.split('.');
         }
@@ -459,8 +461,9 @@ let Mozel = Mozel_1 = class Mozel {
      * Gets all path values mathing the given path pattern.
      * @param {string|string[]} pathPattern	Path pattern to match. May include wildcards ('*').
      * @param {string[]} startingPath		Path to prepend to the resulting paths. Used for recursion.
+     * @param {boolean} resolveReferences	If set to false, will not try to resolve any encountered references.
      */
-    $pathPattern(pathPattern, startingPath = []) {
+    $pathPattern(pathPattern, startingPath = [], resolveReferences = true) {
         if (isString(pathPattern)) {
             pathPattern = pathPattern.split('.');
         }
@@ -473,7 +476,7 @@ let Mozel = Mozel_1 = class Mozel {
             for (let name of properties) {
                 values = {
                     ...values,
-                    [concat(startingPath, name).join('.')]: this.$get(name)
+                    [concat(startingPath, name).join('.')]: this.$get(name, resolveReferences)
                 };
             }
             return values;
@@ -481,7 +484,7 @@ let Mozel = Mozel_1 = class Mozel {
         // Path length > 1
         let values = {};
         for (let name of properties) {
-            const value = this.$get(name);
+            const value = this.$get(name, resolveReferences);
             if (!isComplexValue(value)) {
                 continue; // cannot continue on this path
             }

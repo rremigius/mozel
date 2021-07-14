@@ -1,7 +1,7 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
-import Mozel, {collection, deep, property} from "../src/Mozel";
+import Mozel, {collection, deep, property, reference} from "../src/Mozel";
 import Collection, {
 	CollectionChangedEvent,
 	CollectionItemAddedEvent,
@@ -149,5 +149,16 @@ describe("Collection", () => {
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
 	});
-	// TODO: test lazy-loading of references
+	it("references are lazy-loaded", () => {
+		class Foo extends Mozel {
+			@collection(Foo)
+			foos!:Collection<Foo>;
+			@collection(Foo, {reference})
+			refs!:Collection<Foo>;
+		}
+		const foo = Foo.create<Foo>({
+			refs: [{gid: 1}],
+			foos: [{gid: 1}]
+		});
+	});
 });

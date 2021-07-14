@@ -225,8 +225,9 @@ export default class Mozel {
     /**
      * Get type-safe value of the given property.
      * @param {string} property
+     * @param {boolean} resolveReference	If set to false, will not try to resolve any references.
      */
-    $get(property: string): PropertyValue;
+    $get(property: string, resolveReference?: boolean): PropertyValue;
     /**
      * Get the Property object with the given name.
      * @param property
@@ -238,15 +239,17 @@ export default class Mozel {
     $: <K extends PropertyKeys<this> & string>(property: K) => Property;
     /**
      * Get value at given path (not type-safe).
-     * @param path
+     * @param {string|string[]} path
+     * @param {boolean}	resolveReferences	If false, will not try to resolve any encountered references.
      */
-    $path(path: string | string[]): PropertyValue;
+    $path(path: string | string[], resolveReferences?: boolean): PropertyValue;
     /**
      * Gets all path values mathing the given path pattern.
      * @param {string|string[]} pathPattern	Path pattern to match. May include wildcards ('*').
      * @param {string[]} startingPath		Path to prepend to the resulting paths. Used for recursion.
+     * @param {boolean} resolveReferences	If set to false, will not try to resolve any encountered references.
      */
-    $pathPattern(pathPattern: string | string[], startingPath?: string[]): Record<string, PropertyValue>;
+    $pathPattern(pathPattern: string | string[], startingPath?: string[], resolveReferences?: boolean): Record<string, PropertyValue>;
     $getPath(): string;
     $getPathArray(): string[];
     $getPathFrom(mozel: Mozel): string;

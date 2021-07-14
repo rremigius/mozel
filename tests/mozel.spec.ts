@@ -1108,4 +1108,25 @@ describe('Mozel', () => {
 		assert.exists(foo.ref, "Reference can be accessed");
 		assert.exists(foo.$property('ref').get(false), "Reference resolved.");
 	})
+
+	it("references are lazy-loaded (2)", () => {
+		class Foo extends Mozel {
+			@property(Foo, {reference})
+			ref?:Foo;
+			@collection(Foo)
+			foos!:Collection<Foo>;
+		}
+		const foo = Foo.create<Foo>({
+			gid: 'a',
+			ref: {
+				gid: 'a0'
+			},
+			foos: [{
+				gid: 'a0', ref: {gid: 'a'}
+			}]
+		});
+		assert.notExists(foo.$property('ref').get(false), "Reference not yet resolved.");
+		assert.exists(foo.ref, "Reference can be accessed");
+		assert.exists(foo.$property('ref').get(false), "Reference resolved.");
+	});
 });

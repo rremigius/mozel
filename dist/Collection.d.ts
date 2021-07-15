@@ -121,7 +121,7 @@ export default class Collection<T extends Mozel | primitive> {
     resolveReferences(recursive?: boolean): void;
     equals(other: Collection<any>): boolean;
     clone(): Collection<T>;
-    cloneDeep(): Collection<T>;
+    cloneDeep(parent: Mozel): Collection<T>;
     renderTemplates(templater: Templater | Data): void;
     path(path: string | string[]): PropertyValue;
     pathPattern(path: string | string[], startingPath?: string[], resolveReferences?: boolean): {};

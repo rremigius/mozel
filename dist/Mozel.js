@@ -15,6 +15,7 @@ import PropertyWatcher from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
 import { includes, isArray } from "./utils";
+import { v4 as uuid } from "uuid";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
 export { LogLevel };
@@ -78,7 +79,6 @@ let Mozel = Mozel_1 = class Mozel {
         this.$parentLock = false;
         this.$root = false;
         this.$destroyed = false;
-        this.gid = 0; // a non-database ID that can be used to reference other mozels
         /**
          * Alias of $property
          */
@@ -282,7 +282,11 @@ let Mozel = Mozel_1 = class Mozel {
             this.$destroy();
         }
     }
-    $detach() {
+    /**
+     * Removes the Mozel from its parent.
+     * @param {boolean} makeRoot	Set to `true` to prevent the Mozel from cleaning up next tick.
+     */
+    $detach(makeRoot = false) {
         if (this.$parentLock) {
             throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
         }
@@ -291,6 +295,8 @@ let Mozel = Mozel_1 = class Mozel {
         }
         this._parent = null;
         this._relation = "";
+        if (makeRoot)
+            this.$root = true;
         setTimeout(() => {
             this.$maybeCleanUp();
         });
@@ -302,6 +308,9 @@ let Mozel = Mozel_1 = class Mozel {
      * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
      */
     $setParent(parent, relation, lock = false) {
+        if (parent.$factory !== this.$factory || parent.$registry !== this.$registry) {
+            throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
+        }
         if (this.$parentLock) {
             throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
         }
@@ -311,6 +320,7 @@ let Mozel = Mozel_1 = class Mozel {
         this._parent = parent;
         this._relation = relation;
         this.$parentLock = lock;
+        this.$root = false;
     }
     $remove(child, includeReferences = false) {
         for (let key in this.$properties) {
@@ -865,7 +875,8 @@ let Mozel = Mozel_1 = class Mozel {
             if (property.value instanceof Collection) {
                 if (!property.value.isMozelType())
                     return;
-                return property.value.each((mozel, index) => callback(mozel, key + "." + index));
+                const items = property.value.toArray(); // to prevent disruptions in iteration (e.g. by $destroy)
+                return items.forEach((mozel, index) => callback(mozel, key + "." + index));
             }
         });
     }
@@ -881,7 +892,7 @@ Mozel.Events = MozelEvents;
 Mozel._classPropertyDefinitions = {};
 Mozel._classCollectionDefinitions = {};
 __decorate([
-    property(Alphanumeric, { required })
+    property(Alphanumeric, { required, default: () => uuid() })
 ], Mozel.prototype, "gid", void 0);
 Mozel = Mozel_1 = __decorate([
     injectable(),

@@ -132,18 +132,7 @@ let Property = Property_1 = class Property {
         return this._ref;
     }
     get default() {
-        if (isFunction(this._default)) {
-            // Compute the default
-            this._default = this._default();
-        }
         return this._default;
-    }
-    set default(value) {
-        if (!this.checkType(value)) {
-            log.error(`Default for ${this.parent.static.type}.${this.name} expects a ${this.getTypeName()}.`, value);
-            return;
-        }
-        this._default = value;
     }
     get required() {
         return this._required;
@@ -331,18 +320,20 @@ let Property = Property_1 = class Property {
         if (this.value !== undefined) {
             return;
         }
+        let def = isFunction(this.default) ? this.default() : this.default;
         // If Property is required but no default was set, generate one
-        if (this.required && isNil(this.default)) {
-            this.default = this.generateDefaultValue();
+        if (this.required && isNil(def)) {
+            def = this.generateDefaultValue();
         }
         // No default defined, no default to apply
-        if (this.default === undefined) {
+        if (def === undefined) {
             return;
         }
         // Apply
-        this.value = this.default;
-        if (this.value instanceof Mozel) {
-            this.value.$applyDefaults();
+        this.set(def, true);
+        const value = this.value;
+        if (value instanceof Mozel) {
+            value.$applyDefaults();
         }
         this._isDefault = true;
     }

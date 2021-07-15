@@ -11,9 +11,9 @@ export declare type PrimitiveObject = Record<string, primitive | undefined | nul
 export declare type Reference = {
     gid: alphanumeric;
 };
-export declare type PropertyValueFactory = () => PropertyValue;
+export declare type PropertyInputFactory = () => PropertyInput;
 export declare type PropertyOptions = {
-    default?: PropertyValue | PropertyValueFactory;
+    default?: PropertyInput | PropertyInputFactory;
     required?: boolean;
     reference?: boolean;
 };
@@ -44,7 +44,7 @@ export default class Property {
     private readonly _reference;
     private _ref?;
     private readonly _required;
-    private _default?;
+    private readonly _default?;
     private _value;
     private _isDefault;
     private _registryReferenceListener?;
@@ -56,8 +56,7 @@ export default class Property {
     get value(): PropertyValue;
     set value(value: PropertyValue);
     get ref(): Reference | null | undefined;
-    get default(): PropertyValue;
-    set default(value: PropertyValue);
+    get default(): PropertyInput | PropertyInputFactory;
     get required(): boolean;
     get isReference(): boolean;
     /**
@@ -92,7 +91,7 @@ export default class Property {
     notifyChange(path?: string): void;
     setErrorValue(value: any): void;
     applyDefault(): void;
-    generateDefaultValue(): false | "" | 0 | Mozel;
+    generateDefaultValue(): PropertyValue;
     getTypeName(): string;
     /**
      * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections

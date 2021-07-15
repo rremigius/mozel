@@ -113,9 +113,6 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         }
         mozel.$root = root;
         // Register
-        if (!mozel.gid) {
-            mozel.gid = this.nextGID();
-        }
         this.registry.register(mozel);
         return mozel;
     }

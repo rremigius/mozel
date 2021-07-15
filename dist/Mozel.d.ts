@@ -174,7 +174,11 @@ export default class Mozel {
      * Will destroy itself if not root and without parent.
      */
     $maybeCleanUp(): void;
-    $detach(): void;
+    /**
+     * Removes the Mozel from its parent.
+     * @param {boolean} makeRoot	Set to `true` to prevent the Mozel from cleaning up next tick.
+     */
+    $detach(makeRoot?: boolean): void;
     /**
      * Set the Mozel's parent Mozel.
      * @param {Mozel} parent			The parent this Mozel is a child of.

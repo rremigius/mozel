@@ -33,6 +33,8 @@ export default class PropertyWatcher {
     execute(path: string): void;
     hasChanged(newWatcherValue: any, watcherPath: string, changePath: string): boolean;
     updateValues(path: string): void;
+    destroyDeepValues(value: PropertyValue): void;
+    cloneDeepValues(value: PropertyValue): PropertyValue;
     resetValues(): void;
     matches(path: string): boolean | undefined;
     applyMatchedPath(matchedPath: string): string | never[];

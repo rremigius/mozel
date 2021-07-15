@@ -1,6 +1,6 @@
-import { isComplexValue } from "./Property";
 import Mozel from "./Mozel";
-import { isNumber, debounce } from "lodash";
+import { debounce, isNumber } from "lodash";
+import Collection from "./Collection";
 export default class PropertyWatcher {
     constructor(mozel, options) {
         this.currentValues = {};
@@ -64,16 +64,30 @@ export default class PropertyWatcher {
             this.currentValues[path] = value;
             // Make deep clone so we can compare deeper paths
             if (this.deep) {
-                if (isComplexValue(value)) {
-                    this.deepValues[path] = value instanceof Mozel ? value.$cloneDeep() : value.cloneDeep();
-                }
-                else {
-                    this.deepValues[path] = value;
-                }
+                this.destroyDeepValues(this.deepValues[path]);
+                this.deepValues[path] = this.cloneDeepValues(value);
             }
         }
         // Reset values next tick. All updates should be completed within the tick
         setTimeout(() => this.resetValues());
+    }
+    destroyDeepValues(value) {
+        if (value instanceof Mozel) {
+            return value.$destroy();
+        }
+        else if (value instanceof Collection) {
+            return value.parent.$destroy();
+        }
+    }
+    cloneDeepValues(value) {
+        if (value instanceof Mozel) {
+            return value.$cloneDeep();
+        }
+        else if (value instanceof Collection) {
+            const mozel = value.parent.$cloneDeep();
+            return mozel.$get(value.relation);
+        }
+        return value;
     }
     resetValues() {
         this.currentValues = {};

@@ -31,6 +31,7 @@ import PropertyWatcher, {
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
 import {includes, isArray} from "./utils";
+import {v4 as uuid} from "uuid";
 
 // TYPES
 
@@ -281,8 +282,8 @@ export default class Mozel {
 	public $destroyed: boolean = false;
 	public $events:MozelEvents;
 
-	@property(Alphanumeric, {required})
-	gid: alphanumeric = 0; // a non-database ID that can be used to reference other mozels
+	@property(Alphanumeric, {required, default:()=>uuid()})
+	gid!: alphanumeric; // a non-database ID that can be used to reference other mozels
 
 	/**
 	 * Define a property for the mozel.

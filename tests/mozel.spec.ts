@@ -51,7 +51,13 @@ function checkAll(mozel:Mozel, acceptable:Record<string, any[]>) {
 }
 
 describe('Mozel', () => {
-
+	it('generates uuid for undefined gid', () => {
+		const mozel = new Mozel();
+		const mozel2 = new Mozel();
+		assert.isString(mozel.gid, "GID is a string");
+		assert.isAbove((mozel.gid as string).length, 8, "GID is a long string");
+		assert.notEqual(mozel.gid, mozel2.gid, "GIDs of different Mozels are different by default");
+	});
 	it('cannot set required properties to null or undefined.', () => {
 		class FooMozel extends Mozel {
 			@property(String, {default:'abc', required:true})

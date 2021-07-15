@@ -5,6 +5,7 @@ import Mozel, {MozelClass, MozelConstructor, MozelData} from "./Mozel";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
 import {isArray} from "lodash";
+import {v4 as uuid} from "uuid";
 
 const log = logRoot.instance("factory");
 
@@ -138,9 +139,6 @@ export default class MozelFactory implements MozelFactoryInterface {
 		mozel.$root = root;
 
 		// Register
-		if(!mozel.gid) {
-			mozel.gid = this.nextGID();
-		}
 		this.registry.register(mozel);
 
 		return mozel;

@@ -1,4 +1,4 @@
-import Mozel, {Data} from "./Mozel";
+import Mozel, {Data, immediate} from "./Mozel";
 import PropertyWatcher from "./PropertyWatcher";
 import {alphanumeric} from "validation-kit";
 import {forEach} from "./utils";
@@ -45,10 +45,12 @@ export default class MozelSync {
 		this.listeners[mozel.gid] = [
 			mozel.$events.destroyed.on(()=>this.unregister(mozel))
 		];
-		if(this.active) watcher.start();
+		if(this.active) watcher.start(true);
 	}
 
 	unregister(mozel:Mozel) {
+		if(!(mozel.gid in this.watchers)) return;
+
 		this.watchers[mozel.gid].destroy();
 		delete this.watchers[mozel.gid];
 		delete this.mozels[mozel.gid];
@@ -109,11 +111,11 @@ export class MozelWatcher {
 		const exported:Record<string, any> = {};
 		forEach(this.changes, (change, key) => {
 			if(change instanceof Mozel) {
-				exported[key] = change.$export();
+				exported[key] = change.$export({keys: ['gid']});
 				return;
 			}
 			if(change instanceof Collection) {
-				exported[key] = change.export();
+				exported[key] = change.export({keys: ['gid']});
 				return;
 			}
 			exported[key] = change;
@@ -121,7 +123,7 @@ export class MozelWatcher {
 		return exported;
 	}
 
-	start() {
+	start(includeCurrentState = false) {
 		this.watchers.push(this.mozel.$watch('*', change => {
 			this._changes[change.changePath] = this.mozel.$path(change.changePath);
 		}));
@@ -132,6 +134,9 @@ export class MozelWatcher {
 				this._changes[property.name] = this.mozel.$get(property.name);
 			}));
 		});
+		if(includeCurrentState) {
+			this._changes = this.mozel.$export({shallow: true, nonDefault: true});
+		}
 	}
 
 	stop() {

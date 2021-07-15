@@ -30,7 +30,7 @@ import PropertyWatcher, {
 } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
-import {includes, isArray} from "./utils";
+import {includes, isArray, omit} from "./utils";
 import {v4 as uuid} from "uuid";
 
 // TYPES
@@ -41,6 +41,7 @@ export type MozelConstructor<T extends Mozel> = {
 	type: string;
 	create<T extends Mozel>(data?: MozelData<T>): T;
 };
+export type ExportOptions = {type?:string, keys?:string[], shallow?:boolean, nonDefault?:boolean};
 
 // Types for Mozel creation by plain object
 export type PropertyKeys<T extends Mozel> = { [K in keyof T]: T[K] extends PropertyValue ? K : never }[keyof T];
@@ -937,7 +938,7 @@ export default class Mozel {
 	 * @param {string|string[]} [options.keys]		Only the given keys will be exported. This is not passed down the hierarchy.
 	 * @return {Data}
 	 */
-	$export(options?:{type?:string, keys?:string[]}): Data {
+	$export(options?:ExportOptions): Data {
 		const $options = options || {};
 
 		let exported: Data = {};
@@ -947,15 +948,17 @@ export default class Mozel {
 
 		forEach(this._properties, (property: Property, name: string) => {
 			if(isArray($options.keys) && !includes($options.keys, name)) return;
+			if($options.nonDefault && property.isDefault()) return;
 
 			if(property.isReference) {
 				// If property was not yet resolved, just use the reference instead. Will prevent infinite loops with deep watchers
 				exported[name] = property.ref || property.value;
 			}
 			let value = property.value;
-			if (isComplexValue(value)) {
-				exported[name] = value instanceof Mozel ? value.$export({type: $options.type}) : value.export({type: $options.type});
-				return;
+			if(value instanceof Collection) {
+				return exported[name] = value.export(omit($options, 'keys'));
+			} else if (value instanceof Mozel) {
+				return exported[name] = $options.shallow ? value.$export({keys: ['gid']}) : value.$export(omit($options, 'keys'));
 			}
 			exported[name] = value;
 		});

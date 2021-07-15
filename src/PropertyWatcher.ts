@@ -2,6 +2,7 @@ import {PropertyValue} from "./Property";
 import Mozel from "./Mozel";
 import {debounce, isNumber} from "lodash";
 import Collection from "./Collection";
+import {includes} from "./utils";
 
 export type WatcherDebounceOptions = {
 	wait?:number,
@@ -57,8 +58,9 @@ export default class PropertyWatcher {
 			const newValue = values[valuePath];
 			// Only fire if changed
 			if(this.hasChanged(newValue, valuePath, path)) {
+				const changePath = includes(path, '*') ? valuePath : path;
 				const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
-				this.handler({newValue, oldValue, valuePath: valuePath, changePath: path});
+				this.handler({newValue, oldValue, valuePath, changePath});
 			}
 		}
 	}

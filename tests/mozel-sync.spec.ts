@@ -52,39 +52,118 @@ describe("MozelWatcher", () => {
 });
 
 describe("MozelSync", () => {
-	it("tracks all changes to all registered Mozels", () => {
-		class Foo extends Mozel {
-			@property(String)
-			name?:string;
-			@property(Foo)
-			foo?:Foo;
-		}
-		const root = Foo.create<Foo>({
-			gid: 'root',
-			name: 'root',
-			foo: {
-				gid: 'rootFoo',
-				name: 'root.foo'
+	describe("getChanges", () => {
+		it("returns all changes to all registered Mozels", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo;
 			}
+			const root = Foo.create<Foo>({
+				gid: 'root',
+				name: 'root',
+				foo: {
+					gid: 'rootFoo',
+					name: 'root.foo'
+				}
+			});
+			const sync = new MozelSync();
+			sync.register(root);
+			sync.register(root.foo!);
+			sync.start();
+
+			root.name = 'root2';
+			root.foo!.name = 'root.foo2';
+			root.foo!.foo = root.$create(Foo, {name: 'root.foo.foo'});
+
+			const changes = sync.getChanges();
+			assert.deepEqual(changes, {
+				root: {
+					name: 'root2'
+				},
+				rootFoo: {
+					name: 'root.foo2',
+					foo: {gid: root.foo!.foo.gid}
+				}
+			});
 		});
-		const sync = new MozelSync();
-		sync.register(root);
-		sync.start();
-		sync.register(root.foo!); // watchers registered after start will start immediately
-
-		root.name = 'root2';
-		root.foo!.name = 'root.foo2';
-		root.foo!.foo = root.$create(Foo, {name: 'root.foo.foo'});
-
-		const changes = sync.getChanges();
-		assert.deepEqual(changes, {
-			root: {
-				name: 'root2'
-			},
-			rootFoo: {
-				name: 'root.foo2',
-				foo: {gid: root.foo!.foo.gid, name: 'root.foo.foo', foo: undefined}
+		it("returns only a list of GIDs for changed collections", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@collection(Foo)
+				foos!:Collection<Foo>
 			}
+			const foo = Foo.create<Foo>({
+				gid: 'root',
+				foos: [{gid: 'root.foos.0', name: 'RootFoos0'}, {gid: 'root.foos.1', name: 'RootFoos1'}]
+			});
+			const sync = new MozelSync();
+			sync.syncRegistry(foo.$registry);
+			sync.start();
+
+			foo.foos.get(1)!.name = 'RootFoos1-changed';
+			foo.foos.remove({gid: 'root.foos.0'});
+
+			assert.deepEqual(sync.getChanges(), {
+				'root': {
+					foos: [{gid: 'root.foos.1'}]
+				},
+				'root.foos.1': {
+					name: 'RootFoos1-changed'
+				}
+			});
+		});
+		it("returns only an object with GID for nested mozels, and an extra record for new mozels", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?: string;
+				@property(Foo)
+				foo?:Foo;
+			}
+			const root = Foo.create<Foo>({
+				gid: 'root',
+				foo: {
+					gid: 'root.foo',
+					name: 'RootFoo'
+				}
+			});
+			const sync = new MozelSync();
+			sync.syncRegistry(root.$registry);
+			sync.start();
+
+			root.$set('foo', {gid: 'root.foo2', name: 'RootFoo2'}, true);
+			assert.deepEqual(sync.getChanges(), {
+				'root': {
+					foo: {gid: 'root.foo2'}
+				},
+				'root.foo2': {
+					gid: 'root.foo2',
+					name: 'RootFoo2'
+				}
+			});
+		});
+	});
+	describe("register", () => {
+		it("records current state as change if MozelSync already started", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+			}
+			const foo = Foo.create<Foo>({
+				gid: 'foo',
+				name: 'foo'
+			});
+			const sync = new MozelSync();
+			sync.start();
+			sync.register(foo);
+			assert.deepEqual(sync.getChanges(), {
+				foo: {
+					gid: 'foo',
+					name: 'foo'
+				}
+			});
 		});
 	});
 	describe("applyChanges", () => {
@@ -173,6 +252,29 @@ describe("MozelSync", () => {
 					"name": "rootFoos0"
 				}
 			});
+		});
+	});
+	describe("2-client setup", () => {
+		it("synchronizes Mozels in both directions", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo;
+				@collection(Foo)
+				foos!:Collection<Foo>;
+			}
+			const setup = {
+				gid: 'root',
+				name: 'Root',
+				foo: {
+					gid: 'root.foo',
+					name: 'RootFoo'
+				},
+				foos: [{gid: 'root.foos.0', name: 'RootFoos0'}, {gid: 'root.foos.1', name: 'RootFoos1'}]
+			}
+			const client1Model = Foo.create<Foo>(setup);
+			const client2Model = Foo.create<Foo>(setup);
 		});
 	});
 });

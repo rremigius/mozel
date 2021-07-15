@@ -1,4 +1,4 @@
-import Mozel, {Data, DestroyedEvent, isData} from './Mozel';
+import Mozel, {Data, DestroyedEvent, ExportOptions, isData} from './Mozel';
 import Property, {isMozelClass, MozelClass, PropertyValue, Reference} from './Property';
 import EventInterface from "event-interface-mixin";
 
@@ -584,9 +584,12 @@ export default class Collection<T extends Mozel|primitive> {
 	 *
 	 * @param options Options to pass to each of the Mozel.$export calls.
 	 */
-	export(options?:{type?:string, keys?:string[]}):(Data|primitive)[] {
+	export(options?:ExportOptions):(Data|primitive)[] {
 		return map(this.list, (item:T) => {
 			if(item instanceof Mozel) {
+				if(options && options.shallow) {
+					return item.$export({keys: ['gid']})
+				}
 				return item.$export(options);
 			}
 			return item;

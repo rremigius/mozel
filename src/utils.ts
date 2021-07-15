@@ -15,5 +15,6 @@ export {
 	forEach,
 	remove,
 	mapValues,
-	values
+	values,
+	omit
 } from "lodash";

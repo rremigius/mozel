@@ -16,7 +16,7 @@ describe("MozelWatcher", () => {
 			gid: 'root',
 			name: 'root'
 		});
-		const watcher = new MozelWatcher(root);
+		const watcher = new MozelWatcher('1', root);
 		watcher.start();
 
 		root.foo = root.$create(Foo, {gid: 'root.foo.foo2'});
@@ -40,7 +40,7 @@ describe("MozelWatcher", () => {
 			gid: 'root',
 			foos: [{gid: 'rootFoo', name: 'rootFoo'}]
 		});
-		const watcher = new MozelWatcher(foo);
+		const watcher = new MozelWatcher('1', foo);
 		watcher.start();
 
 		foo.foos.get(0)!.name = 'rootFoo2';
@@ -491,6 +491,79 @@ describe("MozelSync", () => {
 			assert.equal(modelCentral.foo, 'foo1');
 			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 synced with modelCentral");
 			assert.deepEqual(modelCentral.$export(), model2.$export(), "model2 synced with modelCentral");
+		});
+	});
+	describe("syncWith", () => {
+		it("sends updates to linked MozelSyncs when `update` is called.", () => {
+			class Foo extends Mozel {
+				@property(String)
+				foo?:string;
+			}
+			const init = {gid: 1};
+
+			const model1 = Foo.create<Foo>(init);
+			const model2 = Foo.create<Foo>(init);
+			const modelCentral = Foo.create<Foo>(init);
+			const sync1 = new MozelSync({registry: model1.$registry});
+			const sync2 = new MozelSync({registry: model2.$registry});
+			const syncCentral = new MozelSync({registry: modelCentral.$registry});
+			syncCentral.syncWith(sync1);
+			syncCentral.syncWith(sync2);
+
+			sync1.start();
+			sync2.start();
+			syncCentral.start();
+
+			model1.foo = 'foo';
+			sync1.update();
+			syncCentral.update();
+
+			assert.equal(modelCentral.foo, 'foo');
+			assert.equal(model2.foo, 'foo');
+		});
+	});
+	describe("applyUpdates", () => {
+		it("auto-cleans history based on the lowest received version number of linked MozelSyncs", () => {
+			class Foo extends Mozel {
+				@property(Number)
+				foo?:number;
+			}
+			const init = {gid: 1};
+
+			const model1 = Foo.create<Foo>(init);
+			const model2 = Foo.create<Foo>(init);
+			const modelCentral = Foo.create<Foo>(init);
+			const sync1 = new MozelSync({registry: model1.$registry});
+			const sync2 = new MozelSync({registry: model2.$registry});
+			const syncCentral = new MozelSync({registry: modelCentral.$registry});
+
+			sync1.start();
+			sync2.start();
+			syncCentral.start();
+
+			model1.foo = 1;
+			model2.foo = 2;
+
+			syncCentral.applyUpdates(sync1.createUpdates()); // sync1: bv0 (v1)		>sync1.bv1
+
+			let updates = syncCentral.createUpdates(); // (v2) >central.bv2
+			sync1.applyUpdates(updates); // bv2
+			sync2.applyUpdates(updates); // bv2
+			syncCentral.applyUpdates(sync1.createUpdates()); // no update
+			syncCentral.applyUpdates(sync2.createUpdates()); // sync2: bv2 (v3)		>sync2.bv2
+
+			model1.foo = 3;
+			syncCentral.applyUpdates(sync1.createUpdates()); // sync1: bv2 (v4)		>sync1.bv3
+
+			const watcher = syncCentral.getWatcher(modelCentral.gid);
+			assert.deepEqual(watcher.getSyncVersions(), {
+				[sync1.id]: 2,
+				[sync2.id]: 2
+			}, "Sync versions correct");
+			assert.notOk(
+				!!watcher.getHistory().find(update => update.baseVersion <= 2),
+				"No updates in history with base version below 3"
+			);
 		});
 	});
 });

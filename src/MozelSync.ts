@@ -4,17 +4,25 @@ import {alphanumeric} from "validation-kit";
 import {forEach, isNumber} from "./utils";
 import {callback} from "event-interface-mixin";
 import {Collection, Registry} from "./index";
+import {v4 as uuid} from "uuid";
 
 export type Changes = Record<alphanumeric, Data>;
 
 export default class MozelSync {
-	mozels:Record<alphanumeric, Mozel> = {};
-	watchers:Record<alphanumeric, MozelWatcher> = {};
-	listeners:Record<alphanumeric, callback<any>[]> = {};
-	registryListeners:callback<any>[] = [];
-	registry?:Registry<Mozel>;
+	private _id = uuid();
+	get id() {
+		return this._id;
+	}
 
-	active = false;
+	private mozels:Record<alphanumeric, Mozel> = {};
+	private watchers:Record<alphanumeric, MozelWatcher> = {};
+	private listeners:Record<alphanumeric, callback<any>[]> = {};
+	private registryListeners:callback<any>[] = [];
+	private registry?:Registry<Mozel>;
+
+	private syncs:Set<MozelSync> = new Set<MozelSync>();
+
+	private active = false;
 	priority;
 
 	constructor(options?:{registry?:Registry<Mozel>, priority?:number}) {
@@ -28,7 +36,7 @@ export default class MozelSync {
 		const updates:Record<alphanumeric, Update> = {};
 		forEach(this.watchers, watcher => {
 			const update = watcher.createUpdate();
-			if(!Object.keys(update.changes).length) return; // no empty changes
+			if(!update) return;
 
 			updates[watcher.mozel.gid] = update;
 		});
@@ -44,13 +52,18 @@ export default class MozelSync {
 		});
 	}
 
-	clearChanges() {
-		forEach(this.watchers, watcher => watcher.clearChanges());
+	update() {
+		const updates = this.createUpdates();
+		this.syncs.forEach(sync => sync.applyUpdates(updates));
+	}
+
+	getWatcher(gid:alphanumeric) {
+		return this.watchers[gid];
 	}
 
 	register(mozel:Mozel) {
 		this.mozels[mozel.gid] = mozel;
-		const watcher = new MozelWatcher(mozel, this.priority);
+		const watcher = new MozelWatcher(this.id, mozel, this.priority);
 		this.watchers[mozel.gid] = watcher;
 		this.listeners[mozel.gid] = [
 			mozel.$events.destroyed.on(()=>this.unregister(mozel))
@@ -80,6 +93,11 @@ export default class MozelSync {
 		registry.all().forEach(mozel => this.register(mozel));
 	}
 
+	syncWith(sync:MozelSync, twoWay = true) {
+		this.syncs.add(sync);
+		if(twoWay) sync.syncWith(this, false);
+	}
+
 	start() {
 		this.active = true;
 		forEach(this.watchers, watcher => watcher.start());
@@ -99,6 +117,7 @@ export default class MozelSync {
 }
 
 export type Update = {
+	syncID:string;
 	version:number;
 	priority:number;
 	baseVersion:number;
@@ -114,15 +133,23 @@ export class MozelWatcher {
 	}
 	private version:number = 0;
 	private history:Update[] = [];
+	private syncID:string;
+
+	/**
+	 * A map of other MozelSyncs and the highest version received from them.
+	 * @private
+	 */
+	private syncBaseVersions:Record<string, number> = {};
 
 	priority:number;
 
 	onDestroyed = ()=>this.destroy();
 
-	constructor(mozel:Mozel, priority = 0) {
+	constructor(syncID:string, mozel:Mozel, priority = 0) {
 		this.mozel = mozel;
 		this.mozel.$events.destroyed.on(this.onDestroyed);
 		this.priority = priority;
+		this.syncID = syncID;
 	}
 
 	/*
@@ -137,8 +164,10 @@ export class MozelWatcher {
 		const changes = this.overrideChangesFromHistory(update);
 
 		this.mozel.$setData(changes, true);
-		this.version = update.version;
 		this.history.push(update);
+		this.version = Math.max(update.version, this.version);
+		this.syncBaseVersions[update.syncID] = update.baseVersion;
+		this.autoCleanHistory();
 	}
 
 	overrideChangesFromHistory(update:Update) {
@@ -150,6 +179,11 @@ export class MozelWatcher {
 				changes = this.removeChanges(changes, history.changes);
 			}
 		});
+		// Also resolve current conflicting changes
+		if(this.version > update.baseVersion
+			|| (this.priority > update.priority && this.version >= update.baseVersion)) {
+			changes = this.removeChanges(changes, this.changes);
+		}
 		return changes;
 	}
 
@@ -165,8 +199,30 @@ export class MozelWatcher {
 		this._changes = {};
 	}
 
+	getHistory() {
+		return [...this.history];
+	}
+
+	autoCleanHistory() {
+		let lowest:number|null = null;
+		forEach(this.syncBaseVersions, version => {
+			if(lowest === null || version < lowest) lowest = version;
+		});
+		lowest = lowest || 0;
+		this.clearHistory(lowest);
+	}
+
+	clearHistory(fromBaseVersion?:number) {
+		if(!isNumber(fromBaseVersion)) {
+			this.history = [];
+			return;
+		}
+		this.history = this.history.filter(update => update.baseVersion > fromBaseVersion);
+	}
+
 	createUpdate() {
 		const update:Update = {
+			syncID: this.syncID,
 			version: this.version+1,
 			baseVersion: this.version,
 			priority: this.priority,
@@ -183,9 +239,17 @@ export class MozelWatcher {
 			}
 			update.changes[key] = change;
 		});
+		if(!Object.keys(update.changes).length) {
+			return;
+		}
+		this.version = update.version;
 		this.history.push(update);
 		this.clearChanges();
 		return update;
+	}
+
+	getSyncVersions() {
+		return {...this.syncBaseVersions};
 	}
 
 	start(includeCurrentState = false) {

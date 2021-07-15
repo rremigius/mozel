@@ -5,7 +5,6 @@ import Mozel, {MozelClass, MozelConstructor, MozelData} from "./Mozel";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
 import {isArray} from "lodash";
-import {v4 as uuid} from "uuid";
 
 const log = logRoot.instance("factory");
 

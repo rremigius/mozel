@@ -31,8 +31,8 @@ export type PropertyType = MozelClass|Class|Collection<any>|undefined;
 export type PrimitiveObject = Record<string,primitive|undefined|null>;
 export type Reference = {gid: alphanumeric};
 
-export type PropertyValueFactory = ()=>PropertyValue;
-export type PropertyOptions = {default?:PropertyValue|PropertyValueFactory, required?:boolean, reference?:boolean};
+export type PropertyInputFactory = ()=>PropertyInput;
+export type PropertyOptions = {default?:PropertyInput|PropertyInputFactory, required?:boolean, reference?:boolean};
 
 /**
  * Placeholder class for runtime Property type definition
@@ -128,7 +128,7 @@ export default class Property {
 	private readonly _reference:boolean = false;
 	private _ref?:Reference|null = null; // null means no reference to be resolved
 	private readonly _required:boolean = false;
-	private _default?:PropertyValue|PropertyValueFactory;
+	private readonly _default?:PropertyInput|PropertyInputFactory;
 	private _value:PropertyValue;
 	private _isDefault = false;
 	private _registryReferenceListener?:callback<any>;
@@ -173,20 +173,8 @@ export default class Property {
 		return this._ref;
 	}
 
-	get default():PropertyValue {
-		if(isFunction(this._default)) {
-			// Compute the default
-			this._default = this._default();
-		}
+	get default():PropertyInput|PropertyInputFactory {
 		return this._default;
-	}
-
-	set default(value:PropertyValue) {
-		if(!this.checkType(value)) {
-			log.error(`Default for ${this.parent.static.type}.${this.name} expects a ${this.getTypeName()}.`, value);
-			return;
-		}
-		this._default = value;
 	}
 
 	get required():boolean {
@@ -391,23 +379,26 @@ export default class Property {
 		if(this.value !== undefined) {
 			return;
 		}
+		let def = isFunction(this.default) ? this.default() : this.default;
+
 		// If Property is required but no default was set, generate one
-		if(this.required && isNil(this.default)) {
-			this.default = this.generateDefaultValue();
+		if(this.required && isNil(def)) {
+			def = this.generateDefaultValue();
 		}
 		// No default defined, no default to apply
-		if(this.default === undefined) {
+		if(def === undefined) {
 			return;
 		}
 		// Apply
-		this.value = this.default;
-		if(this.value instanceof Mozel) {
-			this.value.$applyDefaults();
+		this.set(def, true);
+		const value = this.value;
+		if(value as unknown instanceof Mozel) {
+			(value as unknown as Mozel).$applyDefaults();
 		}
 		this._isDefault = true;
 	}
 
-	generateDefaultValue() {
+	generateDefaultValue():PropertyValue {
 		if(this.type === Collection) {
 			throw new Error(`Cannot generate default value for '${this.name}' Collection. Should be set explicitly.`);
 		}

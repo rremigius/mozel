@@ -163,9 +163,9 @@ describe('Mozel', () => {
 			}
 
 			// TS: Ignore mozel[property] access
-			let foo = <{[key:string]:any}>new FooMozel();
-			let bar1 = <{[key:string]:any}>new BarMozel();
-			let bar2 = <{[key:string]:any}>new BarMozel();
+			let foo = <{[key:string]:any}>FooMozel.create<FooMozel>();
+			let bar1 = <{[key:string]:any}>foo.$create(BarMozel);
+			let bar2 = <{[key:string]:any}>foo.$create(BarMozel);
 
 			bar1.qux = 123;
 			bar2.qux = 456;
@@ -253,7 +253,7 @@ describe('Mozel', () => {
 				qux?:string;
 			}
 			class BarMozel extends Mozel {
-				@property(FooMozel, {default: new FooMozel()})
+				@property(FooMozel, {default: ()=>({})})
 				foo?:FooMozel;
 				@property(Number, {default:123})
 				xyz?:number;
@@ -561,7 +561,7 @@ describe('Mozel', () => {
 				assert.equal(oldValue, "c");
 				count++;
 			});
-			root.foo = Foo.create<Foo>({
+			root.foo = root.$create(Foo, {
 				foo: {
 					bar: "x"
 				}
@@ -598,7 +598,7 @@ describe('Mozel', () => {
 					assert.ok(false, "oldValue");
 				}
 			});
-			tree.left = Tree.create<Tree>({
+			tree.left = tree.$create(Tree, {
 				left: {
 					name: 'll2'
 				},
@@ -720,7 +720,7 @@ describe('Mozel', () => {
 				foos!:Collection<Foo>;
 			}
 			const foo = Foo.create<Foo>();
-			const bar = Foo.create<Foo>();
+			const bar = foo.$create(Foo);
 
 			let count = 0;
 			foo.$watch(schema(Foo).foos, ({newValue, oldValue}) => {
@@ -807,11 +807,12 @@ describe('Mozel', () => {
 				@property(Foo)
 				foo?:Foo;
 			}
-			const subfoo = Foo.create<Foo>();
-			const foo1 = Foo.create<Foo>({
+			const factory = Foo.createFactory();
+			const subfoo = factory.create(Foo);
+			const foo1 = factory.create(Foo, {
 				foo: subfoo
 			});
-			const foo2 = Foo.create<Foo>();
+			const foo2 = factory.create(Foo);
 
 			assert.equal(foo1.foo, subfoo, "Foo1 has subfoo");
 			assert.equal(foo2.foo, undefined, "No subfoo set on foo2");

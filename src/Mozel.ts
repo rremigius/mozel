@@ -406,7 +406,11 @@ export default class Mozel {
 		}
 	}
 
-	$detach() {
+	/**
+	 * Removes the Mozel from its parent.
+	 * @param {boolean} makeRoot	Set to `true` to prevent the Mozel from cleaning up next tick.
+	 */
+	$detach(makeRoot = false) {
 		if (this.$parentLock) {
 			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
 		}
@@ -416,6 +420,7 @@ export default class Mozel {
 		this._parent = null;
 		this._relation = "";
 
+		if(makeRoot) this.$root = true;
 		setTimeout(() => {
 			this.$maybeCleanUp();
 		});
@@ -428,7 +433,10 @@ export default class Mozel {
 	 * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
 	 */
 	$setParent(parent: Mozel, relation: string, lock: boolean = false) {
-		// TODO: should not be possible to mix Mozel hierarchies from different Registries
+		if(parent.$factory !== this.$factory || parent.$registry !== this.$registry) {
+			throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
+		}
+
 		if (this.$parentLock) {
 			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
 		}
@@ -438,6 +446,7 @@ export default class Mozel {
 		this._parent = parent;
 		this._relation = relation;
 		this.$parentLock = lock;
+		this.$root = false;
 	}
 
 	$remove(child:Mozel, includeReferences = false) {
@@ -1047,7 +1056,8 @@ export default class Mozel {
 			}
 			if(property.value instanceof Collection) {
 				if(!property.value.isMozelType()) return;
-				return property.value.each((mozel, index) => callback(mozel, key + "." + index));
+				const items = property.value.toArray(); // to prevent disruptions in iteration (e.g. by $destroy)
+				return items.forEach((mozel, index) => callback(mozel, key + "." + index));
 			}
 		});
 	}

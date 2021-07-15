@@ -468,7 +468,7 @@ export default class Collection<T extends Mozel|primitive> {
 		return new Collection<T>(this.parent, this.relation, this.type, this.list.slice());
 	}
 
-	cloneDeep() {
+	cloneDeep(parent:Mozel) {
 		let list = this.toArray();
 		if(isMozelClass(this.type)) {
 			// TS: We can cast item to Mozel because we checked `isMozelClass`
@@ -478,7 +478,7 @@ export default class Collection<T extends Mozel|primitive> {
 			list = list.slice();
 		}
 
-		return new Collection<T>(this.parent, this.relation, this.type, list);
+		return new Collection<T>(parent, this.relation, this.type, list);
 	}
 
 	renderTemplates(templater:Templater|Data) {

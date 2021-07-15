@@ -17,7 +17,7 @@ describe("Collection", () => {
 				other!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.create<FooMozel>();
-			let bar = FooMozel.create<FooMozel>();
+			let bar = foo.$create(FooMozel);
 
 			let assertions = 0;
 			foo.other.events.changed.on(event => {
@@ -33,7 +33,7 @@ describe("Collection", () => {
 				other!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.create<FooMozel>();
-			let bar = FooMozel.create<FooMozel>();
+			let bar = foo.$create(FooMozel);
 
 			foo.other.add(bar);
 

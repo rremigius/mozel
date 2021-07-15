@@ -3,7 +3,6 @@ import Property from "./Property";
 import {forEach, mapValues} from 'lodash';
 import {inject, optional} from "inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
-import Registry from "./Registry";
 
 /**
  * GenericMozel can take any number of Primitive Properties, which can be defined on the fly.

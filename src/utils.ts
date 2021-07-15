@@ -16,5 +16,6 @@ export {
 	remove,
 	mapValues,
 	values,
-	omit
+	omit,
+	isNumber
 } from "lodash";

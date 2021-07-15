@@ -17,6 +17,12 @@ export declare type MozelConstructor<T extends Mozel> = {
     type: string;
     create<T extends Mozel>(data?: MozelData<T>): T;
 };
+export declare type ExportOptions = {
+    type?: string;
+    keys?: string[];
+    shallow?: boolean;
+    nonDefault?: boolean;
+};
 export declare type PropertyKeys<T extends Mozel> = {
     [K in keyof T]: T[K] extends PropertyValue ? K : never;
 }[keyof T];
@@ -360,10 +366,7 @@ export default class Mozel {
      * @param {string|string[]} [options.keys]		Only the given keys will be exported. This is not passed down the hierarchy.
      * @return {Data}
      */
-    $export(options?: {
-        type?: string;
-        keys?: string[];
-    }): Data;
+    $export(options?: ExportOptions): Data;
     /**
      * Creates a deep clone of the mozel.
      */

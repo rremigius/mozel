@@ -14,7 +14,7 @@ import log from "./log";
 import PropertyWatcher from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
-import { includes, isArray } from "./utils";
+import { includes, isArray, omit } from "./utils";
 import { v4 as uuid } from "uuid";
 // re-export for easy import together with Mozel
 export { Alphanumeric };
@@ -775,14 +775,18 @@ let Mozel = Mozel_1 = class Mozel {
         forEach(this._properties, (property, name) => {
             if (isArray($options.keys) && !includes($options.keys, name))
                 return;
+            if ($options.nonDefault && property.isDefault())
+                return;
             if (property.isReference) {
                 // If property was not yet resolved, just use the reference instead. Will prevent infinite loops with deep watchers
                 exported[name] = property.ref || property.value;
             }
             let value = property.value;
-            if (isComplexValue(value)) {
-                exported[name] = value instanceof Mozel_1 ? value.$export({ type: $options.type }) : value.export({ type: $options.type });
-                return;
+            if (value instanceof Collection) {
+                return exported[name] = value.export(omit($options, 'keys'));
+            }
+            else if (value instanceof Mozel_1) {
+                return exported[name] = $options.shallow ? value.$export({ keys: ['gid'] }) : value.$export(omit($options, 'keys'));
             }
             exported[name] = value;
         });

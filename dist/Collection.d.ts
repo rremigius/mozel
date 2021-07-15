@@ -1,4 +1,4 @@
-import Mozel, { Data } from './Mozel';
+import Mozel, { Data, ExportOptions } from './Mozel';
 import { MozelClass, PropertyValue } from './Property';
 import EventInterface from "event-interface-mixin";
 import { Class, primitive } from 'validation-kit';
@@ -130,10 +130,7 @@ export default class Collection<T extends Mozel | primitive> {
      *
      * @param options Options to pass to each of the Mozel.$export calls.
      */
-    export(options?: {
-        type?: string;
-        keys?: string[];
-    }): (Data | primitive)[];
+    export(options?: ExportOptions): (Data | primitive)[];
     get errors(): {
         [x: string]: Error;
     };

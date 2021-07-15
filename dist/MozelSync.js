@@ -1,30 +1,35 @@
 import Mozel from "./Mozel";
-import { forEach } from "./utils";
+import { forEach, isNumber } from "./utils";
 import { Collection } from "./index";
 export default class MozelSync {
-    constructor() {
+    constructor(options) {
         this.mozels = {};
         this.watchers = {};
         this.listeners = {};
         this.registryListeners = [];
         this.active = false;
+        if (!options)
+            return;
+        this.priority = isNumber(options.priority) ? options.priority : 0;
+        if (options.registry)
+            this.syncRegistry(options.registry);
     }
-    getChanges() {
-        const changes = {};
+    createUpdates() {
+        const updates = {};
         forEach(this.watchers, watcher => {
-            const watcherChanges = watcher.exportChanges();
-            if (!Object.keys(watcherChanges).length)
+            const update = watcher.createUpdate();
+            if (!Object.keys(update.changes).length)
                 return; // no empty changes
-            changes[watcher.mozel.gid] = watcher.exportChanges();
+            updates[watcher.mozel.gid] = update;
         });
-        return changes;
+        return updates;
     }
-    applyChanges(changes) {
-        forEach(changes, (data, gid) => {
-            const mozel = this.mozels[gid];
-            if (!mozel)
-                return; // Mozel not known here
-            mozel.$setData(data, true);
+    applyUpdates(updates) {
+        forEach(updates, (update, gid) => {
+            const watcher = this.watchers[gid];
+            if (!watcher)
+                return;
+            watcher.applyUpdate(update);
         });
     }
     clearChanges() {
@@ -32,15 +37,17 @@ export default class MozelSync {
     }
     register(mozel) {
         this.mozels[mozel.gid] = mozel;
-        const watcher = new MozelWatcher(mozel);
+        const watcher = new MozelWatcher(mozel, this.priority);
         this.watchers[mozel.gid] = watcher;
         this.listeners[mozel.gid] = [
             mozel.$events.destroyed.on(() => this.unregister(mozel))
         ];
         if (this.active)
-            watcher.start();
+            watcher.start(true);
     }
     unregister(mozel) {
+        if (!(mozel.gid in this.watchers))
+            return;
         this.watchers[mozel.gid].destroy();
         delete this.watchers[mozel.gid];
         delete this.mozels[mozel.gid];
@@ -73,35 +80,76 @@ export default class MozelSync {
     }
 }
 export class MozelWatcher {
-    constructor(mozel) {
+    constructor(mozel, priority = 0) {
         this.watchers = [];
         this._changes = {};
+        this.version = 0;
+        this.history = [];
         this.onDestroyed = () => this.destroy();
         this.mozel = mozel;
         this.mozel.$events.destroyed.on(this.onDestroyed);
+        this.priority = priority;
     }
     get changes() {
         return this._changes;
     }
+    /*
+            Priority: 1										Priority: 2
+            {b: 0, foo: 'a'}								{b: 0, foo: 'a'}
+            {b: 1, foo: 'b'}		{b: 0, foo: 'b', v: 1}>	{b: 0, foo: 'x'}
+            {b: 1, foo: 'b'} x<{b: 0, foo: 'x', v: 1}		{b: 1, foo: 'b'}
+            {b: 1, foo: 'b'}								{b: 1, foo: 'b'}
+     */
+    applyUpdate(update) {
+        const changes = this.overrideChangesFromHistory(update);
+        this.mozel.$setData(changes, true);
+        this.version = update.version;
+        this.history.push(update);
+    }
+    overrideChangesFromHistory(update) {
+        let changes = { ...update.changes };
+        this.history.forEach(history => {
+            // Any update with a higher base version than the received update should override the received update
+            if (history.baseVersion > update.baseVersion
+                || (this.priority > update.priority && history.baseVersion >= update.baseVersion)) {
+                changes = this.removeChanges(changes, history.changes);
+            }
+        });
+        return changes;
+    }
+    removeChanges(changes, override) {
+        changes = { ...changes };
+        forEach(override, (_, key) => {
+            delete changes[key];
+        });
+        return changes;
+    }
     clearChanges() {
         this._changes = {};
     }
-    exportChanges() {
-        const exported = {};
+    createUpdate() {
+        const update = {
+            version: this.version + 1,
+            baseVersion: this.version,
+            priority: this.priority,
+            changes: {}
+        };
         forEach(this.changes, (change, key) => {
             if (change instanceof Mozel) {
-                exported[key] = change.$export();
+                update.changes[key] = change.$export({ keys: ['gid'] });
                 return;
             }
             if (change instanceof Collection) {
-                exported[key] = change.export();
+                update.changes[key] = change.export({ keys: ['gid'] });
                 return;
             }
-            exported[key] = change;
+            update.changes[key] = change;
         });
-        return exported;
+        this.history.push(update);
+        this.clearChanges();
+        return update;
     }
-    start() {
+    start(includeCurrentState = false) {
         this.watchers.push(this.mozel.$watch('*', change => {
             this._changes[change.changePath] = this.mozel.$path(change.changePath);
         }));
@@ -113,6 +161,9 @@ export class MozelWatcher {
                 this._changes[property.name] = this.mozel.$get(property.name);
             }));
         });
+        if (includeCurrentState) {
+            this._changes = this.mozel.$export({ shallow: true, nonDefault: true });
+        }
     }
     stop() {
         for (let watcher of this.watchers) {

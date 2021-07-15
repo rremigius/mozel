@@ -1,9 +1,11 @@
-import Mozel, {Data, immediate} from "./Mozel";
+import Mozel, {Data} from "./Mozel";
 import PropertyWatcher from "./PropertyWatcher";
 import {alphanumeric} from "validation-kit";
-import {forEach} from "./utils";
+import {forEach, isNumber} from "./utils";
 import {callback} from "event-interface-mixin";
 import {Collection, Registry} from "./index";
+
+export type Changes = Record<alphanumeric, Data>;
 
 export default class MozelSync {
 	mozels:Record<alphanumeric, Mozel> = {};
@@ -13,24 +15,32 @@ export default class MozelSync {
 	registry?:Registry<Mozel>;
 
 	active = false;
+	priority;
 
-	getChanges() {
-		const changes:Record<alphanumeric, Data> = {};
-		forEach(this.watchers, watcher => {
-			const watcherChanges = watcher.exportChanges();
-			if(!Object.keys(watcherChanges).length) return; // no empty changes
+	constructor(options?:{registry?:Registry<Mozel>, priority?:number}) {
+		if(!options) return;
+		this.priority = isNumber(options.priority) ? options.priority : 0;
 
-			changes[watcher.mozel.gid] = watcher.exportChanges();
-		});
-		return changes;
+		if(options.registry) this.syncRegistry(options.registry);
 	}
 
-	applyChanges(changes:Record<string, Data>) {
-		forEach(changes, (data, gid) => {
-			const mozel = this.mozels[gid];
-			if(!mozel) return; // Mozel not known here
+	createUpdates() {
+		const updates:Record<alphanumeric, Update> = {};
+		forEach(this.watchers, watcher => {
+			const update = watcher.createUpdate();
+			if(!Object.keys(update.changes).length) return; // no empty changes
 
-			mozel.$setData(data, true);
+			updates[watcher.mozel.gid] = update;
+		});
+		return updates;
+	}
+
+	applyUpdates(updates:Record<alphanumeric, Update>) {
+		forEach(updates, (update, gid) => {
+			const watcher = this.watchers[gid];
+			if(!watcher) return;
+
+			watcher.applyUpdate(update);
 		});
 	}
 
@@ -40,7 +50,7 @@ export default class MozelSync {
 
 	register(mozel:Mozel) {
 		this.mozels[mozel.gid] = mozel;
-		const watcher = new MozelWatcher(mozel);
+		const watcher = new MozelWatcher(mozel, this.priority);
 		this.watchers[mozel.gid] = watcher;
 		this.listeners[mozel.gid] = [
 			mozel.$events.destroyed.on(()=>this.unregister(mozel))
@@ -88,6 +98,12 @@ export default class MozelSync {
 	}
 }
 
+export type Update = {
+	version:number;
+	priority:number;
+	baseVersion:number;
+	changes:Record<string, any>;
+}
 export class MozelWatcher {
 	readonly mozel:Mozel;
 
@@ -96,31 +112,80 @@ export class MozelWatcher {
 	get changes() {
 		return this._changes;
 	}
+	private version:number = 0;
+	private history:Update[] = [];
+
+	priority:number;
+
 	onDestroyed = ()=>this.destroy();
 
-	constructor(mozel:Mozel) {
+	constructor(mozel:Mozel, priority = 0) {
 		this.mozel = mozel;
 		this.mozel.$events.destroyed.on(this.onDestroyed);
+		this.priority = priority;
+	}
+
+	/*
+			Priority: 1										Priority: 2
+			{b: 0, foo: 'a'}								{b: 0, foo: 'a'}
+			{b: 1, foo: 'b'}		{b: 0, foo: 'b', v: 1}>	{b: 0, foo: 'x'}
+			{b: 1, foo: 'b'} x<{b: 0, foo: 'x', v: 1}		{b: 1, foo: 'b'}
+			{b: 1, foo: 'b'}								{b: 1, foo: 'b'}
+	 */
+
+	applyUpdate(update:Update) {
+		const changes = this.overrideChangesFromHistory(update);
+
+		this.mozel.$setData(changes, true);
+		this.version = update.version;
+		this.history.push(update);
+	}
+
+	overrideChangesFromHistory(update:Update) {
+		let changes = {...update.changes};
+		this.history.forEach(history => {
+			// Any update with a higher base version than the received update should override the received update
+			if(history.baseVersion > update.baseVersion
+				|| (this.priority > update.priority && history.baseVersion >= update.baseVersion)) {
+				changes = this.removeChanges(changes, history.changes);
+			}
+		});
+		return changes;
+	}
+
+	removeChanges(changes:Changes, override:Changes) {
+		changes = {...changes};
+		forEach(override, (_, key) => {
+			delete changes[key];
+		});
+		return changes;
 	}
 
 	clearChanges() {
 		this._changes = {};
 	}
 
-	exportChanges() {
-		const exported:Record<string, any> = {};
+	createUpdate() {
+		const update:Update = {
+			version: this.version+1,
+			baseVersion: this.version,
+			priority: this.priority,
+			changes: {}
+		};
 		forEach(this.changes, (change, key) => {
 			if(change instanceof Mozel) {
-				exported[key] = change.$export({keys: ['gid']});
+				update.changes[key] = change.$export({keys: ['gid']});
 				return;
 			}
 			if(change instanceof Collection) {
-				exported[key] = change.export({keys: ['gid']});
+				update.changes[key] = change.export({keys: ['gid']});
 				return;
 			}
-			exported[key] = change;
+			update.changes[key] = change;
 		});
-		return exported;
+		this.history.push(update);
+		this.clearChanges();
+		return update;
 	}
 
 	start(includeCurrentState = false) {

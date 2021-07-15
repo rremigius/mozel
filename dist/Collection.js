@@ -524,6 +524,9 @@ export default class Collection {
     export(options) {
         return map(this.list, (item) => {
             if (item instanceof Mozel) {
+                if (options && options.shallow) {
+                    return item.$export({ keys: ['gid'] });
+                }
                 return item.$export(options);
             }
             return item;

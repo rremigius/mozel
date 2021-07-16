@@ -506,7 +506,7 @@ describe("MozelSync", () => {
 			const modelCentral = Foo.create<Foo>(init);
 			const sync1 = new MozelSync({registry: model1.$registry});
 			const sync2 = new MozelSync({registry: model2.$registry});
-			const syncCentral = new MozelSync({registry: modelCentral.$registry});
+			const syncCentral = new MozelSync({registry: modelCentral.$registry, priority: 1});
 			syncCentral.syncWith(sync1);
 			syncCentral.syncWith(sync2);
 
@@ -535,7 +535,7 @@ describe("MozelSync", () => {
 			const modelCentral = Foo.create<Foo>(init);
 			const sync1 = new MozelSync({registry: model1.$registry});
 			const sync2 = new MozelSync({registry: model2.$registry});
-			const syncCentral = new MozelSync({registry: modelCentral.$registry});
+			const syncCentral = new MozelSync({registry: modelCentral.$registry, priority: 1});
 
 			sync1.start();
 			sync2.start();
@@ -564,6 +564,50 @@ describe("MozelSync", () => {
 				!!watcher.getHistory().find(update => update.baseVersion <= 2),
 				"No updates in history with base version below 3"
 			);
+		});
+		it("merges updates based on base number", () => {
+			class Foo extends Mozel {
+				@property(String)
+				foo?:string;
+				@property(String)
+				bar?:string;
+			}
+			const init = {gid: 1};
+
+			const model1 = Foo.create<Foo>(init);
+			const model2 = Foo.create<Foo>(init);
+			const modelCentral = Foo.create<Foo>(init);
+			const sync1 = new MozelSync({registry: model1.$registry});
+			const sync2 = new MozelSync({registry: model2.$registry});
+			const syncCentral = new MozelSync({registry: modelCentral.$registry, priority: 1});
+			sync1.start();
+			sync2.start();
+			syncCentral.start();
+
+			model1.foo = 'model1.foo';
+
+			model2.foo = 'model2.foo';
+			model2.bar = 'model2.bar';
+
+			syncCentral.applyUpdates(sync1.createUpdates());
+			sync1.applyUpdates(syncCentral.createUpdates()); // only sync to sync1, sync2 will be outdated
+
+			model1.foo = 'model1.foo.2';
+			model2.foo = 'model2.foo.2';
+
+			// Both send in new update
+			syncCentral.applyUpdates(sync1.createUpdates());
+			syncCentral.applyUpdates(sync2.createUpdates());
+
+			// Sync back to both
+			const updates = syncCentral.createUpdates();
+			sync1.applyUpdates(updates);
+			sync2.applyUpdates(updates);
+
+			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 in sync with modelCentral");
+			assert.deepEqual(modelCentral.$export(), model2.$export(), "model2 in sync with modelCentral");
+			assert.equal(modelCentral.foo, 'model1.foo.2', "Foo set to value provided by model1");
+			assert.equal(modelCentral.bar, "model2.bar", "Bar set to value provided by model2");
 		});
 	});
 });

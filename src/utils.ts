@@ -17,5 +17,6 @@ export {
 	mapValues,
 	values,
 	omit,
-	isNumber
+	isNumber,
+	throttle
 } from "lodash";

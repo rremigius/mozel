@@ -1,15 +1,19 @@
-import Mozel, {Data} from "./Mozel";
-import PropertyWatcher from "./PropertyWatcher";
+import Mozel, {Data} from "../Mozel";
+import PropertyWatcher from "../PropertyWatcher";
 import {alphanumeric} from "validation-kit";
-import {forEach, isNumber} from "./utils";
+import {forEach, isNumber, throttle} from "../utils";
 import {callback} from "event-interface-mixin";
-import {Collection, Registry} from "./index";
 import {v4 as uuid} from "uuid";
+import Collection from "../Collection";
+import Registry from "../Registry";
+import Log from "../log";
+
+const log = Log.instance("mozel-sync");
 
 export type Changes = Record<alphanumeric, Data>;
 
 export default class MozelSync {
-	private _id = uuid();
+	protected _id = uuid();
 	get id() {
 		return this._id;
 	}
@@ -19,17 +23,17 @@ export default class MozelSync {
 	private listeners:Record<alphanumeric, callback<any>[]> = {};
 	private registryListeners:callback<any>[] = [];
 	private registry?:Registry<Mozel>;
-
-	private syncs:Set<MozelSync> = new Set<MozelSync>();
+	public readonly cleanUpThrottle:number;
 
 	private active = false;
-	priority;
+	priority:number;
 
-	constructor(options?:{registry?:Registry<Mozel>, priority?:number}) {
-		if(!options) return;
-		this.priority = isNumber(options.priority) ? options.priority : 0;
+	constructor(options?:{registry?:Registry<Mozel>, priority?:number, cleanUpThrottle?:number}) {
+		const $options = options || {};
+		this.priority = $options.priority || 0;
+		this.cleanUpThrottle = isNumber($options.cleanUpThrottle) ? $options.cleanUpThrottle : 5000;
 
-		if(options.registry) this.syncRegistry(options.registry);
+		if($options.registry) this.syncRegistry($options.registry);
 	}
 
 	createUpdates() {
@@ -52,18 +56,13 @@ export default class MozelSync {
 		});
 	}
 
-	update() {
-		const updates = this.createUpdates();
-		this.syncs.forEach(sync => sync.applyUpdates(updates));
-	}
-
 	getWatcher(gid:alphanumeric) {
 		return this.watchers[gid];
 	}
 
 	register(mozel:Mozel) {
 		this.mozels[mozel.gid] = mozel;
-		const watcher = new MozelWatcher(this.id, mozel, this.priority);
+		const watcher = new MozelWatcher(this, mozel);
 		this.watchers[mozel.gid] = watcher;
 		this.listeners[mozel.gid] = [
 			mozel.$events.destroyed.on(()=>this.unregister(mozel))
@@ -91,11 +90,6 @@ export default class MozelSync {
 		]
 		// Also register current Mozels
 		registry.all().forEach(mozel => this.register(mozel));
-	}
-
-	syncWith(sync:MozelSync, twoWay = true) {
-		this.syncs.add(sync);
-		if(twoWay) sync.syncWith(this, false);
 	}
 
 	start() {
@@ -133,7 +127,8 @@ export class MozelWatcher {
 	}
 	private version:number = 0;
 	private history:Update[] = [];
-	private syncID:string;
+	private readonly sync:MozelSync;
+	private lowestBaseVersion = 0;
 
 	/**
 	 * A map of other MozelSyncs and the highest version received from them.
@@ -141,15 +136,17 @@ export class MozelWatcher {
 	 */
 	private syncBaseVersions:Record<string, number> = {};
 
-	priority:number;
-
 	onDestroyed = ()=>this.destroy();
+	throttledAutoCleanHistory:()=>void;
 
-	constructor(syncID:string, mozel:Mozel, priority = 0) {
+	constructor(sync:MozelSync, mozel:Mozel) {
 		this.mozel = mozel;
 		this.mozel.$events.destroyed.on(this.onDestroyed);
-		this.priority = priority;
-		this.syncID = syncID;
+		this.sync = sync;
+		this.throttledAutoCleanHistory = throttle(
+			()=>this.autoCleanHistory(),
+			this.sync.cleanUpThrottle
+		);
 	}
 
 	/*
@@ -161,6 +158,10 @@ export class MozelWatcher {
 	 */
 
 	applyUpdate(update:Update) {
+		if(update.baseVersion < this.lowestBaseVersion) {
+			log.error(`Received update has a base version (${update.baseVersion}) that is lower than any update kept in history (${this.lowestBaseVersion}). Cannot apply.`);
+			return;
+		}
 		const changes = this.overrideChangesFromHistory(update);
 
 		this.mozel.$setData(changes, true);
@@ -175,13 +176,13 @@ export class MozelWatcher {
 		this.history.forEach(history => {
 			// Any update with a higher base version than the received update should override the received update
 			if(history.baseVersion > update.baseVersion
-				|| (this.priority > update.priority && history.baseVersion >= update.baseVersion)) {
+				|| (this.sync.priority > update.priority && history.baseVersion >= update.baseVersion)) {
 				changes = this.removeChanges(changes, history.changes);
 			}
 		});
 		// Also resolve current conflicting changes
 		if(this.version > update.baseVersion
-			|| (this.priority > update.priority && this.version >= update.baseVersion)) {
+			|| (this.sync.priority > update.priority && this.version >= update.baseVersion)) {
 			changes = this.removeChanges(changes, this.changes);
 		}
 		return changes;
@@ -199,17 +200,20 @@ export class MozelWatcher {
 		this._changes = {};
 	}
 
+	getLowestVersionInHistory() {
+		let lowest:number|null = null;
+		forEach(this.syncBaseVersions, version => {
+			if(lowest === null || version < lowest) lowest = version;
+		});
+		return lowest || 0;
+	}
+
 	getHistory() {
 		return [...this.history];
 	}
 
 	autoCleanHistory() {
-		let lowest:number|null = null;
-		forEach(this.syncBaseVersions, version => {
-			if(lowest === null || version < lowest) lowest = version;
-		});
-		lowest = lowest || 0;
-		this.clearHistory(lowest);
+		this.clearHistory(this.getLowestVersionInHistory());
 	}
 
 	clearHistory(fromBaseVersion?:number) {
@@ -217,15 +221,22 @@ export class MozelWatcher {
 			this.history = [];
 			return;
 		}
-		this.history = this.history.filter(update => update.baseVersion > fromBaseVersion);
+		let lowest:number|null = null;
+		this.history = this.history.filter(update => {
+			if(update.baseVersion <= fromBaseVersion) return false;
+
+			if(lowest === null || update.baseVersion < lowest) lowest = update.baseVersion;
+			return true;
+		});
+		this.lowestBaseVersion = lowest || 0;
 	}
 
 	createUpdate() {
 		const update:Update = {
-			syncID: this.syncID,
+			syncID: this.sync.id,
 			version: this.version+1,
 			baseVersion: this.version,
-			priority: this.priority,
+			priority: this.sync.priority,
 			changes: {}
 		};
 		forEach(this.changes, (change, key) => {

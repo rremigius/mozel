@@ -1,8 +1,6 @@
 import {assert} from 'chai';
 import Mozel, {collection, Collection, property, Registry} from "../src";
-import MozelSync, {MozelWatcher} from "../src/MozelSync";
-import {alphanumeric} from "validation-kit";
-import {Data} from "../src/Mozel";
+import MozelSync, {MozelWatcher} from "../src/MozelSync/MozelSync";
 
 describe("MozelWatcher", () => {
 	it("tracks all changes in the given Mozel's properties", () => {
@@ -16,7 +14,7 @@ describe("MozelWatcher", () => {
 			gid: 'root',
 			name: 'root'
 		});
-		const watcher = new MozelWatcher('1', root);
+		const watcher = new MozelWatcher(new MozelSync(), root);
 		watcher.start();
 
 		root.foo = root.$create(Foo, {gid: 'root.foo.foo2'});
@@ -40,7 +38,7 @@ describe("MozelWatcher", () => {
 			gid: 'root',
 			foos: [{gid: 'rootFoo', name: 'rootFoo'}]
 		});
-		const watcher = new MozelWatcher('1', foo);
+		const watcher = new MozelWatcher(new MozelSync(), foo);
 		watcher.start();
 
 		foo.foos.get(0)!.name = 'rootFoo2';
@@ -491,35 +489,6 @@ describe("MozelSync", () => {
 			assert.equal(modelCentral.foo, 'foo1');
 			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 synced with modelCentral");
 			assert.deepEqual(modelCentral.$export(), model2.$export(), "model2 synced with modelCentral");
-		});
-	});
-	describe("syncWith", () => {
-		it("sends updates to linked MozelSyncs when `update` is called.", () => {
-			class Foo extends Mozel {
-				@property(String)
-				foo?:string;
-			}
-			const init = {gid: 1};
-
-			const model1 = Foo.create<Foo>(init);
-			const model2 = Foo.create<Foo>(init);
-			const modelCentral = Foo.create<Foo>(init);
-			const sync1 = new MozelSync({registry: model1.$registry});
-			const sync2 = new MozelSync({registry: model2.$registry});
-			const syncCentral = new MozelSync({registry: modelCentral.$registry, priority: 1});
-			syncCentral.syncWith(sync1);
-			syncCentral.syncWith(sync2);
-
-			sync1.start();
-			sync2.start();
-			syncCentral.start();
-
-			model1.foo = 'foo';
-			sync1.update();
-			syncCentral.update();
-
-			assert.equal(modelCentral.foo, 'foo');
-			assert.equal(model2.foo, 'foo');
 		});
 	});
 	describe("applyUpdates", () => {

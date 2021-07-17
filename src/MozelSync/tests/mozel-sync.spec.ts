@@ -1,6 +1,9 @@
 import {assert} from 'chai';
-import Mozel, {collection, Collection, property, Registry} from "../src";
-import MozelSync, {MozelWatcher} from "../src/MozelSync/MozelSync";
+import {MozelWatcher} from "../src/MozelWatcher";
+import Mozel, {collection, property} from "../../Mozel";
+import MozelSync from "../src/MozelSync";
+import Collection from "../../Collection";
+import Registry from "../../Registry";
 
 describe("MozelWatcher", () => {
 	it("tracks all changes in the given Mozel's properties", () => {
@@ -14,7 +17,7 @@ describe("MozelWatcher", () => {
 			gid: 'root',
 			name: 'root'
 		});
-		const watcher = new MozelWatcher(new MozelSync(), root);
+		const watcher = new MozelWatcher(root);
 		watcher.start();
 
 		root.foo = root.$create(Foo, {gid: 'root.foo.foo2'});
@@ -38,7 +41,7 @@ describe("MozelWatcher", () => {
 			gid: 'root',
 			foos: [{gid: 'rootFoo', name: 'rootFoo'}]
 		});
-		const watcher = new MozelWatcher(new MozelSync(), foo);
+		const watcher = new MozelWatcher(foo);
 		watcher.start();
 
 		foo.foos.get(0)!.name = 'rootFoo2';
@@ -492,7 +495,7 @@ describe("MozelSync", () => {
 		});
 	});
 	describe("applyUpdates", () => {
-		it("auto-cleans history based on the lowest received version number of linked MozelSyncs", () => {
+		it("auto-cleans history to keep a maximum number of entries", () => {
 			class Foo extends Mozel {
 				@property(Number)
 				foo?:number;
@@ -501,38 +504,49 @@ describe("MozelSync", () => {
 
 			const model1 = Foo.create<Foo>(init);
 			const model2 = Foo.create<Foo>(init);
-			const modelCentral = Foo.create<Foo>(init);
 			const sync1 = new MozelSync({registry: model1.$registry});
-			const sync2 = new MozelSync({registry: model2.$registry});
-			const syncCentral = new MozelSync({registry: modelCentral.$registry, priority: 1});
+			const sync2 = new MozelSync({registry: model2.$registry, historyLength: 2});
 
 			sync1.start();
 			sync2.start();
-			syncCentral.start();
 
 			model1.foo = 1;
-			model2.foo = 2;
-
-			syncCentral.applyUpdates(sync1.createUpdates()); // sync1: bv0 (v1)		>sync1.bv1
-
-			let updates = syncCentral.createUpdates(); // (v2) >central.bv2
-			sync1.applyUpdates(updates); // bv2
-			sync2.applyUpdates(updates); // bv2
-			syncCentral.applyUpdates(sync1.createUpdates()); // no update
-			syncCentral.applyUpdates(sync2.createUpdates()); // sync2: bv2 (v3)		>sync2.bv2
-
+			sync2.applyUpdates(sync1.createUpdates());
+			model1.foo = 2;
+			sync2.applyUpdates(sync1.createUpdates());
 			model1.foo = 3;
-			syncCentral.applyUpdates(sync1.createUpdates()); // sync1: bv2 (v4)		>sync1.bv3
+			sync2.applyUpdates(sync1.createUpdates());
+			model1.foo = 4;
+			sync2.applyUpdates(sync1.createUpdates());
 
-			const watcher = syncCentral.getWatcher(modelCentral.gid);
-			assert.deepEqual(watcher.getSyncVersions(), {
-				[sync1.id]: 2,
-				[sync2.id]: 2
-			}, "Sync versions correct");
-			assert.notOk(
-				!!watcher.getHistory().find(update => update.baseVersion <= 2),
-				"No updates in history with base version below 3"
-			);
+			const watcher = sync2.getWatcher(model2.gid);
+			assert.equal(watcher.getHistory().length, 2, "History length kept at 2");
+		});
+		it("rejects updates with a base version lower than oldest update in history", () => {
+			class Foo extends Mozel {
+				@property(Number)
+				foo?:number;
+			}
+			const init = {gid: 1};
+
+			const model1 = Foo.create<Foo>(init);
+			const model2 = Foo.create<Foo>(init);
+			const sync1 = new MozelSync({registry: model1.$registry});
+			const sync2 = new MozelSync({registry: model2.$registry, historyLength: 2});
+			sync1.start();
+			sync2.start();
+
+			model1.foo = 1;
+			const oldUpdate = sync1.createUpdates();
+
+			model1.foo = 2;
+			sync2.applyUpdates(sync1.createUpdates());
+			model1.foo = 3;
+			sync2.applyUpdates(sync1.createUpdates());
+			model1.foo = 4;
+			sync2.applyUpdates(sync1.createUpdates());
+
+			assert.throws(()=>sync2.applyUpdates(oldUpdate));
 		});
 		it("merges updates based on base number", () => {
 			class Foo extends Mozel {

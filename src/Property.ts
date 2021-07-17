@@ -433,6 +433,14 @@ export default class Property {
 	tryInit(value:any, merge = false) {
 		let current = this._value;
 
+		// Maybe it's an existing Mozel
+		if(isPlainObject(value) && !isNil(value.gid)) {
+			const mozel = this.parent.$resolveReference(value);
+			if(mozel && this.checkType(mozel)) {
+				return this._set(mozel);
+			}
+		}
+
 		// Init reference
 		if(this.isReference && isPlainObject(value)) {
 			const gid = get(value, 'gid');

@@ -20,3 +20,9 @@ export {
 	isNumber,
 	throttle
 } from "lodash";
+
+export function interval(ms:number) {
+	return new Promise(resolve => {
+		setTimeout(resolve, ms);
+	});
+}

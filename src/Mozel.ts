@@ -115,6 +115,15 @@ export function property(runtimeType?: PropertyType, options?: PropertyOptions) 
 		target.static.defineClassProperty(propertyName, runtimeType, options);
 	};
 }
+export function string(options?: PropertyOptions) {
+	return property(String, options);
+}
+export function number(options?: PropertyOptions) {
+	return property(Number, options);
+}
+export function boolean(options?: PropertyOptions) {
+	return property(String, options);
+}
 
 /**
  * PROPERTY decorator factory
@@ -134,6 +143,7 @@ export const required = true;
 export const immediate = true;
 export const deep = true;
 export const reference = true;
+export const shallow = true;
 
 export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof Mozel):MozelSchema<M> {
 	return MozelClass.$schema<M>();
@@ -278,6 +288,10 @@ export default class Mozel {
 	private _strict?: boolean;
 	private readonly _watchers: PropertyWatcher[];
 	private $parentLock: boolean = false;
+	private _settingData:boolean = false;
+	get settingData() {
+		return this._settingData;
+	}
 
 	public $root:boolean = false;
 	public $destroyed: boolean = false;

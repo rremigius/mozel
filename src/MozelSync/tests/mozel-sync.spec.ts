@@ -1,58 +1,8 @@
 import {assert} from 'chai';
-import {MozelWatcher} from "../src/MozelWatcher";
-import Mozel, {collection, property} from "../../Mozel";
+import Mozel, {collection, property, string} from "../../Mozel";
 import MozelSync from "../src/MozelSync";
 import Collection from "../../Collection";
 import Registry from "../../Registry";
-
-describe("MozelWatcher", () => {
-	it("tracks all changes in the given Mozel's properties", () => {
-		class Foo extends Mozel {
-			@property(String)
-			name?:string;
-			@property(Foo)
-			foo?:Foo;
-		}
-		const root = Foo.create<Foo>({
-			gid: 'root',
-			name: 'root'
-		});
-		const watcher = new MozelWatcher(root);
-		watcher.start();
-
-		root.foo = root.$create(Foo, {gid: 'root.foo.foo2'});
-		root.foo!.name = 'root.foo2'; // should not be recorded
-		root.name = 'root2';
-		root.name = 'root3'
-
-		assert.deepEqual(watcher.changes, {
-			'foo': root!.foo,
-			'name': 'root3'
-		});
-	});
-	it("tracks changes to a Mozel's collection", () => {
-		class Foo extends Mozel {
-			@property(String)
-			name?:string;
-			@collection(Foo)
-			foos!:Collection<Foo>
-		}
-		const foo = Foo.create<Foo>({
-			gid: 'root',
-			foos: [{gid: 'rootFoo', name: 'rootFoo'}]
-		});
-		const watcher = new MozelWatcher(foo);
-		watcher.start();
-
-		foo.foos.get(0)!.name = 'rootFoo2';
-		assert.isEmpty(watcher.changes, "change to collection item does is not recorded");
-
-		foo.foos.set(0, {gid: 'replaced'}, true);
-		assert.deepEqual(watcher.changes, {
-			foos: foo.foos
-		});
-	});
-});
 
 describe("MozelSync", () => {
 	describe("getUpdates", () => {
@@ -174,7 +124,7 @@ describe("MozelSync", () => {
 		});
 	});
 	describe("applyUpdates", () => {
-		it("merges changes retrieved from getUpdates into the registered Mozels", () => {
+		it("merges changes retrieved from createUpdates into the registered Mozels", () => {
 			class Foo extends Mozel {
 				@property(String)
 				name?:string;
@@ -210,6 +160,27 @@ describe("MozelSync", () => {
 
 			assert.equal(root2.foo!.name, 'rootFoo');
 			assert.equal(root2.foos.get(0)!.name, 'rootFoos0');
+		});
+		it("can synchronize Collection item removal", () => {
+			class Foo extends Mozel {
+				@collection(Foo)
+				foos!:Collection<Foo>;
+			}
+			const init = {gid: 'root', foos: [{gid: 0}, {gid: 1}]};
+			const foo1 = Foo.create<Foo>(init);
+			const foo2 = Foo.create<Foo>(init);
+
+			const sync1 = new MozelSync({registry: foo1.$registry});
+			const sync2 = new MozelSync({registry: foo2.$registry});
+			sync1.start();
+			sync2.start();
+
+			foo1.foos.removeIndex(0);
+			sync2.applyUpdates(sync1.createUpdates(true));
+
+			assert.deepEqual(foo1.$export(), foo2.$export(), "Mozels synchronized");
+			assert.equal(foo2.foos.length, 1);
+			assert.equal(foo2.foos.get(0)!.gid, 1);
 		});
 	});
 	describe("syncRegistry", () => {
@@ -289,17 +260,17 @@ describe("MozelSync", () => {
 			sync2.syncRegistry(model2.$registry);
 			sync2.start();
 
-			assert.deepEqual(sync1.createUpdates(), {}, "No changes in sync1 at start");
-			assert.deepEqual(sync2.createUpdates(), {}, "No changes in sync2 at start");
+			assert.deepEqual(sync1.createUpdates(true), {}, "No changes in sync1 at start");
+			assert.deepEqual(sync2.createUpdates(true), {}, "No changes in sync2 at start");
 
 			model1.name = 'Root-2';
 			model1.foo!.name = 'RootFoo-2';
 			model1.foos.set(1, {gid: 'root.foos.1-2', name: 'RootFoos1-2'});
 
-			sync2.applyUpdates(sync1.createUpdates());
-			sync1.applyUpdates(sync2.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
+			sync1.applyUpdates(sync2.createUpdates(true));
 
-			const updates = sync1.createUpdates();
+			const updates = sync1.createUpdates(true);
 
 			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
 			assert.deepEqual(updates, {}, "No more changes after synchronization changes were reported back");
@@ -352,8 +323,8 @@ describe("MozelSync", () => {
 		});
 		it("conflicting changes crossing paths will be settled by MozelSync priority", () => {
 			function transmit(sync1:MozelSync, sync2:MozelSync) {
-				const changes1 = sync1.createUpdates();
-				const changes2 = sync2.createUpdates();
+				const changes1 = sync1.createUpdates(true);
+				const changes2 = sync2.createUpdates(true);
 				sync2.applyUpdates(changes1);
 				sync1.applyUpdates(changes2);
 			}
@@ -374,8 +345,8 @@ describe("MozelSync", () => {
 			transmit(sync1, sync2);
 			transmit(sync1, sync2);
 
-			assert.deepEqual(sync1.createUpdates(), {}, "No more changes in sync1 after round-trip");
-			assert.deepEqual(sync2.createUpdates(), {}, "No more changes in sync2 after round-trip");
+			assert.deepEqual(sync1.createUpdates(true), {}, "No more changes in sync1 after round-trip");
+			assert.deepEqual(sync2.createUpdates(true), {}, "No more changes in sync2 after round-trip");
 			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
 			assert.equal(model2.foo, 'foo', "Property stettled to model1 value");
 		});
@@ -511,13 +482,13 @@ describe("MozelSync", () => {
 			sync2.start();
 
 			model1.foo = 1;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 			model1.foo = 2;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 			model1.foo = 3;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 			model1.foo = 4;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 
 			const watcher = sync2.getWatcher(model2.gid);
 			assert.equal(watcher.getHistory().length, 2, "History length kept at 2");
@@ -537,14 +508,14 @@ describe("MozelSync", () => {
 			sync2.start();
 
 			model1.foo = 1;
-			const oldUpdate = sync1.createUpdates();
+			const oldUpdate = sync1.createUpdates(true);
 
 			model1.foo = 2;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 			model1.foo = 3;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 			model1.foo = 4;
-			sync2.applyUpdates(sync1.createUpdates());
+			sync2.applyUpdates(sync1.createUpdates(true));
 
 			assert.throws(()=>sync2.applyUpdates(oldUpdate));
 		});
@@ -572,18 +543,18 @@ describe("MozelSync", () => {
 			model2.foo = 'model2.foo';
 			model2.bar = 'model2.bar';
 
-			syncCentral.applyUpdates(sync1.createUpdates());
-			sync1.applyUpdates(syncCentral.createUpdates()); // only sync to sync1, sync2 will be outdated
+			syncCentral.applyUpdates(sync1.createUpdates(true));
+			sync1.applyUpdates(syncCentral.createUpdates(true)); // only sync to sync1, sync2 will be outdated
 
 			model1.foo = 'model1.foo.2';
 			model2.foo = 'model2.foo.2';
 
 			// Both send in new update
-			syncCentral.applyUpdates(sync1.createUpdates());
-			syncCentral.applyUpdates(sync2.createUpdates());
+			syncCentral.applyUpdates(sync1.createUpdates(true));
+			syncCentral.applyUpdates(sync2.createUpdates(true));
 
 			// Sync back to both
-			const updates = syncCentral.createUpdates();
+			const updates = syncCentral.createUpdates(true);
 			sync1.applyUpdates(updates);
 			sync2.applyUpdates(updates);
 
@@ -591,6 +562,45 @@ describe("MozelSync", () => {
 			assert.deepEqual(modelCentral.$export(), model2.$export(), "model2 in sync with modelCentral");
 			assert.equal(modelCentral.foo, 'model1.foo.2', "Foo set to value provided by model1");
 			assert.equal(modelCentral.bar, "model2.bar", "Bar set to value provided by model2");
+		});
+		it("can create sub-Mozels *and* fill in their data, even if data comes after property assignment", () => {
+			class Foo extends Mozel {
+				@string()
+				name?:string;
+				@property(Foo)
+				foo?:Foo;
+			}
+			const root = Foo.create<Foo>({gid: 'root'});
+			const sync = new MozelSync({registry: root.$registry});
+			sync.applyUpdates({
+				'new-gid': {
+					syncID: 'foo',
+					priority: 0,
+					baseVersion: 0,
+					version: 1,
+					changes: {
+						name: 'foo'
+					}
+				},
+				'root': {
+					syncID: 'foo',
+					priority: 0,
+					baseVersion: 0,
+					version: 1,
+					changes: {
+						foo: {gid: 'new-gid'}
+					}
+				}
+			});
+			assert.deepEqual(root.$export(), {
+				gid: 'root',
+				name: undefined,
+				foo: {
+					gid: 'new-gid',
+					name: 'foo',
+					foo: undefined
+				}
+			})
 		});
 	});
 });

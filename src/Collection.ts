@@ -113,6 +113,12 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Try to initialize
 		if(init && isPlainObject(item) && isMozelClass(this.type)) {
+			if(item.gid) {
+				// Maybe it already exists
+				const mozel = this.parent.$resolveReference(item);
+				if(mozel && this.checkType(mozel)) return mozel;
+			}
+
 			// If the Collection was set up correctly, this.type should match T and we can assume it's the correct value
 			return <T><any>this.parent.$create(this.type, item);
 		}
@@ -321,13 +327,15 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Set new value
 		this.events.beforeChange.fire(new CollectionBeforeChangeEvent(revised, index));
-		this._list[index] = revised;
 		if(revised instanceof Mozel) {
 			revised.$events.destroyed.on(this._mozelDestroyedListener);
 			if(!this.isReference) {
+				// Must  be done *before* setting it on the list, because `$setParent` might remove it from the
+				// Collection if it was already there.
 				revised.$setParent(this.parent, this.relation);
 			}
 		}
+		this._list[index] = revised;
 		this.events.changed.fire(new CollectionChangedEvent(revised, index));
 
 		if(notifyAddRemove) {

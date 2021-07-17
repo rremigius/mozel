@@ -24,7 +24,7 @@ export default class Registry<T extends Registerable> {
 	register(item:T) {
 		if(!isNil(item.gid)) {
 			if(item.gid in this.indexByGid) {
-				log.error(`Duplicate registration for GID: ${item.gid}.`);
+				throw new Error(`Duplicate registration for GID: ${item.gid}.`);
 			} else {
 				this.indexByGid[item.gid] = item;
 			}

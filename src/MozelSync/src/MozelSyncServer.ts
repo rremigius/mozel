@@ -1,6 +1,7 @@
 import {Server, Socket} from "socket.io";
 import MozelSync from "./MozelSync";
 import Log from "../log";
+import {mapValues} from "../../utils";
 
 const log = Log.instance("mozel-sync-server");
 
@@ -10,7 +11,7 @@ export default class MozelSyncServer {
 	readonly defaultIOPort:number;
 	readonly sync:MozelSync;
 
-	private connections:Record<string, Socket> = {};
+	readonly destroyCallbacks:Function[] = [];
 
 	constructor(sync?:MozelSync, io?:Server|number) {
 		this.sync = sync || new MozelSync();
@@ -27,25 +28,46 @@ export default class MozelSyncServer {
 	}
 
 	start() {
-		log.info("MozelSyncServer started.");
+		this.sync.start();
+
 		this.io.on('connection', (socket) => {
-			this.createUser(socket.id, socket)
+			this.initUser(socket.id, socket)
 			socket.on('disconnect', () => {
 				this.removeUser(socket.id);
-			})
+			});
+			// Listen to incoming updates
+			socket.on('updates', updates => {
+				log.debug("-----------------\nSERVER UPDATES IN:", mapValues(updates, update => update.changes));
+				this.sync.applyUpdates(updates);
+			});
 		});
+
 		if(this.isDefaultIO) {
 			this.io.listen(3000);
 		}
+
+		this.destroyCallbacks.push(
+			this.sync.events.newUpdates.on(event => {
+				log.debug("-----------------\nSERVER UPDATES OUT:", mapValues(event.updates, update => update.changes));
+				this.io.emit('updates', event.updates);
+			})
+		);
+
+		log.info("MozelSyncServer started.");
 	}
 
-	createUser(id:string, socket:Socket) {
-		this.connections[id] = socket;
+	stop() {
+		this.io.close();
+		this.sync.stop();
+	}
+
+	initUser(id:string, socket:Socket) {
+		socket.emit('connection', {id: socket.id});
+		socket.emit('updates', this.sync.createFullUpdates());
 		this.onUserConnected(id);
 	}
 
 	removeUser(id:string) {
-		delete this.connections[id];
 		this.onUserDisconnected(id);
 	}
 
@@ -54,6 +76,10 @@ export default class MozelSyncServer {
 	}
 
 	onUserDisconnected(id:string) {
+		// For override
+	}
 
+	destroy() {
+		this.destroyCallbacks.forEach(callback => callback());
 	}
 }

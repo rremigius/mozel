@@ -1,11 +1,11 @@
 import {v4 as uuid} from "uuid";
 import PropertyWatcher from "../../PropertyWatcher";
-import {forEach, mapValues, values} from "../../utils";
+import {call, findAllDeep, forEach, get, isArray, isEqual, isPlainObject, mapValues, values} from "../../utils";
 import Mozel, {shallow} from "../../Mozel";
 import Collection from "../../Collection";
 import EventInterface from "event-interface-mixin";
 import Log from "log-control";
-import {alphanumeric} from "validation-kit";
+import {alphanumeric, isPrimitive} from "validation-kit";
 
 const log = Log.instance("mozel-watcher");
 
@@ -37,7 +37,9 @@ export class MozelWatcher {
 	get changes() {
 		return this._changes;
 	}
-	private _newMozels:Set<alphanumeric> = new Set<alphanumeric>();
+	private newMozels:Set<alphanumeric> = new Set<alphanumeric>();
+	private mozelsInUpdates:Set<alphanumeric> = new Set<alphanumeric>();
+	private stopCallbacks:Function[] = [];
 
 	private priority:number;
 	private version:number = 0;
@@ -46,11 +48,14 @@ export class MozelWatcher {
 	get historyMinBaseVersion() {
 		return !this.history.length ? 0 : this.history[0].baseVersion;
 	}
+	get lastUpdate():Update|undefined {
+		if(!this.history.length) return;
+		return this.history[this.history.length-1];
+	}
 
 	public syncID:string;
 	public readonly events = new MozelWatcherEvents();
 
-	private isNewMozel:(mozel:Mozel)=>boolean;
 	private onDestroyed = ()=>this.destroy();
 
 	/**
@@ -59,14 +64,17 @@ export class MozelWatcher {
 	 * @param options
 	 * 			options.asNewMozel	Function to check whether a Mozel property is new and should be included in full
 	 */
-	constructor(mozel:Mozel, options?:{syncID?:string, priority?:number, historyLength?:number, asNewMozel?:(mozel:Mozel)=>boolean}) {
+	constructor(mozel:Mozel, options?:{syncID?:string, priority?:number, historyLength?:number}) {
 		const $options = options || {};
 		this.mozel = mozel;
 		this.mozel.$events.destroyed.on(this.onDestroyed);
 		this.syncID = $options.syncID || uuid();
 		this.historyMaxLength = $options.historyLength || 20;
 		this.priority = $options.priority || 0;
-		this.isNewMozel = $options.asNewMozel || (()=>false);
+	}
+
+	isNewMozel(mozel:Mozel) {
+		return this.newMozels.has(mozel.gid);
 	}
 
 	/*
@@ -79,34 +87,49 @@ export class MozelWatcher {
 
 	applyUpdate(update:Update) {
 		if(update.baseVersion < this.historyMinBaseVersion) {
+			// We cannot apply changes from before our history, as it would overwrite anything already committed.
 			throw new OutdatedUpdateError(update.baseVersion, this.historyMinBaseVersion);
 		}
 		const changes = this.overrideChangesFromHistory(update);
+		const mozels = findAllDeep(changes, (value, key) => key === 'gid');
+		mozels.map(mozel => this.mozelsInUpdates.add(mozel.gid));
 
-		this.mozel.$setData(changes, true);
 		this.history.push(update);
+		this.mozel.$setData(changes, true);
+
 		this.version = Math.max(update.version, this.version);
 		this.autoCleanHistory();
 	}
 
 	overrideChangesFromHistory(update:Update) {
 		let changes = {...update.changes};
+		const priorityAdvantage = this.priority > update.priority ? 1 : 0;
+
 		this.history.forEach(history => {
 			// Any update with a higher base version than the received update should override the received update
-			if(history.baseVersion + this.priority > update.baseVersion + update.priority) {
-				changes = this.removeChanges(changes, history.changes);
+			if(history.baseVersion + priorityAdvantage > update.baseVersion) {
+				changes = this.removeChanges(changes, history.changes, true);
 			}
 		});
 		// Also resolve current conflicting changes
-		if(this.version + this.priority > update.baseVersion + update.priority) {
-			changes = this.removeChanges(changes, this.changes);
+		if(this.version + priorityAdvantage > update.baseVersion) {
+			changes = this.removeChanges(changes, this.changes, true);
 		}
 		return changes;
 	}
 
-	removeChanges(changes:Changes, override:Changes) {
+	/**
+	 *
+	 * @param {Changes} changes
+	 * @param {Changes} override
+	 * @param {boolean} recordOverrides		If set to `true`, will record overrides as new changes.
+	 */
+	removeChanges(changes:Changes, override:Changes, recordOverrides = false) {
 		changes = {...changes};
 		forEach(override, (_, key) => {
+			if(recordOverrides && !isEqual(changes[key], override[key])) {
+				this._changes[key] = override[key]; // re-add our override to changes (update sender needs to know)
+			}
 			delete changes[key];
 		});
 		return changes;
@@ -114,6 +137,8 @@ export class MozelWatcher {
 
 	clearChanges() {
 		this._changes = {};
+		this.newMozels.clear();
+		this.mozelsInUpdates.clear();
 	}
 
 	getHistory() {
@@ -124,6 +149,10 @@ export class MozelWatcher {
 		if(this.history.length > this.historyMaxLength) {
 			this.history.splice(0, this.history.length - this.historyMaxLength);
 		}
+	}
+
+	hasUpdate() {
+		return Object.keys(this.changes).length > 0;
 	}
 
 	createUpdateInfo():Update {
@@ -147,7 +176,11 @@ export class MozelWatcher {
 		if(newVersion) update.version++;
 		forEach(this.changes, (change, key) => {
 			if(change instanceof Mozel) {
-				// New mozels we include in full; existing mozels only gid
+				/*
+				New mozels we include in full; existing mozels only gid
+				If we don't include full export for new Mozels, data may be separated from property assignment
+				and receiving MozelSync will not know what to do with the data
+				*/
 				const options = this.isNewMozel(change) ? undefined : {keys: ['gid']};
 				update.changes[key] = change.$export(options);
 				return;
@@ -155,7 +188,7 @@ export class MozelWatcher {
 			if(change instanceof Collection) {
 				if(change.isMozelType()) {
 					update.changes[key] = change.map(mozel => {
-						// New mozels we include in full; existing mozels only gid
+						// New mozels we include in full; existing mozels only gid (see comment above)
 						const options = this.isNewMozel(mozel) ? undefined : {keys: ['gid']};
 						return mozel.$export(options);
 					});
@@ -178,19 +211,68 @@ export class MozelWatcher {
 		return update;
 	}
 
+	isEqualChangeValue(value1:unknown, value2:unknown):boolean {
+		if(isPrimitive(value1) || isPrimitive(value2)) return value1 === value2;
+		if(isPlainObject(value1) || value1 instanceof Mozel || isPlainObject(value2) || value2 instanceof Mozel) {
+			/*
+			If we received a full Mozel as a property, we have initialized the Mozel on our side. As long as we
+			don't change the Mozel, we don't need to include it as a change in our next update. We should not
+			record it as a new Mozel, though.
+			 */
+			return get(value1, 'gid') === get(value2, 'gid');
+		}
+		if(value1 instanceof Collection || value2 instanceof Collection || isArray(value1) || isArray(value2)) {
+			const arr1 = value1 instanceof Collection ? value1.export({shallow}) : value1;
+			const arr2 = value2 instanceof Collection ? value2.export({shallow}) : value2;
+			if(!isArray(arr1) || !isArray(arr2)) { return false }
+			if(arr1.length !== arr2.length) return false;
+
+			return !arr1.find((item, i) => !this.isEqualChangeValue(item, arr2[i]));
+		}
+		return false;
+	}
+
 	start(includeCurrentState = false) {
+		// Watch property changes
 		this.watchers.push(this.mozel.$watch('*', change => {
+			const lastUpdate = this.lastUpdate;
+			if(lastUpdate && this.isEqualChangeValue(change.newValue, lastUpdate.changes[change.changePath])) {
+				// If the change is a direct result of the last update, we don't need to include it in our changes.
+				// We don't need to tell whoever sent the update to also apply the same changes of their own update.
+				delete this._changes[change.changePath]; // also remove any change if already recorded
+				return;
+			}
 			this._changes[change.changePath] = this.mozel.$path(change.changePath);
 			this.events.changed.fire(new MozelWatcherChangedEvent(change.changePath));
 		}));
+
 		// Watch collection changes
 		this.mozel.$eachProperty(property => {
 			if(!property.isCollectionType()) return;
 			this.watchers.push(this.mozel.$watch(`${property.name}.*`, change => {
+				const lastUpdate = this.lastUpdate;
+				if(lastUpdate && this.isEqualChangeValue(this.mozel.$get(property.name), lastUpdate.changes[property.name])) {
+					// If the change is a direct result of the last update, we don't need to include it in our changes.
+					// We don't need to tell whoever sent the update to also apply the same changes of their own update.
+					return;
+				}
 				this._changes[property.name] = this.mozel.$get(property.name);
 				this.events.changed.fire(new MozelWatcherChangedEvent(change.changePath));
 			}));
 		});
+
+		// Keep track of newly created Mozels
+		this.stopCallbacks.push(
+			this.mozel.$registry.events.added.on(event => {
+				if(!(event.item instanceof Mozel) || this.mozelsInUpdates.has(event.item.gid)) return;
+				/*
+				We only add newly created Mozels that are not already mentioned in updates (we don't need to tell
+				the receiver to create the Mozel that they created).
+				 */
+				this.newMozels.add(event.item.gid);
+			})
+		);
+
 		if(includeCurrentState) {
 			this._changes = this.mozel.$export({shallow: true, nonDefault: true});
 			this.events.changed.fire(new MozelWatcherChangedEvent("*"));
@@ -201,6 +283,7 @@ export class MozelWatcher {
 		for(let watcher of this.watchers) {
 			this.mozel.$removeWatcher(watcher);
 		}
+		this.stopCallbacks.forEach(call);
 	}
 
 	destroy() {

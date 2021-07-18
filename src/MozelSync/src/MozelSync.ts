@@ -3,7 +3,7 @@ import EventInterface, {callback} from "event-interface-mixin";
 import {v4 as uuid} from "uuid";
 import Log from "../log";
 import {MozelWatcher, Update} from "./MozelWatcher";
-import {forEach, isNumber, mapValues, throttle} from "../../utils";
+import {call, find, findAllDeep, findDeep, forEach, isNumber, isPlainObject, mapValues, throttle} from "../../utils";
 import Mozel from "../../Mozel";
 import Registry from "../../Registry";
 
@@ -42,6 +42,7 @@ export default class MozelSync {
 	private destroyCallbacks:Function[] = [];
 	private registry?:Registry<Mozel>;
 	public readonly historyLength:number;
+	private lastUpdates:Record<string, Update> = {};
 
 	private active:boolean = false;
 	priority:number;
@@ -62,6 +63,10 @@ export default class MozelSync {
 		return mapValues(this.watchers, watcher => watcher.createFullUpdate());
 	}
 
+	hasUpdates() {
+		return !!find(this.watchers, watcher => watcher.hasUpdate());
+	}
+
 	createUpdates(newVersion:boolean = false) {
 		const updates:Record<alphanumeric, Update> = {};
 		forEach(this.watchers, watcher => {
@@ -71,6 +76,7 @@ export default class MozelSync {
 			updates[watcher.mozel.gid] = update;
 		});
 		if(newVersion) {
+			this.newPropertyMozels.clear();
 			this.events.newUpdates.fire(new MozelSyncNewUpdatesEvent(updates));
 		}
 		return updates;
@@ -110,12 +116,7 @@ export default class MozelSync {
 		const watcher = new MozelWatcher(mozel, {
 			syncID: this.id,
 			priority: this.priority,
-			historyLength: this.historyLength,
-			asNewMozel: (mozel:Mozel)=> {
-				const isNew = this.newPropertyMozels.has(mozel.gid);
-				if(isNew) this.newPropertyMozels.delete(mozel.gid);
-				return isNew;
-			}
+			historyLength: this.historyLength
 		});
 		this.mozels[mozel.gid] = mozel;
 		if(!mozel.$root) this.newPropertyMozels.add(mozel.gid);
@@ -137,7 +138,7 @@ export default class MozelSync {
 		delete this.watchers[mozel.gid];
 		delete this.mozels[mozel.gid];
 		this.newPropertyMozels.delete(mozel.gid);
-		this.unRegisterCallbacks[mozel.gid].forEach(callback => callback());
+		this.unRegisterCallbacks[mozel.gid].forEach(call);
 	}
 
 	has(mozel:Mozel) {
@@ -169,6 +170,6 @@ export default class MozelSync {
 
 	destroy() {
 		forEach(this.watchers, watcher => this.unregister(watcher.mozel));
-		this.destroyCallbacks.forEach(callback => callback());
+		this.destroyCallbacks.forEach(call);
 	}
 }

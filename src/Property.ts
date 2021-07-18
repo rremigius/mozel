@@ -313,6 +313,8 @@ export default class Property {
 			if(value instanceof Collection) {
 				value.setParent(this.parent);
 			}
+		} else {
+			this._ref = null;
 		}
 
 		// New value is Mozel or Collection, listen to changes
@@ -434,10 +436,12 @@ export default class Property {
 		let current = this._value;
 
 		// Maybe it's an existing Mozel
-		if(isPlainObject(value) && !isNil(value.gid)) {
+		if(isPlainObject(value) && Object.keys(value).length === 1 && !isNil(value.gid)) {
 			const mozel = this.parent.$resolveReference(value);
 			if(mozel && this.checkType(mozel)) {
-				return this._set(mozel);
+				this._set(mozel);
+				if(!this.isReference) mozel.$setData(value, merge);
+				return true;
 			}
 		}
 

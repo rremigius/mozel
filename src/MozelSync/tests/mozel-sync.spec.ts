@@ -1,5 +1,5 @@
 import {assert} from 'chai';
-import Mozel, {collection, property, string} from "../../Mozel";
+import Mozel, {collection, property, reference, string} from "../../Mozel";
 import MozelSync from "../src/MozelSync";
 import Collection from "../../Collection";
 import Registry from "../../Registry";
@@ -38,7 +38,7 @@ describe("MozelSync", () => {
 			});
 			assert.deepEqual(updates.rootFoo.changes, {
 				name: 'root.foo2',
-				foo: {gid: root.foo!.foo.gid}
+				foo: {gid: root.foo!.foo.gid, name: 'root.foo.foo', foo: undefined}
 			});
 		});
 		it("returns only a list of GIDs for changed collections", () => {
@@ -69,57 +69,40 @@ describe("MozelSync", () => {
 				name: 'RootFoos1-changed'
 			});
 		});
-		it("returns only an object with GID for nested mozels, and an extra record for new mozels", () => {
+		it("returns only an object with GID for nested mozels, except for new child mozels", () => {
 			class Foo extends Mozel {
 				@property(String)
 				name?: string;
 				@property(Foo)
-				foo?:Foo;
+				newFoo?:Foo;
+				@property(Foo)
+				changedFoo?:Foo;
+				@property(Foo, {reference})
+				ref?:Foo;
 			}
 			const root = Foo.create<Foo>({
 				gid: 'root',
-				foo: {
-					gid: 'root.foo',
-					name: 'RootFoo'
+				changedFoo: {
+					gid: 'root.changedFoo',
+					name: 'ChangedFoo'
 				}
 			});
 			const sync = new MozelSync();
 			sync.syncRegistry(root.$registry);
 			sync.start();
 
-			root.$set('foo', {gid: 'root.foo2', name: 'RootFoo2'}, true);
+			root.$set('newFoo', {gid: 'root.newFoo', name: 'NewFoo'}, true);
+			root.changedFoo!.name = 'ChangedFoo-1';
+			root.$set('ref', {gid: 'root.changedFoo'}, true);
 			const updates = sync.createUpdates();
 
-			assert.deepEqual(Object.keys(updates), ['root', 'root.foo2'], "Correct entries in update.");
+			assert.deepEqual(Object.keys(updates).sort(), ['root', 'root.changedFoo'].sort(), "Correct entries in update.");
 			assert.deepEqual(updates.root.changes, {
-				foo: {gid: 'root.foo2'}
+				newFoo: {gid: 'root.newFoo', name: 'NewFoo', changedFoo: undefined, newFoo: undefined, ref: undefined},
+				ref: {gid: 'root.changedFoo'}
 			});
-			assert.deepEqual(updates["root.foo2"].changes, {
-				gid: 'root.foo2',
-				name: 'RootFoo2'
-			});
-		});
-	});
-	describe("register", () => {
-		it("records current state as change if MozelSync already started", () => {
-			class Foo extends Mozel {
-				@property(String)
-				name?:string;
-			}
-			const foo = Foo.create<Foo>({
-				gid: 'foo',
-				name: 'foo'
-			});
-			const sync = new MozelSync();
-			sync.start();
-			sync.register(foo);
-
-			const updates = sync.createUpdates();
-			
-			assert.deepEqual(Object.keys(updates), ['foo'], "Correct entries in update.");
-			assert.deepEqual(updates.foo.changes, {
-				gid: 'foo',
-				name: 'foo'
+			assert.deepEqual(updates['root.changedFoo'].changes, {
+				name: 'ChangedFoo-1'
 			});
 		});
 	});
@@ -352,36 +335,6 @@ describe("MozelSync", () => {
 		});
 	});
 	describe("2-way synchronization with central model", () => {
-		it("synchronizes all models", () => {
-			class Foo extends Mozel {
-				@property(String)
-				foo?:string;
-			}
-			const init = {gid: 1}
-
-			const model1 = Foo.create<Foo>(init);
-			const model2 = Foo.create<Foo>(init);
-			const modelCentral = Foo.create<Foo>(init);
-
-			const sync1 = new MozelSync({registry: model1.$registry});
-			const sync2 = new MozelSync({registry: model2.$registry});
-			const syncCentral = new MozelSync({registry: modelCentral.$registry});
-			sync1.start();
-			sync2.start();
-			syncCentral.start();
-
-			// model 1 is changed, transmits to central model
-			model1.foo = 'foo';
-			syncCentral.applyUpdates(sync1.createUpdates());
-
-			// central model transmits to all clients
-			sync2.applyUpdates(syncCentral.createUpdates());
-			sync1.applyUpdates(syncCentral.createUpdates());
-
-			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
-			assert.deepEqual(modelCentral.$export(), model1.$export(), "Models synchronized with central model");
-			assert.equal(model1.foo, 'foo');
-		});
 		it("resolves conflicting updates through high-priority central model at a first-come-first serve basis", () => {
 			class Foo extends Mozel {
 				@property(String)
@@ -409,13 +362,17 @@ describe("MozelSync", () => {
 			model2.bar = 'bar2';
 			model2.qux = 'qux2';
 
-			syncCentral.applyUpdates(sync1.createUpdates());
-			syncCentral.applyUpdates(sync2.createUpdates());
+			const updates1 = sync1.createUpdates(true);
+			syncCentral.applyUpdates(updates1);
+			sync2.applyUpdates(updates1);
 
-			const centralUpdates = syncCentral.createUpdates();
+			assert.notOk(syncCentral.hasUpdates(), "No updates from central after update1");
 
-			sync1.applyUpdates(centralUpdates);
-			sync2.applyUpdates(centralUpdates);
+			const updates2 = sync2.createUpdates(true);
+			syncCentral.applyUpdates(updates2);
+			sync1.applyUpdates(updates2);
+
+			assert.notOk(syncCentral.hasUpdates(), "No updates from central after update2");
 
 			assert.equal(modelCentral.foo, 'foo1');
 			assert.equal(modelCentral.bar, 'bar2');
@@ -444,21 +401,13 @@ describe("MozelSync", () => {
 			model1.foo = 'foo1';
 			model2.foo = 'foo2';
 
-			// 1 -> central
-			syncCentral.applyUpdates(sync1.createUpdates());
+			const updates1 = sync1.createUpdates(true);
+			syncCentral.applyUpdates(updates1);
+			sync2.applyUpdates(updates1);
 
-			// central -> 1 & 2
-			const centralUpdates1 = syncCentral.createUpdates();
-			sync1.applyUpdates(centralUpdates1);
-			sync2.applyUpdates(centralUpdates1);
-
-			// 2 -> central
-			syncCentral.applyUpdates(sync2.createUpdates());
-
-			// central -> 1 & 2
-			const centralUpdates2 = syncCentral.createUpdates();
-			sync1.applyUpdates(centralUpdates2);
-			sync2.applyUpdates(centralUpdates2);
+			const updates2 = sync2.createUpdates(true);
+			syncCentral.applyUpdates(updates2);
+			sync2.applyUpdates(updates2);
 
 			assert.equal(modelCentral.foo, 'foo1');
 			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 synced with modelCentral");
@@ -538,30 +487,37 @@ describe("MozelSync", () => {
 			sync2.start();
 			syncCentral.start();
 
-			model1.foo = 'model1.foo';
+			model1.foo = 'model1.foo'; // will be first
+			model2.bar = 'model2.bar'; // will be too late (see below)
 
-			model2.foo = 'model2.foo';
-			model2.bar = 'model2.bar';
+			const update1 = sync1.createUpdates(true);
+			syncCentral.applyUpdates(update1); // only sync to central; sync2 will be outdated
 
-			syncCentral.applyUpdates(sync1.createUpdates(true));
-			sync1.applyUpdates(syncCentral.createUpdates(true)); // only sync to sync1, sync2 will be outdated
-
-			model1.foo = 'model1.foo.2';
-			model2.foo = 'model2.foo.2';
+			model1.bar = 'model1.bar'; // will be sent in later so not applied
+			model2.foo = 'model2.foo'; // was already set by sync1 in previous update so not applied
 
 			// Both send in new update
-			syncCentral.applyUpdates(sync1.createUpdates(true));
-			syncCentral.applyUpdates(sync2.createUpdates(true));
+			const update1_2 = sync1.createUpdates(true);
+			const update2 = sync2.createUpdates(true);
+			syncCentral.applyUpdates(update2); // update 2 first (but has lower baseVersion)
+			syncCentral.applyUpdates(update1_2);
 
-			// Sync back to both
-			const updates = syncCentral.createUpdates(true);
-			sync1.applyUpdates(updates);
-			sync2.applyUpdates(updates);
+			// Also send to each other
+			sync2.applyUpdates(update1); // as well as belated update
+			sync1.applyUpdates(update2);
+			sync2.applyUpdates(update1_2);
+
+			// Central will merge
+			assert.ok(syncCentral.hasUpdates(), "Central has merge updates");
+			const mergeUpdates = syncCentral.createUpdates(true);
+			// Sync back to sync1 and sync2
+			sync1.applyUpdates(mergeUpdates);
+			sync2.applyUpdates(mergeUpdates);
 
 			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 in sync with modelCentral");
 			assert.deepEqual(modelCentral.$export(), model2.$export(), "model2 in sync with modelCentral");
-			assert.equal(modelCentral.foo, 'model1.foo.2', "Foo set to value provided by model1");
-			assert.equal(modelCentral.bar, "model2.bar", "Bar set to value provided by model2");
+			assert.equal(modelCentral.foo, 'model1.foo', "Foo set to value provided by model1");
+			assert.equal(modelCentral.bar, "model1.bar", "Bar set to value provided by model2");
 		});
 		it("can create sub-Mozels *and* fill in their data, even if data comes after property assignment", () => {
 			class Foo extends Mozel {

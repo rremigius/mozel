@@ -15,7 +15,7 @@ export class OutdatedUpdateError extends Error {
 		super(`Received update has a base version (${baseVersion}) that is lower than any update kept in history (${requiredVersion}). Cannot apply update.`);
 	}
 }
-export type Update = {
+export type Commit = {
 	syncID:string;
 	version:number;
 	priority:number;
@@ -44,11 +44,11 @@ export class MozelWatcher {
 	private priority:number;
 	private version:number = 0;
 	private historyMaxLength:number;
-	private history:Update[] = [];
+	private history:Commit[] = [];
 	get historyMinBaseVersion() {
 		return !this.history.length ? 0 : this.history[0].baseVersion;
 	}
-	get lastUpdate():Update|undefined {
+	get lastUpdate():Commit|undefined {
 		if(!this.history.length) return;
 		return this.history[this.history.length-1];
 	}
@@ -85,7 +85,12 @@ export class MozelWatcher {
 			{b: 1, foo: 'b'}								{b: 1, foo: 'b'}
 	 */
 
-	applyUpdate(update:Update) {
+	/**
+	 * Merges the update into the current Mozel.
+	 * Returns the final update, with all overrides removed, and its own priority applied
+	 * @param update
+	 */
+	merge(update:Commit):Commit {
 		if(update.baseVersion < this.historyMinBaseVersion) {
 			// We cannot apply changes from before our history, as it would overwrite anything already committed.
 			throw new OutdatedUpdateError(update.baseVersion, this.historyMinBaseVersion);
@@ -99,21 +104,24 @@ export class MozelWatcher {
 
 		this.version = Math.max(update.version, this.version);
 		this.autoCleanHistory();
+
+		// Return modified changes
+		return {...update, changes, priority: this.priority};
 	}
 
-	overrideChangesFromHistory(update:Update) {
+	overrideChangesFromHistory(update:Commit) {
 		let changes = {...update.changes};
 		const priorityAdvantage = this.priority > update.priority ? 1 : 0;
 
 		this.history.forEach(history => {
 			// Any update with a higher base version than the received update should override the received update
 			if(history.baseVersion + priorityAdvantage > update.baseVersion) {
-				changes = this.removeChanges(changes, history.changes, true);
+				changes = this.removeChanges(changes, history.changes);
 			}
 		});
 		// Also resolve current conflicting changes
 		if(this.version + priorityAdvantage > update.baseVersion) {
-			changes = this.removeChanges(changes, this.changes, true);
+			changes = this.removeChanges(changes, this.changes);
 		}
 		return changes;
 	}
@@ -122,14 +130,10 @@ export class MozelWatcher {
 	 *
 	 * @param {Changes} changes
 	 * @param {Changes} override
-	 * @param {boolean} recordOverrides		If set to `true`, will record overrides as new changes.
 	 */
-	removeChanges(changes:Changes, override:Changes, recordOverrides = false) {
+	removeChanges(changes:Changes, override:Changes) {
 		changes = {...changes};
 		forEach(override, (_, key) => {
-			if(recordOverrides && !isEqual(changes[key], override[key])) {
-				this._changes[key] = override[key]; // re-add our override to changes (update sender needs to know)
-			}
 			delete changes[key];
 		});
 		return changes;
@@ -151,11 +155,11 @@ export class MozelWatcher {
 		}
 	}
 
-	hasUpdate() {
+	hasChanges() {
 		return Object.keys(this.changes).length > 0;
 	}
 
-	createUpdateInfo():Update {
+	createUpdateInfo():Commit {
 		return {
 			syncID: this.syncID,
 			version: this.version,
@@ -165,15 +169,15 @@ export class MozelWatcher {
 		};
 	}
 
-	createFullUpdate() {
+	createFullState() {
 		const update = this.createUpdateInfo();
 		update.changes = this.mozel.$export({shallow});
 		return update;
 	}
 
-	createUpdate(newVersion:boolean = false) {
+	commit() {
 		const update = this.createUpdateInfo();
-		if(newVersion) update.version++;
+		update.version++;
 		forEach(this.changes, (change, key) => {
 			if(change instanceof Mozel) {
 				/*
@@ -204,10 +208,9 @@ export class MozelWatcher {
 		}
 		this.version = update.version;
 
-		if(newVersion) {
-			this.history.push(update);
-			this.clearChanges();
-		}
+		this.history.push(update);
+		this.clearChanges();
+
 		return update;
 	}
 

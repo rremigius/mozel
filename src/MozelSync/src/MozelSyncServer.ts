@@ -36,9 +36,10 @@ export default class MozelSyncServer {
 				this.removeUser(socket.id);
 			});
 			// Listen to incoming updates
-			socket.on('updates', updates => {
-				log.debug("-----------------\nSERVER UPDATES IN:", mapValues(updates, update => update.changes));
-				this.sync.applyUpdates(updates);
+			socket.on('push', commit => {
+				log.debug("-----------------\nSERVER UPDATES IN:", mapValues(commit, update => update.changes));
+				const merged = this.sync.merge(commit);
+				this.io.emit('push', merged); // send merged update to others
 			});
 		});
 
@@ -47,9 +48,9 @@ export default class MozelSyncServer {
 		}
 
 		this.destroyCallbacks.push(
-			this.sync.events.newUpdates.on(event => {
+			this.sync.events.newCommits.on(event => {
 				log.debug("-----------------\nSERVER UPDATES OUT:", mapValues(event.updates, update => update.changes));
-				this.io.emit('updates', event.updates);
+				this.io.emit('push', event.updates);
 			})
 		);
 
@@ -63,7 +64,7 @@ export default class MozelSyncServer {
 
 	initUser(id:string, socket:Socket) {
 		socket.emit('connection', {id: socket.id});
-		socket.emit('updates', this.sync.createFullUpdates());
+		socket.emit('full-state', this.sync.createFullStates());
 		this.onUserConnected(id);
 	}
 

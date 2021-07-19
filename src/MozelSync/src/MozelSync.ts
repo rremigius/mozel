@@ -1,19 +1,19 @@
 import {alphanumeric} from "validation-kit";
-import EventInterface, {callback} from "event-interface-mixin";
+import EventInterface from "event-interface-mixin";
 import {v4 as uuid} from "uuid";
 import Log from "../log";
-import {MozelWatcher, Update} from "./MozelWatcher";
-import {call, find, findAllDeep, findDeep, forEach, isNumber, isPlainObject, mapValues, throttle} from "../../utils";
+import {Commit, MozelWatcher} from "./MozelWatcher";
+import {call, find, forEach, isNumber, mapValues, throttle} from "../../utils";
 import Mozel from "../../Mozel";
 import Registry from "../../Registry";
 
 const log = Log.instance("mozel-sync");
 
-export class MozelSyncNewUpdatesEvent {
-	constructor(public updates:Record<string, Update>) {}
+export class MozelSyncNewCommitsEvent {
+	constructor(public updates:Record<string, Commit>) {}
 }
 export class MozelSyncEvents extends EventInterface {
-	newUpdates = this.$event(MozelSyncNewUpdatesEvent);
+	newCommits = this.$event(MozelSyncNewCommitsEvent);
 }
 
 export default class MozelSync {
@@ -24,15 +24,15 @@ export default class MozelSync {
 		forEach(this.watchers, watcher => watcher.syncID = this._id)
 	}
 
-	private _autoUpdate?:number;
-	public get autoUpdate() { return this._autoUpdate }
-	public set autoUpdate(value) {
-		this._autoUpdate = value;
-		this._createNewUpdatesThrottled = throttle(()=>this.createUpdates(true), this._autoUpdate, {leading: false});
+	private _autoCommit?:number;
+	public get autoCommit() { return this._autoCommit }
+	public set autoCommit(value) {
+		this._autoCommit = value;
+		this._commitThrottled = throttle(()=>this.commit(), this._autoCommit, {leading: false});
 	}
-	private _createNewUpdatesThrottled = ()=>{};
-	public get createNewUpdatesThrottled() {
-		return this._createNewUpdatesThrottled;
+	private _commitThrottled = ()=>{};
+	public get commitThrottled() {
+		return this._commitThrottled;
 	};
 
 	private mozels:Record<alphanumeric, Mozel> = {};
@@ -42,7 +42,6 @@ export default class MozelSync {
 	private destroyCallbacks:Function[] = [];
 	private registry?:Registry<Mozel>;
 	public readonly historyLength:number;
-	private lastUpdates:Record<string, Update> = {};
 
 	private active:boolean = false;
 	priority:number;
@@ -54,58 +53,63 @@ export default class MozelSync {
 		this.priority = $options.priority || 0;
 		this.historyLength = isNumber($options.historyLength) ? $options.historyLength : 20;
 
-		this.autoUpdate = $options.autoUpdate;
+		this.autoCommit = $options.autoUpdate;
 
 		if($options.registry) this.syncRegistry($options.registry);
 	}
 
-	createFullUpdates() {
-		return mapValues(this.watchers, watcher => watcher.createFullUpdate());
+	createFullStates() {
+		return mapValues(this.watchers, watcher => watcher.createFullState());
 	}
 
-	hasUpdates() {
-		return !!find(this.watchers, watcher => watcher.hasUpdate());
+	hasChanges() {
+		return !!find(this.watchers, watcher => watcher.hasChanges());
 	}
 
-	createUpdates(newVersion:boolean = false) {
-		const updates:Record<alphanumeric, Update> = {};
+	commit() {
+		const updates:Record<alphanumeric, Commit> = {};
 		forEach(this.watchers, watcher => {
-			const update = watcher.createUpdate(newVersion);
+			const update = watcher.commit();
 			if(!update) return;
 
 			updates[watcher.mozel.gid] = update;
 		});
-		if(newVersion) {
-			this.newPropertyMozels.clear();
-			this.events.newUpdates.fire(new MozelSyncNewUpdatesEvent(updates));
-		}
+		this.newPropertyMozels.clear();
+		this.events.newCommits.fire(new MozelSyncNewCommitsEvent(updates));
 		return updates;
 	}
 
-	applyUpdates(updates:Record<alphanumeric, Update>) {
+	/**
+	 * Merges the given updates for each MozelWatcher
+	 * @param updates
+	 */
+	merge(updates:Record<alphanumeric, Commit>) {
 		/*
 		We are not sure in which order updates should be applied: the Mozel may not have been created yet before
 		we want to set its data. So we delay setting data and try again next loop, until we finish the queue or it will
 		not get smaller.
 		 */
-		let queue:(Update & {gid:alphanumeric})[] = [];
+		let queue:(Commit & {gid:alphanumeric})[] = [];
 		forEach(updates, (update, gid) => {
 			queue.push({gid, ...update});
 		});
 
+		const merges:Record<alphanumeric, Commit> = {}
 		while(Object.keys(queue).length) {
-			let newQueue:(Update & {gid:alphanumeric})[] = [];
+			let newQueue:(Commit & {gid:alphanumeric})[] = [];
 			for(let update of queue) {
 				const watcher = this.watchers[update.gid];
 				if(!watcher) {
 					newQueue.push(update);
 					continue;
 				}
-				watcher.applyUpdate(update);
+				merges[update.gid] = watcher.merge(update);
 			}
 			if(newQueue.length === queue.length) break; // no more progress
 			queue = newQueue;
 		}
+
+		return merges; // return updates with adapted priority
 	}
 
 	getWatcher(gid:alphanumeric) {
@@ -125,7 +129,7 @@ export default class MozelSync {
 		this.unRegisterCallbacks[mozel.gid] = [
 			mozel.$events.destroyed.on(()=>this.unregister(mozel)),
 			watcher.events.changed.on(()=>{
-				if(isNumber(this.autoUpdate)) this.createNewUpdatesThrottled();
+				if(isNumber(this.autoCommit)) this.commitThrottled();
 			})
 		];
 		if(this.active) watcher.start();

@@ -37,14 +37,17 @@ export default class MozelSyncClient {
 		this.io.on('error', error => {
 			this.connecting.reject(error);
 		})
-		this.io.on('updates', updates => {
-			log.debug(`-----------------\nCLIENT UPDATES IN (${this.sync.id}):`, mapValues(updates, update => update.changes));
-			this.sync.applyUpdates(updates);
+		this.io.on('push', commits => {
+			log.debug(`-----------------\nCLIENT UPDATES IN (${this.sync.id}):`, mapValues(commits, update => update.changes));
+			this.sync.merge(commits);
+		});
+		this.io.on('full-state', state => {
+			this.sync.merge(state);
 		});
 		this.destroyCallbacks.push(
-			this.sync.events.newUpdates.on(event => {
+			this.sync.events.newCommits.on(event => {
 				log.debug(`-----------------\nCLIENT UPDATES OUT (${this.sync.id}):`, mapValues(event.updates, update => update.changes));
-				this.io.emit('updates', event.updates);
+				this.io.emit('push', event.updates);
 			})
 		);
 	}

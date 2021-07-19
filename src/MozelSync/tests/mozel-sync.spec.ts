@@ -30,7 +30,7 @@ describe("MozelSync", () => {
 			root.foo!.name = 'root.foo2';
 			root.foo!.foo = root.$create(Foo, {name: 'root.foo.foo'});
 
-			const updates = sync.createUpdates();
+			const updates = sync.commit();
 			assert.deepEqual(Object.keys(updates), ['root', 'rootFoo'], "Correct entries in update.");
 
 			assert.deepEqual(updates.root.changes, {
@@ -59,7 +59,7 @@ describe("MozelSync", () => {
 			foo.foos.get(1)!.name = 'RootFoos1-changed';
 			foo.foos.remove({gid: 'root.foos.0'});
 
-			const updates = sync.createUpdates();
+			const updates = sync.commit();
 
 			assert.deepEqual(Object.keys(updates).sort(), ['root', 'root.foos.1'], "Correct entries in update.");
 			assert.deepEqual(updates.root.changes, {
@@ -94,7 +94,7 @@ describe("MozelSync", () => {
 			root.$set('newFoo', {gid: 'root.newFoo', name: 'NewFoo'}, true);
 			root.changedFoo!.name = 'ChangedFoo-1';
 			root.$set('ref', {gid: 'root.changedFoo'}, true);
-			const updates = sync.createUpdates();
+			const updates = sync.commit();
 
 			assert.deepEqual(Object.keys(updates).sort(), ['root', 'root.changedFoo'].sort(), "Correct entries in update.");
 			assert.deepEqual(updates.root.changes, {
@@ -138,8 +138,8 @@ describe("MozelSync", () => {
 			root1.foo!.name = 'rootFoo';
 			root1.foos.get(0)!.name = 'rootFoos0';
 
-			const updates = sync1.createUpdates();
-			sync2.applyUpdates(updates);
+			const updates = sync1.commit();
+			sync2.merge(updates);
 
 			assert.equal(root2.foo!.name, 'rootFoo');
 			assert.equal(root2.foos.get(0)!.name, 'rootFoos0');
@@ -159,7 +159,7 @@ describe("MozelSync", () => {
 			sync2.start();
 
 			foo1.foos.removeIndex(0);
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 
 			assert.deepEqual(foo1.$export(), foo2.$export(), "Mozels synchronized");
 			assert.equal(foo2.foos.length, 1);
@@ -204,7 +204,7 @@ describe("MozelSync", () => {
 			root.foo!.name = 'rootFoo';
 			root.foos.get(0)!.name = 'rootFoos0';
 
-			const updates = sync.createUpdates();
+			const updates = sync.commit();
 			assert.deepEqual(updates["root.foo"].changes, {
 				name: "rootFoo"
 			});
@@ -243,17 +243,17 @@ describe("MozelSync", () => {
 			sync2.syncRegistry(model2.$registry);
 			sync2.start();
 
-			assert.deepEqual(sync1.createUpdates(true), {}, "No changes in sync1 at start");
-			assert.deepEqual(sync2.createUpdates(true), {}, "No changes in sync2 at start");
+			assert.deepEqual(sync1.commit(), {}, "No changes in sync1 at start");
+			assert.deepEqual(sync2.commit(), {}, "No changes in sync2 at start");
 
 			model1.name = 'Root-2';
 			model1.foo!.name = 'RootFoo-2';
 			model1.foos.set(1, {gid: 'root.foos.1-2', name: 'RootFoos1-2'});
 
-			sync2.applyUpdates(sync1.createUpdates(true));
-			sync1.applyUpdates(sync2.createUpdates(true));
+			sync2.merge(sync1.commit());
+			sync1.merge(sync2.commit());
 
-			const updates = sync1.createUpdates(true);
+			const updates = sync1.commit();
 
 			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
 			assert.deepEqual(updates, {}, "No more changes after synchronization changes were reported back");
@@ -275,8 +275,8 @@ describe("MozelSync", () => {
 			model1.foo = 'foo';
 			model2.bar = 'bar';
 
-			sync2.applyUpdates(sync1.createUpdates());
-			sync1.applyUpdates(sync2.createUpdates());
+			sync2.merge(sync1.commit());
+			sync1.merge(sync2.commit());
 
 			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
 			assert.equal(model1.foo, 'foo');
@@ -298,18 +298,18 @@ describe("MozelSync", () => {
 			model2.foo = 'bar';
 
 			// sync1 transmits first
-			sync2.applyUpdates(sync1.createUpdates());
-			sync1.applyUpdates(sync2.createUpdates());
+			sync2.merge(sync1.commit());
+			sync1.merge(sync2.commit());
 
 			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
 			assert.equal(model1.foo, 'foo');
 		});
 		it("conflicting changes crossing paths will be settled by MozelSync priority", () => {
 			function transmit(sync1:MozelSync, sync2:MozelSync) {
-				const changes1 = sync1.createUpdates(true);
-				const changes2 = sync2.createUpdates(true);
-				sync2.applyUpdates(changes1);
-				sync1.applyUpdates(changes2);
+				const changes1 = sync1.commit();
+				const changes2 = sync2.commit();
+				sync2.merge(changes1);
+				sync1.merge(changes2);
 			}
 			class Foo extends Mozel {
 				@property(String)
@@ -328,8 +328,8 @@ describe("MozelSync", () => {
 			transmit(sync1, sync2);
 			transmit(sync1, sync2);
 
-			assert.deepEqual(sync1.createUpdates(true), {}, "No more changes in sync1 after round-trip");
-			assert.deepEqual(sync2.createUpdates(true), {}, "No more changes in sync2 after round-trip");
+			assert.deepEqual(sync1.commit(), {}, "No more changes in sync1 after round-trip");
+			assert.deepEqual(sync2.commit(), {}, "No more changes in sync2 after round-trip");
 			assert.deepEqual(model1.$export(), model2.$export(), "Models synchronized");
 			assert.equal(model2.foo, 'foo', "Property stettled to model1 value");
 		});
@@ -362,17 +362,17 @@ describe("MozelSync", () => {
 			model2.bar = 'bar2';
 			model2.qux = 'qux2';
 
-			const updates1 = sync1.createUpdates(true);
-			syncCentral.applyUpdates(updates1);
-			sync2.applyUpdates(updates1);
+			const updates1 = sync1.commit();
+			syncCentral.merge(updates1);
+			sync2.merge(updates1);
 
-			assert.notOk(syncCentral.hasUpdates(), "No updates from central after update1");
+			assert.notOk(syncCentral.hasChanges(), "No updates from central after update1");
 
-			const updates2 = sync2.createUpdates(true);
-			syncCentral.applyUpdates(updates2);
-			sync1.applyUpdates(updates2);
+			const updates2 = sync2.commit();
+			syncCentral.merge(updates2);
+			sync1.merge(updates2);
 
-			assert.notOk(syncCentral.hasUpdates(), "No updates from central after update2");
+			assert.notOk(syncCentral.hasChanges(), "No updates from central after update2");
 
 			assert.equal(modelCentral.foo, 'foo1');
 			assert.equal(modelCentral.bar, 'bar2');
@@ -401,13 +401,13 @@ describe("MozelSync", () => {
 			model1.foo = 'foo1';
 			model2.foo = 'foo2';
 
-			const updates1 = sync1.createUpdates(true);
-			syncCentral.applyUpdates(updates1);
-			sync2.applyUpdates(updates1);
+			const updates1 = sync1.commit();
+			syncCentral.merge(updates1);
+			sync2.merge(updates1);
 
-			const updates2 = sync2.createUpdates(true);
-			syncCentral.applyUpdates(updates2);
-			sync2.applyUpdates(updates2);
+			const updates2 = sync2.commit();
+			syncCentral.merge(updates2);
+			sync2.merge(updates2);
 
 			assert.equal(modelCentral.foo, 'foo1');
 			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 synced with modelCentral");
@@ -431,13 +431,13 @@ describe("MozelSync", () => {
 			sync2.start();
 
 			model1.foo = 1;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 			model1.foo = 2;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 			model1.foo = 3;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 			model1.foo = 4;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 
 			const watcher = sync2.getWatcher(model2.gid);
 			assert.equal(watcher.getHistory().length, 2, "History length kept at 2");
@@ -457,16 +457,16 @@ describe("MozelSync", () => {
 			sync2.start();
 
 			model1.foo = 1;
-			const oldUpdate = sync1.createUpdates(true);
+			const oldUpdate = sync1.commit();
 
 			model1.foo = 2;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 			model1.foo = 3;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 			model1.foo = 4;
-			sync2.applyUpdates(sync1.createUpdates(true));
+			sync2.merge(sync1.commit());
 
-			assert.throws(()=>sync2.applyUpdates(oldUpdate));
+			assert.throws(()=>sync2.merge(oldUpdate));
 		});
 		it("merges updates based on base number", () => {
 			class Foo extends Mozel {
@@ -490,29 +490,22 @@ describe("MozelSync", () => {
 			model1.foo = 'model1.foo'; // will be first
 			model2.bar = 'model2.bar'; // will be too late (see below)
 
-			const update1 = sync1.createUpdates(true);
-			syncCentral.applyUpdates(update1); // only sync to central; sync2 will be outdated
+			const update1 = sync1.commit();
+			const updateC1 = syncCentral.merge(update1); // only sync to central; sync2 will be outdated
 
 			model1.bar = 'model1.bar'; // will be sent in later so not applied
 			model2.foo = 'model2.foo'; // was already set by sync1 in previous update so not applied
 
 			// Both send in new update
-			const update1_2 = sync1.createUpdates(true);
-			const update2 = sync2.createUpdates(true);
-			syncCentral.applyUpdates(update2); // update 2 first (but has lower baseVersion)
-			syncCentral.applyUpdates(update1_2);
+			const update1_2 = sync1.commit();
+			const update2 = sync2.commit();
+			const updateC2 = syncCentral.merge(update2); // update 2 first (but has lower baseVersion)
+			const updateC1_2 = syncCentral.merge(update1_2);
 
-			// Also send to each other
-			sync2.applyUpdates(update1); // as well as belated update
-			sync1.applyUpdates(update2);
-			sync2.applyUpdates(update1_2);
-
-			// Central will merge
-			assert.ok(syncCentral.hasUpdates(), "Central has merge updates");
-			const mergeUpdates = syncCentral.createUpdates(true);
-			// Sync back to sync1 and sync2
-			sync1.applyUpdates(mergeUpdates);
-			sync2.applyUpdates(mergeUpdates);
+			// SyncCentral sends to others (with its own priority)
+			sync2.merge(updateC1); // as well as belated update
+			sync1.merge(updateC2);
+			sync2.merge(updateC1_2);
 
 			assert.deepEqual(modelCentral.$export(), model1.$export(), "model1 in sync with modelCentral");
 			assert.deepEqual(modelCentral.$export(), model2.$export(), "model2 in sync with modelCentral");
@@ -528,7 +521,7 @@ describe("MozelSync", () => {
 			}
 			const root = Foo.create<Foo>({gid: 'root'});
 			const sync = new MozelSync({registry: root.$registry});
-			sync.applyUpdates({
+			sync.merge({
 				'new-gid': {
 					syncID: 'foo',
 					priority: 0,

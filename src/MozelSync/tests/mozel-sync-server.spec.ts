@@ -71,7 +71,7 @@ describe("MozelSyncServer", () => {
 					assert.equal(clientModel.foo, 'foo');
 					server.stop();
 					resolve();
-				}, sync.autoUpdate! + 100);
+				}, sync.autoCommit! + 100);
 			});
 		});
 		it("when client model is changed, updates are emitted to the server", async () => {
@@ -99,7 +99,7 @@ describe("MozelSyncServer", () => {
 					assert.equal(model.foo, 'foo');
 					server.stop();
 					resolve();
-				}, clientSync.autoUpdate! + 100);
+				}, clientSync.autoCommit! + 100);
 			});
 		});
 	});
@@ -171,7 +171,7 @@ describe("MozelSyncServer", () => {
 			client1Model.foos.get(0)!.name = 'RootFoos0-client1';
 			client2Model.foos.removeIndex(0);
 
-			await interval(serverSync.autoUpdate! * 3);
+			await interval(serverSync.autoCommit! * 3);
 			console.log("\n\n-------------------------------------------------------\n\n")
 
 			assert.deepEqual(client1Model.$export(), serverModel.$export(), "Server and client1 in sync");
@@ -181,7 +181,7 @@ describe("MozelSyncServer", () => {
 			client1Model.foos.get(0)!.$set('foo', {name: 'RootFoos1Foo-client1'});
 			client2Model.foo!.name = 'Root-client2';
 
-			await interval(serverSync.autoUpdate! * 3);
+			await interval(serverSync.autoCommit! * 3);
 			console.log("\n\n-------------------------------------------------------\n\n")
 
 			assert.deepEqual(client1Model.$export(), serverModel.$export(), "Server and client1 in sync");

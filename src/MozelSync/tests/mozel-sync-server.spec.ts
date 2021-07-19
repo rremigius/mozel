@@ -53,13 +53,11 @@ describe("MozelSyncServer", () => {
 			}
 			const init = {gid: 'root'}
 			const model = Foo.create<Foo>(init);
-			const sync = new MozelSync({registry: model.$registry, autoUpdate: 100});
-			const server = new MozelSyncServer(sync);
+			const server = new MozelSyncServer({model});
 			server.start();
 
 			const clientModel = Foo.create<Foo>(init);
-			const clientSync = new MozelSync({registry: clientModel.$registry, autoUpdate: 100});
-			const client = new MozelSyncClient(clientSync);
+			const client = new MozelSyncClient({model: clientModel});
 			await client.connect();
 
 			assert.notEqual(clientModel.foo, 'foo');
@@ -71,7 +69,7 @@ describe("MozelSyncServer", () => {
 					assert.equal(clientModel.foo, 'foo');
 					server.stop();
 					resolve();
-				}, sync.autoCommit! + 100);
+				}, server.sync.autoCommit! + 100);
 			});
 		});
 		it("when client model is changed, updates are emitted to the server", async () => {
@@ -81,13 +79,11 @@ describe("MozelSyncServer", () => {
 			}
 			const init = {gid: 'root'}
 			const model = Foo.create<Foo>(init);
-			const sync = new MozelSync({registry: model.$registry, autoUpdate: 100});
-			const server = new MozelSyncServer(sync);
+			const server = new MozelSyncServer({model});
 			server.start();
 
 			const clientModel = Foo.create<Foo>(init);
-			const clientSync = new MozelSync({registry: clientModel.$registry, autoUpdate: 100});
-			const client = new MozelSyncClient(clientSync);
+			const client = new MozelSyncClient({model: clientModel});
 			await client.start();
 
 			assert.notEqual(clientModel.foo, 'foo');
@@ -99,7 +95,7 @@ describe("MozelSyncServer", () => {
 					assert.equal(model.foo, 'foo');
 					server.stop();
 					resolve();
-				}, clientSync.autoCommit! + 100);
+				}, client.sync.autoCommit! + 100);
 			});
 		});
 	});
@@ -116,13 +112,11 @@ describe("MozelSyncServer", () => {
 				name: 'Root',
 				foo: {gid: 'root.foo', name: 'RootFoo'}
 			});
-			const serverSync = new MozelSync({registry: serverModel.$registry});
-			const server = new MozelSyncServer(serverSync);
+			const server = new MozelSyncServer({model: serverModel});
 			server.start();
 
 			const clientModel = Foo.create<Foo>({gid: 'root'});
-			const clientSync = new MozelSync({registry: clientModel.$registry});
-			const client = new MozelSyncClient(clientSync);
+			const client = new MozelSyncClient({model: clientModel});
 			await client.connect();
 
 			assert.deepEqual(serverModel.$export(), clientModel.$export(), "Client model synced with server model");
@@ -149,13 +143,10 @@ describe("MozelSyncServer", () => {
 			});
 			const client1Model = Foo.create<Foo>({gid: 'root'})
 			const client2Model = Foo.create<Foo>({gid: 'root'})
-			const serverSync = new MozelSync({registry: serverModel.$registry, priority: 1, autoUpdate: 50})
-			const client1Sync = new MozelSync({registry: client1Model.$registry, autoUpdate: 50});
-			const client2Sync = new MozelSync({registry: client2Model.$registry, autoUpdate: 50});
 
-			const server = new MozelSyncServer(serverSync);
-			const client1 = new MozelSyncClient(client1Sync);
-			const client2 = new MozelSyncClient(client2Sync);
+			const server = new MozelSyncServer({model: serverModel});
+			const client1 = new MozelSyncClient({model: client1Model});
+			const client2 = new MozelSyncClient({model: client2Model});
 
 			server.start();
 			await client1.start();
@@ -171,7 +162,7 @@ describe("MozelSyncServer", () => {
 			client1Model.foos.get(0)!.name = 'RootFoos0-client1';
 			client2Model.foos.removeIndex(0);
 
-			await interval(serverSync.autoCommit! * 3);
+			await interval(server.sync.autoCommit! * 3);
 			console.log("\n\n-------------------------------------------------------\n\n")
 
 			assert.deepEqual(client1Model.$export(), serverModel.$export(), "Server and client1 in sync");
@@ -181,7 +172,7 @@ describe("MozelSyncServer", () => {
 			client1Model.foos.get(0)!.$set('foo', {name: 'RootFoos1Foo-client1'});
 			client2Model.foo!.name = 'Root-client2';
 
-			await interval(serverSync.autoCommit! * 3);
+			await interval(server.sync.autoCommit! * 3);
 			console.log("\n\n-------------------------------------------------------\n\n")
 
 			assert.deepEqual(client1Model.$export(), serverModel.$export(), "Server and client1 in sync");

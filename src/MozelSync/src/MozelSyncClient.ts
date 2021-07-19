@@ -1,7 +1,8 @@
 import {io, Socket} from "socket.io-client"
 import Log from "../log";
-import {isNumber, mapValues} from "../../utils";
+import {call, isNumber, mapValues} from "../../utils";
 import MozelSync from "./MozelSync";
+import Mozel from "../../Mozel";
 
 const log = Log.instance("mozel-sync-client");
 
@@ -13,14 +14,28 @@ export default class MozelSyncClient {
 	private connecting = {resolve:(id:string)=>{}, reject:(err:Error)=>{}};
 	private destroyCallbacks:Function[];
 
-	constructor(sync?:MozelSync, socket?:Socket|number) {
-		this.sync = sync || new MozelSync();
-		this.isDefaultIO = !socket;
+	constructor(options?:{model?:Mozel, sync?:MozelSync, socket?:Socket|number}) {
+		const $options = options || {};
+
+		let sync = $options.sync;
+		if(!sync) {
+			sync = new MozelSync({autoCommit: 100});
+			if($options.model) {
+				sync.syncRegistry($options.model.$registry);
+			}
+		} else if ($options.model) {
+			sync.register($options.model);
+		}
+		this.sync = sync;
+
+		let socket = $options.socket;
 		if(socket instanceof Socket) {
 			this.io = socket;
+			this.isDefaultIO = false;
 		} else {
 			const port = isNumber(socket) ? socket : 3000;
 			this.io = io(`http://localhost:${port}`);
+			this.isDefaultIO = true;
 		}
 
 		this.destroyCallbacks = [];
@@ -38,7 +53,6 @@ export default class MozelSyncClient {
 			this.connecting.reject(error);
 		})
 		this.io.on('push', commits => {
-			log.debug(`-----------------\nCLIENT UPDATES IN (${this.sync.id}):`, mapValues(commits, update => update.changes));
 			this.sync.merge(commits);
 		});
 		this.io.on('full-state', state => {
@@ -46,7 +60,6 @@ export default class MozelSyncClient {
 		});
 		this.destroyCallbacks.push(
 			this.sync.events.newCommits.on(event => {
-				log.debug(`-----------------\nCLIENT UPDATES OUT (${this.sync.id}):`, mapValues(event.updates, update => update.changes));
 				this.io.emit('push', event.updates);
 			})
 		);
@@ -81,6 +94,7 @@ export default class MozelSyncClient {
 	}
 
 	destroy() {
+		this.destroyCallbacks.forEach(call);
 		this.onDestroy();
 	}
 

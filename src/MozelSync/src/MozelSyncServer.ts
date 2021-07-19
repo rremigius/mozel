@@ -1,30 +1,40 @@
 import {Server, Socket} from "socket.io";
 import MozelSync from "./MozelSync";
 import Log from "../log";
-import {mapValues} from "../../utils";
+import Mozel from "../../Mozel";
+import {isNumber} from "../../utils";
 
 const log = Log.instance("mozel-sync-server");
 
 export default class MozelSyncServer {
 	readonly io:Server;
 	readonly isDefaultIO:boolean;
-	readonly defaultIOPort:number;
 	readonly sync:MozelSync;
+	readonly port:number;
 
 	readonly destroyCallbacks:Function[] = [];
 
-	constructor(sync?:MozelSync, io?:Server|number) {
-		this.sync = sync || new MozelSync();
-		this.defaultIOPort = 3000;
+	constructor(options?:{model?:Mozel, sync?:MozelSync, io?:Server|number}) {
+		const $options = options || {};
 
+		let sync = $options.sync;
+		if(!sync) {
+			sync = new MozelSync({priority: 1, autoCommit: 100});
+			if($options.model) {
+				sync.syncRegistry($options.model.$registry);
+			}
+		}
+		this.sync = sync;
+
+		let io = $options.io;
 		if(io instanceof Server) {
 			this.io = io;
 			this.isDefaultIO = false;
 		} else {
 			this.io = new Server();
 			this.isDefaultIO = true;
-			this.defaultIOPort = io || 3000;
 		}
+		this.port = isNumber($options.io) ? $options.io : 3000;
 	}
 
 	start() {
@@ -37,19 +47,17 @@ export default class MozelSyncServer {
 			});
 			// Listen to incoming updates
 			socket.on('push', commit => {
-				log.debug("-----------------\nSERVER UPDATES IN:", mapValues(commit, update => update.changes));
 				const merged = this.sync.merge(commit);
 				this.io.emit('push', merged); // send merged update to others
 			});
 		});
 
 		if(this.isDefaultIO) {
-			this.io.listen(3000);
+			this.io.listen(this.port);
 		}
 
 		this.destroyCallbacks.push(
 			this.sync.events.newCommits.on(event => {
-				log.debug("-----------------\nSERVER UPDATES OUT:", mapValues(event.updates, update => update.changes));
 				this.io.emit('push', event.updates);
 			})
 		);

@@ -78,6 +78,9 @@ export declare function isData(value: any): value is Data;
  * @param {object} options
  */
 export declare function property(runtimeType?: PropertyType, options?: PropertyOptions): (target: Mozel, propertyName: string) => void;
+export declare function string(options?: PropertyOptions): (target: Mozel, propertyName: string) => void;
+export declare function number(options?: PropertyOptions): (target: Mozel, propertyName: string) => void;
+export declare function boolean(options?: PropertyOptions): (target: Mozel, propertyName: string) => void;
 /**
  * PROPERTY decorator factory
  * Defines a runtime type-safe Collection for this property and overrides the the current property
@@ -90,6 +93,7 @@ export declare const required = true;
 export declare const immediate = true;
 export declare const deep = true;
 export declare const reference = true;
+export declare const shallow = true;
 export declare function schema<M extends Mozel>(MozelClass: MozelConstructor<M> & typeof Mozel): MozelSchema<M>;
 export declare const $s: typeof schema;
 export declare class DestroyedEvent {
@@ -130,6 +134,8 @@ export default class Mozel {
     private _strict?;
     private readonly _watchers;
     private $parentLock;
+    private _settingData;
+    get settingData(): boolean;
     $root: boolean;
     $destroyed: boolean;
     $events: MozelEvents;
@@ -193,6 +199,7 @@ export default class Mozel {
      */
     $setParent(parent: Mozel, relation: string, lock?: boolean): void;
     $remove(child: Mozel, includeReferences?: boolean): void;
+    $findParent(predicate: (mozel: Mozel, relation: string) => boolean): Mozel | undefined;
     /**
      * The Mozel's parent.
      */

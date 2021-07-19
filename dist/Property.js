@@ -258,6 +258,9 @@ let Property = Property_1 = class Property {
                 value.setParent(this.parent);
             }
         }
+        else {
+            this._ref = null;
+        }
         // New value is Mozel or Collection, listen to changes
         if (value instanceof Collection) {
             value.events.beforeChange.on(this._collectionBeforeChangeListener);
@@ -368,6 +371,16 @@ let Property = Property_1 = class Property {
      */
     tryInit(value, merge = false) {
         let current = this._value;
+        // Maybe it's an existing Mozel
+        if (isPlainObject(value) && Object.keys(value).length === 1 && !isNil(value.gid)) {
+            const mozel = this.parent.$resolveReference(value);
+            if (mozel && this.checkType(mozel)) {
+                this._set(mozel);
+                if (!this.isReference)
+                    mozel.$setData(value, merge);
+                return true;
+            }
+        }
         // Init reference
         if (this.isReference && isPlainObject(value)) {
             const gid = get(value, 'gid');

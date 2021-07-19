@@ -36,6 +36,15 @@ export function property(runtimeType, options) {
         target.static.defineClassProperty(propertyName, runtimeType, options);
     };
 }
+export function string(options) {
+    return property(String, options);
+}
+export function number(options) {
+    return property(Number, options);
+}
+export function boolean(options) {
+    return property(String, options);
+}
 /**
  * PROPERTY decorator factory
  * Defines a runtime type-safe Collection for this property and overrides the the current property
@@ -53,6 +62,7 @@ export const required = true;
 export const immediate = true;
 export const deep = true;
 export const reference = true;
+export const shallow = true;
 export function schema(MozelClass) {
     return MozelClass.$schema();
 }
@@ -77,6 +87,7 @@ let Mozel = Mozel_1 = class Mozel {
         this._parent = null;
         this._relation = null;
         this.$parentLock = false;
+        this._settingData = false;
         this.$root = false;
         this.$destroyed = false;
         /**
@@ -190,6 +201,9 @@ let Mozel = Mozel_1 = class Mozel {
     }
     static $(definition) {
         return this.$schema(definition);
+    }
+    get settingData() {
+        return this._settingData;
     }
     /**
      * Define a property for the mozel.
@@ -335,6 +349,13 @@ let Mozel = Mozel_1 = class Mozel {
             }
         }
     }
+    $findParent(predicate) {
+        if (!this.$parent)
+            return undefined;
+        if (predicate(this.$parent, this.$relation))
+            return this.$parent;
+        return this.$parent.$findParent(predicate);
+    }
     /**
      * The Mozel's parent.
      */
@@ -384,7 +405,7 @@ let Mozel = Mozel_1 = class Mozel {
         let currentValue = get(this, name);
         Object.defineProperty(this, name, {
             get: () => this.$get(name),
-            set: value => this.$set(name, value, false),
+            set: value => this.$set(name, value, true),
             configurable: true
         });
         // Preset value

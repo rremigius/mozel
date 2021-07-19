@@ -99,14 +99,19 @@ export class MozelWatcher {
 		const mozels = findAllDeep(changes, (value, key) => key === 'gid');
 		mozels.map(mozel => this.mozelsInUpdates.add(mozel.gid));
 
-		this.history.push(update);
-		this.mozel.$setData(changes, true);
+		// Update version
+		const version = Math.max(update.version, this.version);
+		this.version = version;
 
-		this.version = Math.max(update.version, this.version);
+		// Create merge commit, add to history and clean history
+		const merged = {...update, changes, priority: this.priority, version};
+		this.history.push(merged);
 		this.autoCleanHistory();
 
-		// Return modified changes
-		return {...update, changes, priority: this.priority};
+		// Update Mozel
+		this.mozel.$setData(changes, true);
+
+		return merged;
 	}
 
 	overrideChangesFromHistory(update:Commit) {

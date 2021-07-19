@@ -477,6 +477,13 @@ export default class Mozel {
 		}
 	}
 
+	$findParent(predicate:(mozel:Mozel, relation:string)=>boolean):Mozel|undefined {
+		if(!this.$parent) return undefined;
+		if(predicate(this.$parent, this.$relation as string)) return this.$parent;
+
+		return this.$parent.$findParent(predicate);
+	}
+
 	/**
 	 * The Mozel's parent.
 	 */
@@ -530,7 +537,7 @@ export default class Mozel {
 		let currentValue = get(this, name);
 		Object.defineProperty(this, name, {
 			get: () => this.$get(name),
-			set: value => this.$set(name, value, false),
+			set: value => this.$set(name, value, true),
 			configurable: true
 		});
 		// Preset value

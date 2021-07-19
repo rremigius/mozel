@@ -272,12 +272,14 @@ export class MozelWatcher {
 		// Keep track of newly created Mozels
 		this.stopCallbacks.push(
 			this.mozel.$registry.events.added.on(event => {
-				if(!(event.item instanceof Mozel) || this.mozelsInUpdates.has(event.item.gid)) return;
+				const mozel = event.item;
+				if(!(mozel instanceof Mozel) || this.mozelsInUpdates.has(mozel.gid)) return;
+
 				/*
 				We only add newly created Mozels that are not already mentioned in updates (we don't need to tell
 				the receiver to create the Mozel that they created).
 				 */
-				this.newMozels.add(event.item.gid);
+				this.newMozels.add(mozel.gid);
 			})
 		);
 

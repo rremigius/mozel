@@ -40,7 +40,7 @@ function checkAll(mozel:Mozel, acceptable:Record<string, any[]>) {
 			}
 			if (includes(acceptable, value)) {
 				// For acceptable values, check if the new value was actually set.
-				assert.equal(_mozel[property], value, `${typeof (acceptable[0])} property '${property}' accepted ${typeof (value)} input`);
+				assert.notEqual(_mozel[property], oldValue, `${typeof (acceptable[0])} property '${property}' accepted ${typeof (value)} input`);
 			} else {
 				// For unacceptable values, check if the new value was rejected.
 				assert.notEqual(_mozel[property], value, `${typeof (acceptable[0])} property '${property}' did not accept ${typeof (value)} input`);
@@ -190,7 +190,7 @@ describe('Mozel', () => {
 			FooMozel.property('foo', String);
 
 			const mozel:any = FooMozel.create({foo: 'bar', qux: 123});
-			mozel.foo = 123;
+			mozel.foo = {};
 			assert.equal(mozel.foo, 'bar', "Property set to correct value");
 			assert.notProperty(mozel, 'qux', "Non-existing property not set");
 		});
@@ -207,7 +207,7 @@ describe('Mozel', () => {
 	});
 
 	describe("@property", () => {
-		it("defines a setter that only accepts type-checked values for the decorated property", () => {
+		it("defines a setter that only accepts type-checked (or convertible) values for the decorated property", () => {
 			class Foo extends Mozel {
 				@property(String)
 				foo?:string;
@@ -220,10 +220,10 @@ describe('Mozel', () => {
 			}
 			const foo = Foo.create<Foo>();
 			checkAll(foo, {
-				foo: [VALUES.string, undefined],
-				bar: [VALUES.number, undefined],
+				foo: [VALUES.string, VALUES.number, VALUES.boolean, undefined],
+				bar: [VALUES.number, VALUES.boolean, undefined],
 				qux: [VALUES.boolean, undefined],
-				baz: [VALUES.mozel, undefined]
+				baz: [VALUES.mozel, VALUES.object, undefined]
 			});
 		});
 	});
@@ -399,11 +399,11 @@ describe('Mozel', () => {
 			mozel.$defineProperty('baz', Mozel);
 
 			const acceptable = {
-				foo: [VALUES.string, undefined],
-				bar: [VALUES.number, undefined],
+				foo: [VALUES.string, VALUES.number, VALUES.boolean, undefined],
+				bar: [VALUES.number, VALUES.boolean, undefined],
 				qux: [VALUES.boolean, undefined],
-				baz: [VALUES.mozel, undefined]
-			};
+				baz: [VALUES.mozel, VALUES.object, undefined]
+			}
 
 			checkAll(mozel, acceptable);
 		});
@@ -772,13 +772,14 @@ describe('Mozel', () => {
 			},
 			foos: [{name:'foos1'}, {name: 'foos2'}]
 		});
+		const name = {};
 		mozel.$strict = false;
-		mozel.name = 123;
+		mozel.name = name;
 		mozel.foo.foo = 'nofoo';
-		mozel.foos.setData([1, {name: 'foos3'}], true);
+		mozel.foos.setData([1, {name: 'foos3'}]);
 
 		it("disables rejection of mismatching values", () => {
-			assert.equal(mozel.name, 123);
+			assert.equal(mozel.name, name);
 			assert.equal(mozel.foo.foo, 'nofoo');
 		});
 		it("provides errors for invalid values on the properties", () => {

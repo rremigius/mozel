@@ -48,13 +48,14 @@ export default class MozelSync {
 
 	public readonly events = new MozelSyncEvents();
 
-	constructor(options?:{registry?:Registry<Mozel>, priority?:number, historyLength?:number, autoUpdate?:number}) {
+	constructor(options?:{mozel?:Mozel, registry?:Registry<Mozel>, priority?:number, historyLength?:number, autoUpdate?:number}) {
 		const $options = options || {};
 		this.priority = $options.priority || 0;
 		this.historyLength = isNumber($options.historyLength) ? $options.historyLength : 20;
 
 		this.autoCommit = $options.autoUpdate;
 
+		if($options.mozel) this.register($options.mozel);
 		if($options.registry) this.syncRegistry($options.registry);
 	}
 
@@ -117,6 +118,8 @@ export default class MozelSync {
 	}
 
 	register(mozel:Mozel) {
+		if(this.mozels[mozel.gid]) return; // already registered
+
 		const watcher = new MozelWatcher(mozel, {
 			syncID: this.id,
 			priority: this.priority,

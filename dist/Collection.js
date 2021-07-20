@@ -308,9 +308,12 @@ export default class Collection {
      * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
      */
     setData(items, init = true, merge = false) {
+        if (!isArray(items))
+            return;
         const before = this._list.slice();
         let skipped = 0;
-        items.forEach((item, i) => {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             const index = i - skipped;
             // Try to set the item at the current index
             if (!this.set(index, item, init, merge, false)) {
@@ -318,7 +321,7 @@ export default class Collection {
                 this.removeIndex(index);
                 skipped++;
             }
-        });
+        }
         // Remove end of current list if new list is shorter
         for (let i = this._list.length - 1; i >= items.length; i--) {
             const item = this._list[i];

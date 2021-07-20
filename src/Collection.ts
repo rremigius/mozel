@@ -282,6 +282,7 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param notifyAddRemove	If set to false, will not fire add/remove events
 	 */
 	set(index:number, value:object|T, init = true, merge = false, notifyAddRemove = true) {
+		if(index > this._list.length) throw new Error(`Cannot set index ${index} of Collection with length ${this._list.length}.`);
 		const current = this._list[index];
 
 		// Handle references

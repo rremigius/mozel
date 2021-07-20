@@ -325,6 +325,8 @@ let Mozel = Mozel_1 = class Mozel {
         if (parent.$factory !== this.$factory || parent.$registry !== this.$registry) {
             throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
         }
+        if (parent === this._parent)
+            return; // nothing to do
         if (this.$parentLock) {
             throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
         }

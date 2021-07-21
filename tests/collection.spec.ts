@@ -20,8 +20,7 @@ describe("Collection", () => {
 			let bar = foo.$create(FooMozel);
 
 			let assertions = 0;
-			foo.other.events.changed.on(event => {
-				assert.ok(event.item instanceof FooMozel);
+			foo.other.events.changed.on(() => {
 				assertions++;
 			});
 			foo.other.add(bar);
@@ -69,7 +68,7 @@ describe("Collection", () => {
 			foo.$watch('items.*.*', ({valuePath}) => {
 				modifiedPaths.push(valuePath);
 			});
-			foo.items.events.changed.on(event => {
+			foo.items.events.added.on(event => {
 				assert.instanceOf(event.item, FooMozel);
 				const model = event.item as FooMozel;
 				added.push(model.gid);
@@ -90,7 +89,7 @@ describe("Collection", () => {
 				'items.2.gid',
 				'items.2.foo',
 				'items.2.items'
-			], "'changedPaths' correct");
+			], "'modifiedPaths' correct");
 		});
 	});
 	describe("CollectionItemAddedEvent", () => {

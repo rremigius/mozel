@@ -13,6 +13,11 @@ const log = Log.instance("mozel/collection");
 
 export type CollectionType = MozelClass|Class;
 export type CollectionOptions = {reference?:boolean};
+export type CollectionMutations<T> = {
+	changed?: {index:number, before:T, after:T}[],
+	added?: {index: number, item:T}[],
+	removed?: {index: number, item:T}[]
+}
 
 type CollectionItem = Mozel|primitive;
 type FindFunction<T> = (item:T, index:number)=>boolean;
@@ -20,8 +25,8 @@ type FindFunction<T> = (item:T, index:number)=>boolean;
 export class CollectionItemEvent<T> {
 	constructor(public item:T, public index:number) {	}
 }
-export class CollectionChangedEvent<T> extends CollectionItemEvent<T> {}
-export class CollectionBeforeChangeEvent<T> extends CollectionItemEvent<T> {}
+export class CollectionChangedEvent<T> { constructor(public mutations:CollectionMutations<T>) { }}
+export class CollectionBeforeChangeEvent<T> {}
 export class CollectionItemAddedEvent<T> extends CollectionItemEvent<T> {}
 export class CollectionItemRemovedEvent<T> extends CollectionItemEvent<T> {}
 
@@ -36,10 +41,45 @@ export class CollectionEvents extends EventInterface {
 export default class Collection<T extends Mozel|primitive> {
 	static get type() { return 'Collection' };
 
+	static getCounts<T>(items:T[]) {
+		const counts = new Map<T, number>();
+		for(let item of items) {
+			if(!counts.has(item)) counts.set(item, 0);
+			counts.set(item, counts.get(item)! + 1);
+		}
+		return counts;
+	}
+
+	static getMutations<T>(before:T[], after:T[]) {
+		const mutations:CollectionMutations<T> = {changed: [], added: [], removed: []};
+
+		const countsBefore = this.getCounts(before);
+		const countsAfter = this.getCounts(after);
+		for(let i = 0; i < Math.max(before.length, after.length); i++) {
+			if(before[i] === after[i]) continue; // no change
+
+			mutations.changed!.push({index:1, before: before[i], after: after[i]});
+
+			// Was new value added? Or just moved?
+			let countBefore = countsBefore.get(after[i]);
+			let countAfter = countsAfter.get(after[i]);
+			if(countAfter && (!countBefore || countAfter > countBefore)) {
+				mutations.added!.push({index: i, item: after[i]});
+			}
+
+			// Was old value deleted? Or just moved?
+			countBefore = countsBefore.get(before[i]);
+			countAfter = countsAfter.get(before[i]);
+			if(countBefore && (!countAfter || countBefore > countAfter)) {
+				mutations.removed!.push({index: i, item: before[i]});
+			}
+		}
+		return mutations;
+	}
+
 	private readonly type?:CollectionType;
 	private readonly _list:T[];
 	private refs:Reference[] = [];
-	private readonly removed:T[];
 
 	private _errors:Record<string, Error> = {};
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.remove(event.mozel as T);
@@ -57,8 +97,6 @@ export default class Collection<T extends Mozel|primitive> {
 
 		this._list = [];
 		this.setData(list);
-
-		this.removed = [];
 	}
 
 	protected get list() {
@@ -149,28 +187,24 @@ export default class Collection<T extends Mozel|primitive> {
 	/**
 	 * Removes the item at the given index from the list. Returns the item.
 	 * @param {number} index			The index to remove.
-	 * @param {boolean} [track]			If set to `true`, item will be kept in `removed` list.
+	 * @param {boolean} [fireEvents]	If set to `false`, will not send modification events
 	 */
-	removeIndex(index:number, track= false) {
-		let item = this.list[index];
+	removeIndex(index:number, fireEvents = true) {
+		let item = this._list[index];
 
 		// All items from the removed index will change
-		for(let i = index; i < this.list.length; i++) {
-			this.events.beforeChange.fire(new CollectionBeforeChangeEvent(this.list[index], index));
-		}
+		if(fireEvents) this.events.beforeChange.fire(new CollectionBeforeChangeEvent());
 
-		this.list.splice(index, 1);
+		this._list.splice(index, 1);
 		delete this._errors[index];
-		if(track) {
-			this.removed.push(item);
-		}
 
-		// All items from the removed index have changed
-		for(let i = index; i < this.list.length+1; i++) {
-			this.events.changed.fire(new CollectionChangedEvent(this.list[index], index));
+		if(fireEvents) {
+			this.events.changed.fire(new CollectionChangedEvent({
+				removed: [{item, index}],
+				changed: [{index, before: item, after: this._list[index]}]
+			}));
+			this.events.removed.fire(new CollectionItemRemovedEvent(item, index));
 		}
-
-		this.events.removed.fire(new CollectionItemRemovedEvent(item, index));
 
 		return item;
 	}
@@ -260,10 +294,6 @@ export default class Collection<T extends Mozel|primitive> {
 		return this.getList(resolveReferences).slice();
 	}
 
-	getRemovedItems() {
-		return this.removed;
-	}
-
 	/**
    	 * @param index
 	 * @param {boolean} resolveReferences	If set to false, will not try to resolve references first.
@@ -278,10 +308,10 @@ export default class Collection<T extends Mozel|primitive> {
 	 * @param index
 	 * @param value
 	 * @param init
-	 * @param merge				If set to true, will keep the current mozel value if possible, only changing its data
-	 * @param notifyAddRemove	If set to false, will not fire add/remove events
+	 * @param merge			If set to true, will keep the current mozel value if possible, only changing its data
+	 * @param fireEvents	If set to false, will not fire modification events
 	 */
-	set(index:number, value:object|T, init = true, merge = false, notifyAddRemove = true) {
+	set(index:number, value:object|T, init = true, merge = false, fireEvents = true) {
 		const current = this._list[index];
 
 		// Handle references
@@ -326,7 +356,7 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 
 		// Set new value
-		this.events.beforeChange.fire(new CollectionBeforeChangeEvent(revised, index));
+		if(fireEvents) this.events.beforeChange.fire(new CollectionBeforeChangeEvent());
 		if(revised instanceof Mozel) {
 			revised.$events.destroyed.on(this._mozelDestroyedListener);
 			if(!this.isReference) {
@@ -335,14 +365,17 @@ export default class Collection<T extends Mozel|primitive> {
 				revised.$setParent(this.parent, this.relation);
 			}
 		}
-		// Index check
-		if(index > this._list.length) {
-			throw new Error(`Cannot set index ${index} of Collection with length ${this._list.length}.`);
+		// Index check (only for non-reference Collections)
+		if(this.isReference && index > this._list.length) {
+			return false;
 		}
 		this._list[index] = revised;
-		this.events.changed.fire(new CollectionChangedEvent(revised, index));
 
-		if(notifyAddRemove) {
+		if(fireEvents) {
+			this.events.changed.fire(new CollectionChangedEvent({
+				added: [{index, item: revised}],
+				changed: [{index, before: current, after: revised}]
+			}));
 			if(current) this.events.removed.fire(new CollectionItemRemovedEvent(current, index));
 			if(revised) this.events.added.fire(new CollectionItemAddedEvent(revised, index));
 		}
@@ -363,6 +396,8 @@ export default class Collection<T extends Mozel|primitive> {
 
 		const before = this._list.slice();
 
+		this.events.beforeChange.fire(new CollectionBeforeChangeEvent());
+
 		let skipped = 0;
 		for(let i = 0; i < items.length; i++) {
 			const item = items[i];
@@ -371,49 +406,25 @@ export default class Collection<T extends Mozel|primitive> {
 			// Try to set the item at the current index
 			if(!this.set(index, item, init, merge, false)) {
 				// Otherwise, remove the index
-				this.removeIndex(index);
+				this.removeIndex(index, false);
 				skipped++;
 			}
 		}
 
 		// Remove end of current list if new list is shorter
 		for(let i = this._list.length-1; i >= items.length; i--) {
-			const item = this._list[i];
-			this.events.beforeChange.fire(new CollectionBeforeChangeEvent(item, i));
 			this._list.splice(i, 1);
-			this.events.changed.fire(new CollectionChangedEvent(item, i));
 		}
 
-		// Compare before/after
-		const after = this._list;
-		const countsBefore = this.getCounts(before);
-		const countsAfter = this.getCounts(after);
-		for(let i = 0; i < Math.max(before.length, after.length); i++) {
-			if(before[i] === after[i]) continue; // no change
 
-			// Was new value added? Or just moved?
-			let countBefore = countsBefore.get(after[i]);
-			let countAfter = countsAfter.get(after[i]);
-			if(countAfter && (!countBefore || countAfter > countBefore)) {
-				this.events.added.fire(new CollectionItemAddedEvent(after[i], i));
-			}
-
-			// Was old value deleted? Or just moved?
-			countBefore = countsBefore.get(before[i]);
-			countAfter = countsAfter.get(before[i]);
-			if(countBefore && (!countAfter || countBefore > countAfter)) {
-				this.events.removed.fire(new CollectionItemRemovedEvent(before[i], i));
-			}
+		const mutations = Collection.getMutations(before, this._list);
+		this.events.changed.fire(new CollectionChangedEvent(mutations));
+		if(mutations.added) {
+			mutations.added.forEach(added => this.events.added.fire(new CollectionItemAddedEvent(added.item, added.index)));
 		}
-	}
-
-	getCounts(items:T[]) {
-		const counts = new Map<T, number>();
-		for(let item of items) {
-			if(!counts.has(item)) counts.set(item, 0);
-			counts.set(item, counts.get(item)! + 1);
+		if(mutations.removed) {
+			mutations.removed.forEach(removed => this.events.removed.fire(new CollectionItemRemovedEvent(removed.item, removed.index)));
 		}
-		return counts;
 	}
 
 	setParent(parent:Mozel){
@@ -458,6 +469,8 @@ export default class Collection<T extends Mozel|primitive> {
 		const items = [];
 		for(let i = 0; i < this.refs.length; i++) {
 			const ref = this.refs[i];
+			if(!ref) continue; // already resolved
+
 			const resolved = this.parent.$resolveReference(ref);
 			if(!resolved) {
 				log.error(`Could not resolve Mozel with GID '${ref.gid}'`);

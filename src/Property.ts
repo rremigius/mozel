@@ -131,10 +131,9 @@ export default class Property {
 	private readonly _default?:PropertyInput|PropertyInputFactory;
 	private _value:PropertyValue;
 	private _isDefault = false;
-	private _registryReferenceListener?:callback<any>;
 
-	private _collectionBeforeChangeListener = (event:CollectionBeforeChangeEvent<any>) => this.notifyBeforeChange(event.index.toString());
-	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => this.notifyChange(event.index.toString());
+	private _collectionBeforeChangeListener = () => this.notifyBeforeChange('*');
+	private _collectionChangedListener = () => this.notifyChange('*');
 
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
 

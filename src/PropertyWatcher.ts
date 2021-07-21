@@ -61,6 +61,7 @@ export default class PropertyWatcher {
 				const changePath = includes(path, '*') ? valuePath : path;
 				const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
 				this.handler({newValue, oldValue, valuePath, changePath});
+				this.updateValues(valuePath);
 			}
 		}
 	}

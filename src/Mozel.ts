@@ -971,7 +971,7 @@ export default class Mozel {
 
 			if(property.isReference) {
 				// If property was not yet resolved, just use the reference instead. Will prevent infinite loops with deep watchers
-				exported[name] = property.ref || property.value;
+				exported[name] = property.value ? {gid: (property.value as Mozel).gid} : undefined;
 			}
 			let value = property.value;
 			if(value instanceof Collection) {

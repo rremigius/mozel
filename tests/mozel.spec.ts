@@ -617,23 +617,15 @@ describe('Mozel', () => {
 			});
 
 			let count = 0;
-			const oldValues:number[][] = [];
-			const newValues:number[][] = [];
 			foo.$watch('bars', ({newValue, oldValue}) => {
 				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "oldValue");
-				newValues.push(value.toArray());
-				oldValues.push(old.toArray());
+				assert.deepEqual(value.toArray(), [4,5,6]);
+				assert.deepEqual(old.toArray(), [1,2,3]);
 				count++;
 			}, { deep });
 			foo.bars.setData([4,5,6]);
-			assert.equal(count, 3, "Correct number of watchers called.");
-			assert.deepEqual(newValues, [
-				[4,2,3], [4,5,3], [4,5,6]
-			], "new values in watchers correct");
-			assert.deepEqual(oldValues, [
-				[1,2,3], [4,2,3], [4,5,3]
-			], "old values in watchers correct");
+			assert.equal(count, 1, "Correct number of watchers called.");
 		});
 		it("notifies about additions/removals to/from Collection ", () => {
 			class Foo extends Mozel {
@@ -966,12 +958,11 @@ describe('Mozel', () => {
 			assert.notEqual(newRootFoos1, rootFoos1, "root.foos.1");
 			assert.equal(newRootFoos2, rootFoos2, "root.foos.2");
 			assert.equal(newRootRef, rootRef, "root.ref");
-			assert.deepEqual(changes, [
+			assert.deepEqual(changes.sort(), [
 				'other.name',
-				'foos.0',
-				'foos.1.name',
-				'foos.2'
-			]);
+				'foos',
+				'foos.1.name'
+			].sort());
 		});
 
 		it("with merge = true sets only defined keys and ignores existing values and keeps current mozels if possible", () => {

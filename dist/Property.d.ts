@@ -47,7 +47,6 @@ export default class Property {
     private readonly _default?;
     private _value;
     private _isDefault;
-    private _registryReferenceListener?;
     private _collectionBeforeChangeListener;
     private _collectionChangedListener;
     private _mozelDestroyedListener;

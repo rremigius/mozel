@@ -25,8 +25,9 @@ describe("MozelFactory", () => {
 
 			let people = factory.createSet(Person, data);
 
-			assert.equal(people[0].likes.get(1), people[3]); // true (both frank)
-			assert.equal(people[0].likes.get(1), people[1].likes.get(1)); // true (both frank)
+			assert.equal(people[0].likes.get(1), people[3]); // both frank
+			assert.equal(people[0].likes.get(1), people[1].likes.get(1)); // both frank
+			assert.equal(people[2].likes.get(0), people[2]); // jessica likes herself
 		})
 	});
 	describe("create", () => {

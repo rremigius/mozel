@@ -7,32 +7,50 @@ export declare type CollectionType = MozelClass | Class;
 export declare type CollectionOptions = {
     reference?: boolean;
 };
+export declare type CollectionMutations<T> = {
+    changed?: {
+        index: number;
+        before: T;
+        after: T;
+    }[];
+    added?: {
+        index: number;
+        item: T;
+    }[];
+    removed?: {
+        index: number;
+        item: T;
+    }[];
+};
 declare type FindFunction<T> = (item: T, index: number) => boolean;
 export declare class CollectionItemEvent<T> {
     item: T;
     index: number;
     constructor(item: T, index: number);
 }
-export declare class CollectionChangedEvent<T> extends CollectionItemEvent<T> {
+export declare class CollectionChangedEvent<T> {
+    mutations: CollectionMutations<T>;
+    constructor(mutations: CollectionMutations<T>);
 }
-export declare class CollectionBeforeChangeEvent<T> extends CollectionItemEvent<T> {
+export declare class CollectionBeforeChangeEvent<T> {
 }
 export declare class CollectionItemAddedEvent<T> extends CollectionItemEvent<T> {
 }
 export declare class CollectionItemRemovedEvent<T> extends CollectionItemEvent<T> {
 }
 export declare class CollectionEvents extends EventInterface {
-    changed: import("event-interface-mixin").EventEmitter<CollectionChangedEvent<any>>;
+    changed: import("event-interface-mixin").EventEmitter<CollectionChangedEvent<unknown>>;
     added: import("event-interface-mixin").EventEmitter<CollectionItemAddedEvent<any>>;
     removed: import("event-interface-mixin").EventEmitter<CollectionItemRemovedEvent<any>>;
-    beforeChange: import("event-interface-mixin").EventEmitter<CollectionBeforeChangeEvent<any>>;
+    beforeChange: import("event-interface-mixin").EventEmitter<unknown>;
 }
 export default class Collection<T extends Mozel | primitive> {
     static get type(): string;
+    static getCounts<T>(items: T[]): Map<T, number>;
+    static getMutations<T>(before: T[], after: T[]): CollectionMutations<T>;
     private readonly type?;
     private readonly _list;
     private refs;
-    private readonly removed;
     private _errors;
     private _mozelDestroyedListener;
     parent: Mozel;
@@ -55,14 +73,14 @@ export default class Collection<T extends Mozel | primitive> {
      * @return 		Either the revised item, or `false`, if the item did not pass.
      */
     revise(item: any, init?: boolean): T;
-    add(item: object | T, init?: boolean): true | object | T;
-    addDefault(): true | object | T;
+    add(item: object | T, init?: boolean): boolean | object | T;
+    addDefault(): boolean | object | T;
     /**
      * Removes the item at the given index from the list. Returns the item.
      * @param {number} index			The index to remove.
-     * @param {boolean} [track]			If set to `true`, item will be kept in `removed` list.
+     * @param {boolean} [fireEvents]	If set to `false`, will not send modification events
      */
-    removeIndex(index: number, track?: boolean): T;
+    removeIndex(index: number, fireEvents?: boolean): T;
     /**
    *
    * @param item
@@ -91,7 +109,6 @@ export default class Collection<T extends Mozel | primitive> {
      * @param {boolean} resolveReferences	If set to false, will not try to resolve any references.
      */
     toArray(resolveReferences?: boolean): T[];
-    getRemovedItems(): T[];
     /**
      * @param index
      * @param {boolean} resolveReferences	If set to false, will not try to resolve references first.
@@ -103,10 +120,10 @@ export default class Collection<T extends Mozel | primitive> {
      * @param index
      * @param value
      * @param init
-     * @param merge				If set to true, will keep the current mozel value if possible, only changing its data
-     * @param notifyAddRemove	If set to false, will not fire add/remove events
+     * @param merge			If set to true, will keep the current mozel value if possible, only changing its data
+     * @param fireEvents	If set to false, will not fire modification events
      */
-    set(index: number, value: object | T, init?: boolean, merge?: boolean, notifyAddRemove?: boolean): true | object | T;
+    set(index: number, value: object | T, init?: boolean, merge?: boolean, fireEvents?: boolean): boolean | object | T;
     /**
      *
      * @param items
@@ -114,7 +131,6 @@ export default class Collection<T extends Mozel | primitive> {
      * @param merge		If set to true, each item mozel will be kept if possible; only changing the data
      */
     setData(items: Array<object | T>, init?: boolean, merge?: boolean): void;
-    getCounts(items: T[]): Map<T, number>;
     setParent(parent: Mozel): void;
     isDefault(): boolean;
     resolveReference(index: number, errorOnNotFound?: boolean): (T & Mozel) | undefined;
@@ -125,7 +141,7 @@ export default class Collection<T extends Mozel | primitive> {
     renderTemplates(templater: Templater | Data): void;
     path(path: string | string[]): PropertyValue;
     pathPattern(path: string | string[], startingPath?: string[], resolveReferences?: boolean): {};
-    setPath(path: string | string[], value: any, initAlongPath?: boolean): true | object | T | undefined;
+    setPath(path: string | string[], value: any, initAlongPath?: boolean): boolean | object | T | undefined;
     /**
      *
      * @param options Options to pass to each of the Mozel.$export calls.

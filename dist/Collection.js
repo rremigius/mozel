@@ -241,8 +241,6 @@ export default class Collection {
      * @param notifyAddRemove	If set to false, will not fire add/remove events
      */
     set(index, value, init = true, merge = false, notifyAddRemove = true) {
-        if (index > this._list.length)
-            throw new Error(`Cannot set index ${index} of Collection with length ${this._list.length}.`);
         const current = this._list[index];
         // Handle references
         if (this.isReference && isPlainObject(value) && isAlphanumeric(get(value, 'gid'))) {
@@ -291,6 +289,10 @@ export default class Collection {
                 // Collection if it was already there.
                 revised.$setParent(this.parent, this.relation);
             }
+        }
+        // Index check
+        if (index > this._list.length) {
+            throw new Error(`Cannot set index ${index} of Collection with length ${this._list.length}.`);
         }
         this._list[index] = revised;
         this.events.changed.fire(new CollectionChangedEvent(revised, index));

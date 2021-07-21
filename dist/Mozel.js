@@ -279,7 +279,6 @@ let Mozel = Mozel_1 = class Mozel {
         return this.$factory.create(Class, data);
     }
     $destroy() {
-        log.log(`Destroying ${this.static.type} (${this.gid}).`);
         this.$destroyed = true;
         // First remove _watchers to avoid confusing them with the break-down
         this._watchers.splice(0, this._watchers.length);
@@ -292,7 +291,6 @@ let Mozel = Mozel_1 = class Mozel {
      */
     $maybeCleanUp() {
         if (!this.$root && !this._parent) {
-            log.log(`Cleaning up ${this.static.type} (${this.gid}).`);
             this.$destroy();
         }
     }

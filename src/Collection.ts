@@ -151,7 +151,7 @@ export default class Collection<T extends Mozel|primitive> {
 
 		// Try to initialize
 		if(init && isPlainObject(item) && isMozelClass(this.type)) {
-			if(item.gid && Object.keys(item).length === 1) { // gid is only key in object
+			if(item.gid) { // gid is only key in object
 				// Maybe it already exists
 				const mozel = this.parent.$resolveReference(item);
 				if(mozel && this.checkType(mozel)) return mozel;
@@ -353,7 +353,13 @@ export default class Collection<T extends Mozel|primitive> {
 			this._errors[index] = new Error(message);
 			revised = value as T;
 		}
-		if(revised === current) return revised;
+		if(revised === current) {
+			// If new data was provided, set new data
+			if(!this.isReference && revised instanceof Mozel && isPlainObject(value) && Object.keys(value).length > 1) {
+				revised.$setData(value as any);
+			}
+			return revised;
+		}
 
 		if(current instanceof Mozel) {
 			current.$events.destroyed.off(this._mozelDestroyedListener);

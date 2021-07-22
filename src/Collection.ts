@@ -58,7 +58,7 @@ export default class Collection<T extends Mozel|primitive> {
 		for(let i = 0; i < Math.max(before.length, after.length); i++) {
 			if(before[i] === after[i]) continue; // no change
 
-			mutations.changed!.push({index:1, before: before[i], after: after[i]});
+			mutations.changed!.push({index:i, before: before[i], after: after[i]});
 
 			// Was new value added? Or just moved?
 			let countBefore = countsBefore.get(after[i]);

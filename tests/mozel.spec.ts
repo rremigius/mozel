@@ -746,6 +746,22 @@ describe('Mozel', () => {
 
 			assert.equal(count, 1, "Watched called exactly once.");
 		});
+		it("with * on a Collection gets called if an item at the end is removed", () => {
+			class Foo extends Mozel {
+				@collection(String)
+				foos!:Collection<string>;
+			}
+			const foo = Foo.create<Foo>({
+				foos: ['a', 'b', 'c']
+			});
+
+			let called = 0;
+			foo.$watch('foos.*', () => {
+				called++;
+			});
+			foo.foos.remove('c');
+			assert.equal(called, 1);
+		});
 	});
 	describe("$strict = false", () => {
 		class Foo extends Mozel {
@@ -960,7 +976,8 @@ describe('Mozel', () => {
 			assert.equal(newRootRef, rootRef, "root.ref");
 			assert.deepEqual(changes.sort(), [
 				'other.name',
-				'foos',
+				'foos.0',
+				'foos.2',
 				'foos.1.name'
 			].sort());
 		});

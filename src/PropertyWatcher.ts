@@ -1,4 +1,4 @@
-import {PropertyValue} from "./Property";
+import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
 import {debounce, isNumber} from "lodash";
 import Collection from "./Collection";
@@ -88,13 +88,21 @@ export default class PropertyWatcher {
 		// remove watcher path, including final '.' (for empty watcherPath, do not expect '.')
 		const deeperPath = changePath.substring(watcherPath.length ? watcherPath.length + 1 : 0);
 
-		// If the change happened deep, but current or new value is not a Mozel, then it must be different
-		// (although it should not even be possible, actually)
-		if(!(currentDeep instanceof Mozel) || !(newWatcherValue instanceof Mozel)) return true;
+		if(newWatcherValue instanceof Mozel) {
+			if(!(currentDeep instanceof Mozel)) return true;
 
-		const deepOldValue = currentDeep.$path(deeperPath);
-		const deepNewValue = newWatcherValue.$path(deeperPath);
-		return deepOldValue !== deepNewValue;
+			const deepOldValue = currentDeep.$path(deeperPath);
+			const deepNewValue = newWatcherValue.$path(deeperPath);
+			return deepOldValue !== deepNewValue;
+		}
+		if(newWatcherValue instanceof Collection) {
+			if(!(currentDeep instanceof Collection)) return true;
+
+			const deepOldValue = currentDeep.path(deeperPath);
+			const deepNewValue = newWatcherValue.path(deeperPath);
+			return deepOldValue !== deepNewValue;
+		}
+		return true; // if we could not properly check whether it changed, better pass it as changed
 	}
 
 	updateValues(path:string) {

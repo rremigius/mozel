@@ -45,7 +45,13 @@ let Property = Property_1 = class Property {
         this._required = false;
         this._isDefault = false;
         this._collectionBeforeChangeListener = () => this.notifyBeforeChange('*');
-        this._collectionChangedListener = () => this.notifyChange('*');
+        this._collectionChangedListener = (event) => {
+            if (!event.mutations.changed)
+                return;
+            for (let index of event.mutations.changed.map(change => change.index)) {
+                this.notifyChange(index.toString());
+            }
+        };
         this._mozelDestroyedListener = (event) => this.set(undefined);
         if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
             log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");

@@ -1,22 +1,12 @@
-import Collection, {CollectionBeforeChangeEvent, CollectionChangedEvent} from './Collection';
+import Collection, {CollectionChangedEvent} from './Collection';
 
 import {find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString} from 'lodash';
 
-import {
-	alphanumeric,
-	Class,
-	isAlphanumeric,
-	isClass,
-	isPrimitive,
-	isSubClass,
-	primitive,
-	safeParseNumber
-} from "validation-kit"
+import {alphanumeric, Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
 import Mozel, {DestroyedEvent} from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
 import {get} from "./utils";
-import {callback} from "event-interface-mixin";
 
 const log = logRoot.instance("property");
 
@@ -133,7 +123,12 @@ export default class Property {
 	private _isDefault = false;
 
 	private _collectionBeforeChangeListener = () => this.notifyBeforeChange('*');
-	private _collectionChangedListener = () => this.notifyChange('*');
+	private _collectionChangedListener = (event:CollectionChangedEvent<any>) => {
+		if(!event.mutations.changed) return;
+		for(let index of event.mutations.changed.map(change => change.index)) {
+			this.notifyChange(index.toString());
+		}
+	}
 
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
 

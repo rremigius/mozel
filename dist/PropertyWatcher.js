@@ -11,6 +11,7 @@ export default class PropertyWatcher {
         this.handler = options.handler;
         this.immediate = options.immediate;
         this.deep = options.deep;
+        this.trackOld = options.trackOld;
         this.debounce = options.debounce;
         if (this.debounce !== undefined) {
             if (isNumber(this.debounce)) {
@@ -60,6 +61,9 @@ export default class PropertyWatcher {
         return deepOldValue !== deepNewValue;
     }
     updateValues(path) {
+        // For deep watching, trackOld is disabled by default
+        if (this.trackOld === false || (this.deep && this.trackOld !== true))
+            return;
         const appliedPath = this.applyMatchedPath(path);
         const values = this.mozel.$pathPattern(appliedPath, [], false); // prevent infinite loops
         for (let path in values) {

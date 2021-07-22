@@ -15,6 +15,7 @@ export type PropertyWatcherOptions = {
 	handler:PropertyChangeHandler<PropertyValue>
 	immediate?:boolean,
 	deep?:boolean,
+	trackOld?:boolean,
 	debounce?:number|WatcherDebounceOptions,
 }
 export type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path'|'handler'>
@@ -26,6 +27,7 @@ export default class PropertyWatcher {
 	readonly path: string;
 	readonly immediate?: boolean;
 	readonly deep?: boolean;
+	readonly trackOld?:boolean;
 	readonly debounce?:number|WatcherDebounceOptions;
 
 	private readonly handler: PropertyChangeHandler<any>;
@@ -39,6 +41,7 @@ export default class PropertyWatcher {
 		this.handler = options.handler;
 		this.immediate = options.immediate;
 		this.deep = options.deep;
+		this.trackOld = options.trackOld;
 		this.debounce = options.debounce;
 
 		if(this.debounce !== undefined) {
@@ -95,6 +98,9 @@ export default class PropertyWatcher {
 	}
 
 	updateValues(path:string) {
+		// For deep watching, trackOld is disabled by default
+		if(this.trackOld === false || (this.deep && this.trackOld !== true)) return;
+
 		const appliedPath = this.applyMatchedPath(path);
 		const values = this.mozel.$pathPattern(appliedPath, [], false); // prevent infinite loops
 		for(let path in values) {

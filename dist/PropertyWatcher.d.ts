@@ -11,6 +11,7 @@ export declare type PropertyWatcherOptions = {
     handler: PropertyChangeHandler<PropertyValue>;
     immediate?: boolean;
     deep?: boolean;
+    trackOld?: boolean;
     debounce?: number | WatcherDebounceOptions;
 };
 export declare type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path' | 'handler'>;
@@ -25,6 +26,7 @@ export default class PropertyWatcher {
     readonly path: string;
     readonly immediate?: boolean;
     readonly deep?: boolean;
+    readonly trackOld?: boolean;
     readonly debounce?: number | WatcherDebounceOptions;
     private readonly handler;
     private currentValues;

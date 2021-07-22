@@ -9,7 +9,7 @@ import Mozel, {
 	schema,
 	$s,
 	deep,
-	reference, Data
+	reference, Data, trackOld
 } from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
@@ -623,7 +623,7 @@ describe('Mozel', () => {
 				assert.deepEqual(value.toArray(), [4,5,6]);
 				assert.deepEqual(old.toArray(), [1,2,3]);
 				count++;
-			}, { deep });
+			}, { deep, trackOld });
 			foo.bars.setData([4,5,6]);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
@@ -645,7 +645,7 @@ describe('Mozel', () => {
 				assert.deepEqual(old.toArray(), [1,2,3]);
 				count++;
 			}, {
-				deep: true // is necessary to keep a clone of the old value
+				deep, trackOld // is necessary to keep a clone of the old value
 			});
 			foo.bars.add(4);
 			assert.equal(count, 1, "Correct number of watchers called.");
@@ -677,7 +677,7 @@ describe('Mozel', () => {
 				}
 				count++;
 			}, {
-				deep: true // is necessary to keep a clone of the old value
+				deep, trackOld // is necessary to keep a clone of the old value
 			});
 			foo.$watch('bars.1.bar', ({newValue, oldValue, valuePath}) => {
 				assert.equal(valuePath, 'bars.1.bar');

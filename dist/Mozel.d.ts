@@ -92,6 +92,7 @@ export declare function collection(runtimeType?: CollectionType, options?: Colle
 export declare const required = true;
 export declare const immediate = true;
 export declare const deep = true;
+export declare const trackOld = true;
 export declare const reference = true;
 export declare const shallow = true;
 export declare function schema<M extends Mozel>(MozelClass: MozelConstructor<M> & typeof Mozel): MozelSchema<M>;

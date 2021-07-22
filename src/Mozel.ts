@@ -142,6 +142,7 @@ export function collection(runtimeType?: CollectionType, options?: CollectionOpt
 export const required = true;
 export const immediate = true;
 export const deep = true;
+export const trackOld = true;
 export const reference = true;
 export const shallow = true;
 

@@ -61,6 +61,7 @@ export function collection(runtimeType, options) {
 export const required = true;
 export const immediate = true;
 export const deep = true;
+export const trackOld = true;
 export const reference = true;
 export const shallow = true;
 export function schema(MozelClass) {

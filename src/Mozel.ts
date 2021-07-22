@@ -962,7 +962,7 @@ export default class Mozel {
 		const $options = options || {};
 
 		let exported: Data = {};
-		if (this.static.hasOwnProperty('type')) {
+		if (this.static.hasOwnProperty('type') && !$options.keys || includes($options.keys, '_type')) {
 			exported._type = this.static.type; // using parent's type confuses any factory trying to instantiate based on this export
 		}
 

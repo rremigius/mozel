@@ -124,7 +124,7 @@ export default class Collection {
             throw new Error(`Collection of references can only accept Mozels or References.`);
         // Try to initialize
         if (init && isPlainObject(item) && isMozelClass(this.type)) {
-            if (item.gid) {
+            if (item.gid && Object.keys(item).length === 1) { // gid is only key in object
                 // Maybe it already exists
                 const mozel = this.parent.$resolveReference(item);
                 if (mozel && this.checkType(mozel))
@@ -287,7 +287,10 @@ export default class Collection {
             return value;
         // New value replaces current Mozel with same GID, but may change data
         if (init && !this.isReference && current instanceof Mozel && isPlainObject(value)
-            && (get(value, 'gid') === current.gid || (merge && !get(value, 'gid')))) {
+            && (get(value, 'gid') === current.gid // gid must match
+                && Object.keys(value).length !== 1 // but it should not be a {gid: ...} only object
+                || (merge && !get(value, 'gid'))) // or, if merge, gid should not be set on value
+        ) {
             current.$setData(value, merge);
             return current;
         }
@@ -306,6 +309,8 @@ export default class Collection {
             this._errors[index] = new Error(message);
             revised = value;
         }
+        if (revised === current)
+            return revised;
         if (current instanceof Mozel) {
             current.$events.destroyed.off(this._mozelDestroyedListener);
         }

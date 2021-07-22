@@ -327,11 +327,13 @@ export default class Collection<T extends Mozel|primitive> {
 		}
 		if(value === current) return value;
 
-		// New value replaces current Mozel with same GID, but may change data
+		// SetData: new value is object with same gid, and other data
+		const gid = get(value, 'gid');
 		if(init && !this.isReference && current instanceof Mozel && isPlainObject(value)
-			&& (get(value, 'gid') === current.gid		// gid must match
-			&& Object.keys(value).length !== 1				// but it should not be a {gid: ...} only object
-				|| (merge && !get(value, 'gid')))		// or, if merge, gid should not be set on value
+			&& (
+				(gid === current.gid && Object.keys(value).length !== 1)	// gid is same, but there is more data
+				|| (!gid && merge) // gid is missing but we're merging
+			)
 		) {
 			current.$setData(value as Data, merge);
 			return current;

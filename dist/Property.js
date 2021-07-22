@@ -376,8 +376,9 @@ let Property = Property_1 = class Property {
             const mozel = this.parent.$resolveReference(value);
             if (mozel && this.checkType(mozel)) {
                 this._set(mozel);
-                if (!this.isReference)
+                if (!this.isReference && Object.keys(value).length !== 1) { // unless object is a gid-only {gid:...} object
                     mozel.$setData(value, merge);
+                }
                 return true;
             }
         }

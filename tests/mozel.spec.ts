@@ -9,7 +9,7 @@ import Mozel, {
 	schema,
 	$s,
 	deep,
-	reference, Data, trackOld
+	reference, Data, trackOld, string
 } from '../src/Mozel';
 import Collection from '../src/Collection';
 import {forEach, get, includes, set} from 'lodash';
@@ -1012,6 +1012,20 @@ describe('Mozel', () => {
 			assert.equal(newRootList0, rootList0, "'root.list.0' untouched.");
 			assert.notEqual(newRootList1Other, rootList1Other, "'root.list.1.other' changed");
 			assert.notEqual(newRootList2, rootList2, "'root.list.2' replaced");
+		});
+
+		it("gid-only object {gid:...} resolves to existing Mozel, without changing data", () => {
+			class Foo extends Mozel {
+				@string()
+				name?:string;
+				@property(Foo)
+				foo?:Foo;
+			}
+			const model = Foo.create<Foo>({
+				foo: {gid: 1, name: 'foo'}
+			});
+			model.$setData({foo: {gid: 1}}, true);
+			assert.equal(model.foo!.name, 'foo');
 		});
 	});
 

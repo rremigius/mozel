@@ -1,7 +1,7 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
-import Mozel, {collection, deep, property, reference} from "../src/Mozel";
+import Mozel, {collection, deep, property, reference, string} from "../src/Mozel";
 import Collection, {
 	CollectionChangedEvent,
 	CollectionItemAddedEvent,
@@ -90,6 +90,19 @@ describe("Collection", () => {
 				'items.2.foo',
 				'items.2.items'
 			], "'modifiedPaths' correct");
+		});
+		it("will not overwrite item data if only gids are provided", () => {
+			class Foo extends Mozel {
+				@string()
+				foo?:string;
+				@collection(Foo)
+				foos!:Collection<Foo>
+			}
+			const model = Foo.create<Foo>({
+				foos: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}]
+			});
+			model.foos.setData([{gid:2}]);
+			assert.deepEqual(model.foos.map(item => item.foo), ['b']);
 		});
 	});
 	describe("CollectionItemAddedEvent", () => {

@@ -59,20 +59,6 @@ export default class Registry {
         }
         return found;
     }
-    /**
-     * Find the current maximum numeric GID in the Registry. String values are ignored.
-     */
-    findMaxGid() {
-        let max = 0;
-        Object.keys(this.indexByGid).forEach((gid) => {
-            const numeric = parseInt(gid);
-            if (numeric.toString() !== gid)
-                return; // gid is not an integer string index
-            if (numeric > max)
-                max = numeric;
-        });
-        return max;
-    }
     all() {
         return values(this.indexByGid);
     }

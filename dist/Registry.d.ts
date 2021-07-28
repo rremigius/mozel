@@ -24,9 +24,5 @@ export default class Registry<T extends Registerable> {
     remove(item: T): void;
     find(gid?: alphanumeric): T | undefined;
     byGid<E extends T>(gid: alphanumeric, ExpectedClass?: Class): E | undefined;
-    /**
-     * Find the current maximum numeric GID in the Registry. String values are ignored.
-     */
-    findMaxGid(): number;
     all(): T[];
 }

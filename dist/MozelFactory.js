@@ -43,14 +43,8 @@ let MozelFactory = MozelFactory_1 = class MozelFactory {
         }
         this.localDependencies.bind(Mozel).to(MozelClass).whenTargetNamed(type);
     }
-    ensureUniqueGID(gid) {
-        if (!gid || this.registry.byGid(gid)) {
-            return this.nextGID();
-        }
-        return gid;
-    }
-    nextGID() {
-        return this.registry.findMaxGid() + 1;
+    bind(serviceIdentifier) {
+        return this.localDependencies.bind(serviceIdentifier);
     }
     destroy(mozel) {
         this.registry.remove(mozel);

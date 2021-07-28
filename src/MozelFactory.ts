@@ -60,15 +60,8 @@ export default class MozelFactory implements MozelFactoryInterface {
 		this.localDependencies.bind<Mozel>(Mozel).to(MozelClass).whenTargetNamed(type);
 	}
 
-	ensureUniqueGID(gid:alphanumeric) {
-		if(!gid || this.registry.byGid(gid)) {
-			return this.nextGID();
-		}
-		return gid;
-	}
-
-	nextGID() {
-		return this.registry.findMaxGid() + 1;
+	bind(serviceIdentifier:any) {
+		return this.localDependencies.bind(serviceIdentifier);
 	}
 
 	destroy(mozel:Mozel) {

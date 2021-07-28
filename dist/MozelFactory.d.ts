@@ -1,5 +1,4 @@
 import { Container } from "inversify";
-import { alphanumeric } from "validation-kit";
 import Registry from "./Registry";
 import Mozel, { MozelConstructor, MozelData } from "./Mozel";
 import MozelFactoryInterface from "./MozelFactoryInterface";
@@ -15,8 +14,7 @@ export default class MozelFactory implements MozelFactoryInterface {
      * @param {MozelClass} MozelClass
      */
     register(MozelClass: (typeof Mozel) | (typeof Mozel)[]): void;
-    ensureUniqueGID(gid: alphanumeric): alphanumeric;
-    nextGID(): number;
+    bind(serviceIdentifier: any): import("inversify/dts/interfaces/interfaces").interfaces.BindingToSyntax<unknown>;
     destroy(mozel: Mozel): void;
     createSet<T extends Mozel>(ExpectedClass: MozelConstructor<T>, data: MozelData<T>[]): T[];
     /**

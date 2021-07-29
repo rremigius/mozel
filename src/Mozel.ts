@@ -603,7 +603,7 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	$property(property:string) {
+	$property(property:string):Property|undefined {
 		return this._properties[property];
 	}
 
@@ -709,7 +709,7 @@ export default class Mozel {
 			return this.$set(pathArray[0], value);
 		}
 		const property = this.$property(pathArray[0]);
-		if(!property.isMozelType() && !property.isCollectionType()) {
+		if(!property || !property.isMozelType() && !property.isCollectionType()) {
 			throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}.'`);
 		}
 

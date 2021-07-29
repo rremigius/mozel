@@ -561,7 +561,7 @@ let Mozel = Mozel_1 = class Mozel {
             return this.$set(pathArray[0], value);
         }
         const property = this.$property(pathArray[0]);
-        if (!property.isMozelType() && !property.isCollectionType()) {
+        if (!property || !property.isMozelType() && !property.isCollectionType()) {
             throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}.'`);
         }
         // Initialize property value if necessary

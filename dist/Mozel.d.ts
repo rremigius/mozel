@@ -250,11 +250,11 @@ export default class Mozel {
      * Get the Property object with the given name.
      * @param property
      */
-    $property(property: string): Property;
+    $property(property: string): Property | undefined;
     /**
      * Alias of $property
      */
-    $: (property: string) => Property;
+    $: (property: string) => Property | undefined;
     /**
      * Get value at given path (not type-safe).
      * @param {string|string[]} path

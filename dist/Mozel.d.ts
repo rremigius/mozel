@@ -101,8 +101,13 @@ export declare class DestroyedEvent {
     mozel: Mozel;
     constructor(mozel: Mozel);
 }
+export declare class ChangedEvent {
+    path: string[];
+    constructor(path: string[]);
+}
 export declare class MozelEvents extends EventInterface {
     destroyed: import("event-interface-mixin").EventEmitter<DestroyedEvent>;
+    changed: import("event-interface-mixin").EventEmitter<ChangedEvent>;
 }
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.

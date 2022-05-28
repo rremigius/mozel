@@ -154,9 +154,13 @@ export const $s = schema; // shorter alias
 export class DestroyedEvent {
 	constructor(public mozel:Mozel) {}
 }
+export class ChangedEvent {
+	constructor(public path:string[]) {}
+}
 
 export class MozelEvents extends EventInterface {
 	destroyed = this.$event(DestroyedEvent);
+	changed = this.$event(ChangedEvent);
 }
 
 /**
@@ -842,6 +846,7 @@ export default class Mozel {
 		if (this._parent && this._relation) {
 			this._parent.$notifyPropertyChanged([this._relation, ...path], this);
 		}
+		this.$events.changed.fire(new ChangedEvent(path));
 	}
 
 	/**

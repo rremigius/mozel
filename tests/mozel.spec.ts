@@ -266,11 +266,11 @@ describe('Mozel', () => {
 			bar.baz = 456;
 
 			assert.equal(bar.xyz, 123, "Primitive default set correctly");
-			assert.ok(bar.$property('xyz').isDefault(), "Primitive default is marked as default");
+			assert.ok(bar.$property('xyz')!.isDefault(), "Primitive default is marked as default");
 			assert.equal(bar.foo && bar.foo.qux, 'abc', "Nested mozel default set correctly");
-			assert.ok(bar.foo && bar.foo.$property('qux').isDefault(), "Nested mozel marked as default");
+			assert.ok(bar.foo && bar.foo.$property('qux')!.isDefault(), "Nested mozel marked as default");
 			assert.equal(bar.baz, 456, "Preset value not overwritten by default.");
-			assert.notOk(bar.$property('baz').isDefault(), "Overridden value not marked as default");
+			assert.notOk(bar.$property('baz')!.isDefault(), "Overridden value not marked as default");
 			assert.instanceOf(bar.abc, Collection, "Collections are instantiated by default");
 		});
 		it('generates default values for required Properties without defaults', () => {
@@ -1191,6 +1191,32 @@ describe('Mozel', () => {
 		});
 	});
 
+	describe("ChangedEvent", () => {
+		it("is fired with each change anywhere in the Mozel", () => {
+			class Foo extends Mozel {
+				@property(Foo)
+				foo?: Foo;
+				@property(String)
+				bar?: string;
+			}
+
+			const root = Foo.create<Foo>({
+				foo: {
+					bar: 'foo.bar'
+				},
+				bar: 'bar'
+			});
+
+			let changes: string[] = [];
+			root.$events.changed.on((event) => {
+				changes.push(event.path.join('.'));
+			});
+			root.foo!.bar = 'qux';
+			root.bar = 'qux';
+			assert.deepEqual(changes, ['foo.bar', 'bar']);
+		});
+	});
+
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
 			@property(Foo, {reference})
@@ -1203,8 +1229,8 @@ describe('Mozel', () => {
 			foos: [{gid: 'foo'}]
 		});
 
-		assert.notExists(foo.$property('ref').get(false), "Reference not yet resolved.");
+		assert.notExists(foo.$property('ref')!.get(false), "Reference not yet resolved.");
 		assert.exists(foo.ref, "Reference can be accessed");
-		assert.exists(foo.$property('ref').get(false), "Reference resolved.");
+		assert.exists(foo.$property('ref')!.get(false), "Reference resolved.");
 	});
 });

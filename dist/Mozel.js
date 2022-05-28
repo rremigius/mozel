@@ -73,10 +73,16 @@ export class DestroyedEvent {
         this.mozel = mozel;
     }
 }
+export class ChangedEvent {
+    constructor(path) {
+        this.path = path;
+    }
+}
 export class MozelEvents extends EventInterface {
     constructor() {
         super(...arguments);
         this.destroyed = this.$event(DestroyedEvent);
+        this.changed = this.$event(ChangedEvent);
     }
 }
 /**
@@ -685,6 +691,7 @@ let Mozel = Mozel_1 = class Mozel {
         if (this._parent && this._relation) {
             this._parent.$notifyPropertyChanged([this._relation, ...path], this);
         }
+        this.$events.changed.fire(new ChangedEvent(path));
     }
     /**
      * Resolves the given reference.

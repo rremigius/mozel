@@ -816,7 +816,7 @@ export default class Mozel {
 	 * @param {string[]} path		The path at which the change occurred.
 	 * @param {Mozel} [submozel] 	The direct submozel reporting the change.
 	 */
-	$notifyPropertyBeforeChange(path:string[], submozel?:Mozel) {
+	$notifyPropertyBeforeChange(path: string[], submozel?:Mozel) {
 		if(submozel) {
 			// If submozel is part of a collection, we should add its index in the collection to the path
 			path = this.$maybeAddCollectionIndex(submozel, path);
@@ -828,6 +828,29 @@ export default class Mozel {
 		if(this._parent && this._relation) {
 			this._parent.$notifyPropertyBeforeChange([this._relation, ...path], this);
 		}
+	}
+
+	/**
+	 * Check with all registered watchers if property can be changed to its new value.
+	 * @param {string[]} path
+	 * @param {Mozel} [submozel]
+	 */
+	$validatePropertyChange(path: string[], submozel?:Mozel) {
+		if(submozel) {
+			path = this.$maybeAddCollectionIndex(submozel, path);
+		}
+		const pathString = path.join('.');
+
+		// If any of the watchers does not agree, cancel the change
+		if(!!this.$watchers(pathString).find(watcher =>
+			watcher.validator && !watcher.validate(pathString))
+		) {
+			return false;
+		}
+		if (this._parent && this._relation && !this._parent.$validatePropertyChange([this._relation, ...path], this)) {
+			return false;
+		}
+		return true;
 	}
 
 	/**

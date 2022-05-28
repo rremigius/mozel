@@ -676,6 +676,25 @@ let Mozel = Mozel_1 = class Mozel {
         }
     }
     /**
+     * Check with all registered watchers if property can be changed to its new value.
+     * @param {string[]} path
+     * @param {Mozel} [submozel]
+     */
+    $validatePropertyChange(path, submozel) {
+        if (submozel) {
+            path = this.$maybeAddCollectionIndex(submozel, path);
+        }
+        const pathString = path.join('.');
+        // If any of the watchers does not agree, cancel the change
+        if (!!this.$watchers(pathString).find(watcher => watcher.validator && !watcher.validate(pathString))) {
+            return false;
+        }
+        if (this._parent && this._relation && !this._parent.$validatePropertyChange([this._relation, ...path], this)) {
+            return false;
+        }
+        return true;
+    }
+    /**
      * Notify that a property has changed. Will activate relevant _watchers.
      * @param {string[]} path		Path at which the property changed.
      * @param {Mozel} [submozel]	The direct submozel reporting the change.

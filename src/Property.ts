@@ -293,7 +293,13 @@ export default class Property {
 		this.notifyBeforeChange();
 
 		// Set value on parent
+		const oldValue = this._value;
 		this._value = value;
+		// Validate the new state an revert if invalid.
+		if(!this.validateChange()) {
+			this._value = oldValue;
+		}
+
 		this._isDefault = false;
 
 		// Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
@@ -356,6 +362,12 @@ export default class Property {
 		if(!this.parent) return;
 		const name = path ? `${this.name}.${path}` : this.name;
 		this.parent.$notifyPropertyBeforeChange([name]);
+	}
+
+	validateChange(path?:string) {
+		if(!this.parent) return;
+		const name = path ? `${this.name}.${path}` : this.name;
+		return this.parent.$validatePropertyChange([name]);
 	}
 
 	notifyChange(path?:string) {

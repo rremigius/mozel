@@ -317,6 +317,12 @@ export default class Mozel {
      */
     $notifyPropertyBeforeChange(path: string[], submozel?: Mozel): void;
     /**
+     * Check with all registered watchers if property can be changed to its new value.
+     * @param {string[]} path
+     * @param {Mozel} [submozel]
+     */
+    $validatePropertyChange(path: string[], submozel?: Mozel): boolean;
+    /**
      * Notify that a property has changed. Will activate relevant _watchers.
      * @param {string[]} path		Path at which the property changed.
      * @param {Mozel} [submozel]	The direct submozel reporting the change.

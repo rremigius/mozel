@@ -298,7 +298,7 @@ class Dog extends Mozel {
 let dog = Dog.create({
    toys: [{name: 'ball'}, {name: 'stick'}] 
 });
-dog.$watch('toys.*.name', ({valuePath}) => {
+dog.$watch('toys.*.name', ({changePath}) => {
     // do something if the name of any toy changes
     // changePath will provide the path to changed name (* replaced with the index of the toy in the Collection)
 });
@@ -316,6 +316,7 @@ A watcher can be configured with the following properties:
     - `changePath`: (string): The path at the deepest level where the actual change occurred.
 - `deep`: (boolean) If set to `true`, will respond to changes deeper than the given path. Will make a deep clone to provide the old value.
 - `immediate`: (boolean) If set to `true`, will call the handler immediately with the current value.
+- `validator`: (boolean) If set to `true`, the handler will be called to validate each new input. If the handler does not return `true`, the property change will not be applied.
 
 ### Non-strict mode
 

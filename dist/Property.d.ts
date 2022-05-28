@@ -87,6 +87,7 @@ export default class Property {
      */
     set(value: PropertyInput, init?: boolean, merge?: boolean): PropertyInput;
     notifyBeforeChange(path?: string): void;
+    validateChange(path?: string): boolean | undefined;
     notifyChange(path?: string): void;
     setErrorValue(value: any): void;
     applyDefault(): void;

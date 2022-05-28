@@ -12,7 +12,7 @@ import Mozel, {
 	reference, Data, trackOld, string
 } from '../src/Mozel';
 import Collection from '../src/Collection';
-import {forEach, get, includes, set} from 'lodash';
+import {forEach, get, includes, set, toNumber} from 'lodash';
 import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";
 
@@ -761,6 +761,28 @@ describe('Mozel', () => {
 			});
 			foo.foos.remove('c');
 			assert.equal(called, 1);
+		});
+		it("with `validator` can prevent a change from being applied by returning false", () => {
+			class Foo extends Mozel {
+				@property(Foo)
+				foo?:Foo;
+				@property(Number)
+				bar?:number;
+			}
+			const root = Foo.create<Foo>({
+				foo: {
+					bar: 5
+				}
+			});
+			root.$watch('foo.bar', ({newValue})=>{
+				return toNumber(newValue) < 10;
+			}, {
+				validator: true
+			});
+			root.foo!.bar = 12;
+			assert.equal(root.foo!.bar, 5);
+			root.foo!.bar = 7;
+			assert.equal(root.foo!.bar, 7);
 		});
 	});
 	describe("$strict = false", () => {

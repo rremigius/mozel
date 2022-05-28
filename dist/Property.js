@@ -250,7 +250,12 @@ let Property = Property_1 = class Property {
         // Notify watchers before the change, so they can get the old value
         this.notifyBeforeChange();
         // Set value on parent
+        const oldValue = this._value;
         this._value = value;
+        // Validate the new state an revert if invalid.
+        if (!this.validateChange()) {
+            this._value = oldValue;
+        }
         this._isDefault = false;
         // Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
         if (detach)
@@ -312,6 +317,12 @@ let Property = Property_1 = class Property {
             return;
         const name = path ? `${this.name}.${path}` : this.name;
         this.parent.$notifyPropertyBeforeChange([name]);
+    }
+    validateChange(path) {
+        if (!this.parent)
+            return;
+        const name = path ? `${this.name}.${path}` : this.name;
+        return this.parent.$validatePropertyChange([name]);
     }
     notifyChange(path) {
         if (!this.parent)

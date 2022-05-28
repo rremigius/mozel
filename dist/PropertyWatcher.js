@@ -13,6 +13,7 @@ export default class PropertyWatcher {
         this.deep = options.deep;
         this.trackOld = options.trackOld;
         this.debounce = options.debounce;
+        this.validator = options.validator;
         if (this.debounce !== undefined) {
             if (isNumber(this.debounce)) {
                 this.handler = debounce(this.handler, this.debounce);
@@ -31,10 +32,29 @@ export default class PropertyWatcher {
             if (this.hasChanged(newValue, valuePath, path)) {
                 const changePath = includes(path, '*') ? valuePath : path;
                 const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
-                this.handler({ newValue, oldValue, valuePath, changePath });
+                if (!this.validator) { // not the time for validation
+                    this.handler({ newValue, oldValue, valuePath, changePath });
+                }
                 this.updateValues(valuePath);
             }
         }
+    }
+    validate(path) {
+        if (!this.validator)
+            return undefined;
+        const appliedPath = this.applyMatchedPath(path);
+        const values = this.mozel.$pathPattern(appliedPath);
+        for (let valuePath in values) {
+            const newValue = values[valuePath];
+            // Only fire if changed
+            if (this.hasChanged(newValue, valuePath, path)) {
+                const changePath = includes(path, '*') ? valuePath : path;
+                const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
+                if (!this.handler({ newValue, oldValue, valuePath, changePath }))
+                    return false;
+            }
+        }
+        return true;
     }
     hasChanged(newWatcherValue, watcherPath, changePath) {
         const current = this.currentValues[watcherPath];

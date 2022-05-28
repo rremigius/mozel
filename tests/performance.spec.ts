@@ -13,7 +13,7 @@ function time(nTimes:number, callback:(iteration:number)=>void) {
 describe("Performance", () => {
 	describe("Mozel", () => {
 		describe("setting a property", () => {
-			it("without any watchers takes less than 20 times as long as setting a property on a plain object", () => {
+			it("without any watchers takes less than 50 times as long as setting a property on a plain object", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -24,9 +24,9 @@ describe("Performance", () => {
 				const duration = time(100000, i => foo.foo = i.toString());
 				const refDuration = time(100000, i => ref.foo = i.toString());
 
-				assert.isBelow(duration, refDuration * 20);
+				assert.isBelow(duration, refDuration * 50);
 			});
-			it("with a watcher takes less than 6 times as long as setting a property without a watcher (< 0.01 ms)", () => {
+			it("with a watcher takes less than 20 times as long as setting a property without a watcher (< 0.01 ms)", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -40,7 +40,7 @@ describe("Performance", () => {
 				const duration = time(nTimes, i => foo.foo = i.toString());
 				const refDuration = time(nTimes, i => ref.foo = i.toString());
 
-				assert.isBelow(duration, refDuration * 6);
+				assert.isBelow(duration, refDuration * 20);
 				assert.isBelow(duration, nTimes * 0.01);
 			});
 			it("with 2 watchers takes less than 3 times as long as setting a property with 1 watcher", () => {

@@ -17,7 +17,9 @@ export {
 	$s,
 	PropertySchema,
 	MozelSchema,
-	CollectionSchema
+	CollectionSchema,
+	ChangedEvent,
+	DestroyedEvent
 } from './Mozel';
 
 export { default as Collection } from "./Collection"

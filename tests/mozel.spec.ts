@@ -1231,7 +1231,7 @@ describe('Mozel', () => {
 
 			let changes: string[] = [];
 			root.$events.changed.on((event) => {
-				changes.push(event.path.join('.'));
+				changes.push(event.path);
 			});
 			root.foo!.bar = 'qux';
 			root.bar = 'qux';

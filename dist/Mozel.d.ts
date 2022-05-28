@@ -102,8 +102,8 @@ export declare class DestroyedEvent {
     constructor(mozel: Mozel);
 }
 export declare class ChangedEvent {
-    path: string[];
-    constructor(path: string[]);
+    path: string;
+    constructor(path: string);
 }
 export declare class MozelEvents extends EventInterface {
     destroyed: import("event-interface-mixin").EventEmitter<DestroyedEvent>;

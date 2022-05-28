@@ -155,7 +155,7 @@ export class DestroyedEvent {
 	constructor(public mozel:Mozel) {}
 }
 export class ChangedEvent {
-	constructor(public path:string[]) {}
+	constructor(public path:string) {}
 }
 
 export class MozelEvents extends EventInterface {
@@ -869,7 +869,7 @@ export default class Mozel {
 		if (this._parent && this._relation) {
 			this._parent.$notifyPropertyChanged([this._relation, ...path], this);
 		}
-		this.$events.changed.fire(new ChangedEvent(path));
+		this.$events.changed.fire(new ChangedEvent(pathString));
 	}
 
 	/**

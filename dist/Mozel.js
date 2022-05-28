@@ -710,7 +710,7 @@ let Mozel = Mozel_1 = class Mozel {
         if (this._parent && this._relation) {
             this._parent.$notifyPropertyChanged([this._relation, ...path], this);
         }
-        this.$events.changed.fire(new ChangedEvent(path));
+        this.$events.changed.fire(new ChangedEvent(pathString));
     }
     /**
      * Resolves the given reference.

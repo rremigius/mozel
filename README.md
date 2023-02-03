@@ -1,10 +1,10 @@
-Mozel 
+Mozel
 ===
 
 A Mozel is a strongly-typed model, which ensures that its properties are of the correct type,
 both at runtime and compile-time (Typescript). It is easy to define a Mozel, and it brings a number of useful features.
 
-Mozel can be used both in Typescript and plain Javascript. 
+Mozel can be used both in Typescript and plain Javascript.
 
 ## Features
 
@@ -54,7 +54,7 @@ To set a default, use `{default: ...}` in the property options, instead of `myPr
 ### Instantiation
 
 A Mozel can be instantiated with data using the static `create` method. The instantiation is the same for Javascript and
-Typescript, but in Typescript, the plain instantiation object will be strongly typed according to the Mozel's properties. 
+Typescript, but in Typescript, the plain instantiation object will be strongly typed according to the Mozel's properties.
 
 ```typescript
 let person = Person.create({
@@ -80,22 +80,24 @@ match for the mozel to be considered type-safe.
 
 **Examples**:
 
-| Runtime definition                | Typescript definition         | Description
-|:--                                | :--                           |:--
-| `@property(String)`               | `foo?:string`                 | Optional string
-| `@property(Number)`               | `foo?:number`                 | Optional number
-| `@property(Alphanumeric)`         | `foo?:alphanumeric`           | Optional string or number
-| `@property(MyMozel)`              | `foo?:MyMozel`                | Optional instanceof MyMozel
-| `@collection(String)`             | `foo!:Collection<string>`     | Collection of strings*
-| `@collection(MyMozel)`            | `foo!:Collection<MyMozel>`    | Collection of MyMozels*
-| `@property(String, {required})`   | `foo!:string`                 | Required string, defaults to emtpy string
-| `@property(String, {required, default: "foo"})`   | `foo!:string` | Required string, defaults to `"foo"`
+| Runtime definition                              | Typescript definition      | Description                                                                   |
+|:------------------------------------------------|:---------------------------|:------------------------------------------------------------------------------|
+| `@property(String)`                             | `foo?:string`              | Optional string                                                               |
+| `@property(Number)`                             | `foo?:number`              | Optional number                                                               |
+| `@property(Alphanumeric)`                       | `foo?:alphanumeric`        | Optional string or number                                                     |
+| `@property(MyMozel)`                            | `foo?:MyMozel`             | Optional instance of MyMozel                                                  |
+| `@collection(String)`                           | `foo!:Collection<string>`  | Collection of strings*                                                        |
+| `@collection(MyMozel)`                          | `foo!:Collection<MyMozel>` | Collection of MyMozels*                                                       |
+| `@property(String, {required})`                 | `foo!:string`              | Required string, defaults to emtpy string                                     |
+| `@property(MyMozel, {required})`                | `foo!:MyMozel`             | Required instsance of MyMozel, generates a default MyMozel if empty.          |
+| `@property(String, {required, default: "foo"})` | `foo!:string`              | Required string, defaults to `"foo"`                                          |
+| `@property(String, {required, default: ()=>bar` | `foo!:string`              | Required string, defaults to the return value of the given function if empty. |
 
 \* Collections are always defined at initialization, even if empty. It is therefore safe to place the `!` in the Typescript definition.
 
 ### Nested Mozels
 
-Properties can be either primitive, or other Mozels. 
+Properties can be either primitive, or other Mozels.
 Nested Mozels can be instantiated entirely by providing nested data to the `create` method, or partially by providing
 existing Mozels for the nested data.
 
@@ -173,15 +175,16 @@ console.log(james.dogs.map(dog => dog.name)); // ['Baxter', 'Bobby']
 
 ### Transferral
 
-A Mozel can only have one parent (although multiple Mozels can reference it). If it is transferred from one parent 
+A Mozel can only have one parent (although multiple Mozels can reference it). If it is transferred from one parent
 to another, the original parent's property is automatically set to undefined.
 
 ```typescript
 let baxter = Dog.create({name: 'Baxter'});
 let james = Person.create({
+    name: 'James',
     dog: baxter
 })
-let lisa = Person.create();
+let lisa = Person.create({name: 'Lisa'});
 
 // James has the dog
 console.log(james.dog.name); // baxter
@@ -194,6 +197,54 @@ lisa.dog = baxter;
 console.log(james.dog); // undefined
 console.log(lisa.dog.name); // baxter
 ```
+
+If the same Mozel needs to be accessed from multiple other Mozels, only one Mozel can be the parent and the others
+can have references to it:
+
+```typescript
+class Dog extends Mozel {
+	@property(String, {required})
+    name!:string;
+}
+class Person extends Mozel {	
+	@property(Dog) 
+    dog?:Dog
+  
+    @property(Dog)
+    favourite?:Dog
+}
+
+let baxter = Dog.create({name: 'Baxter'});
+let james = Person.create({
+    dog: baxter
+});
+let lisa = Person.create();
+
+// James has the dog
+console.log(james.dog.name); // Baxter
+
+// Lisa's favourite dog is Baxter
+lisa.favourite = baxter;
+
+// James still has the dog, but Lisa also has a reference
+console.log(james.dog.name); // Baxter
+console.log(lisa.dogSits.name); // Baxter
+```
+
+To initialize a reference together with the same data that creates the referenced instance, use `_id`:
+
+```typescript
+let james = Person.create({
+    name: 'James',
+    dog: {
+        _id: 'baxter',
+        name: 'Baxter'
+    },
+    favourite: { _id: 'baxter' }
+})
+```
+
+References will be resolved directly after all Mozels have been created.
 
 ### Import/export
 
@@ -230,7 +281,7 @@ console.log(person.dogs.get(1).name); // both 'Baxter'
 ### Change watching
 
 Throughout the hierarchy of the Mozel, you can watch for changes. Watchers can be defined at any level, but if watchers
-need to persist even if some part of the hierarchy is replaced, they should be defined above the changing level in the 
+need to persist even if some part of the hierarchy is replaced, they should be defined above the changing level in the
 hierarchy.
 
 ```typescript
@@ -268,7 +319,7 @@ james.dog.toy = Toy.create(); // potentially triggers watchers A, B and D
 james.dog.toy.state = 'old'; // potentially triggers watchers A and D
 ```
 
-Note: watchers only get triggered if the new value is different than the old value. 
+Note: watchers only get triggered if the new value is different than the old value.
 If a new dog has a toy with the same state, the `dog.toy.state` watcher will not be triggered.
 
 ##### Using `schema`
@@ -284,7 +335,7 @@ james.$watch(schema(Person).dog.toy, change => {
 #### Wildcard watchers
 
 Wildcards (`*`) can be used in the watcher's path to match any property. This can also be used to watch for changes
-in any of a Collection's items: 
+in any of a Collection's items:
 
 ```typescript
 class Toy extends Mozel {
@@ -359,7 +410,7 @@ class StBernard extends Dog {}
 // Instances
 
 let factory = new MozelFactory();
-factory.register(Dog, Pug, StBernard);
+factory.register([Dog, Pug, StBernard]);
 let james = factory.create(Person, {
     dogs: [{_type: 'Pug'}, {_type: 'StBernard'}]
 });
@@ -430,17 +481,6 @@ let egyptian = egypt.create(data);
 console.log(roman instanceof Roman); // true
 console.log(egyptian instanceof Egyptian); // true
 
-```
-### Plain Javascript alternative
-
-Without Typescript, the injectable Mozels can be written like this:
-
-```javascript
-let rome = MozelFactory.createDependencyContainer();
-
-class Roman extends Mozel {}
-
-Roman.injectable(rome);
 ```
 
 ### Logging

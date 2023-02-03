@@ -483,6 +483,33 @@ console.log(egyptian instanceof Egyptian); // true
 
 ```
 
+#### Templating
+
+Mozel properties that are strings can contain simple template placeholders, denoted by curly brackets. These placeholders
+can be filled in with `mozel.$renderTemplates(data)`, where `data` is an object containing the relevant keys. Example:
+
+```typescript
+class Person extends Mozel {
+    @property(String, {required})
+    name!:string;
+
+    @property(Person)
+    child?:Person
+}
+
+let james = Person.create<Person>({
+    name: 'James {lastName}',
+    child: {
+        name: 'Fred {lastName}'
+    }
+})
+
+james.$renderTemplates({lastName: 'Smith'})
+
+console.log(james.name); // James Smith
+console.log(james.child.name); // Fred Smith
+```
+
 ### Logging
 
 Mozel has fine-grained logging controls, based on the [Log Control](https://www.npmjs.com/package/log-control) library.

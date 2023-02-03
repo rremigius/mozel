@@ -1255,4 +1255,28 @@ describe('Mozel', () => {
 		assert.exists(foo.ref, "Reference can be accessed");
 		assert.exists(foo.$property('ref')!.get(false), "Reference resolved.");
 	});
+
+	describe("$renderTemplates", () => {
+		it("Replaces all placeholders in strings in all properties of the mozel and its sub-mozels.", () => {
+			class Person extends Mozel {
+				@property(String, {required})
+				name!:string;
+
+				@property(Person)
+				child?:Person
+			}
+
+			let james = Person.create<Person>({
+				name: 'James {lastName}',
+				child: {
+					name: 'Fred {lastName}'
+				}
+			})
+
+			james.$renderTemplates({lastName: 'Smith'})
+
+			assert.equal(james.name, "James Smith");
+			assert.equal(james.child!.name, "Fred Smith");
+		});
+	});
 });

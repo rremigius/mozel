@@ -58,19 +58,11 @@ describe("MozelFactory", () => {
 			let romeFactory = new MozelFactory();
 			let egyptFactory = new MozelFactory();
 
-			class Roman extends Mozel {
-				static get type() {
-					return 'Person';
-				}
-			}
-			romeFactory.register(Roman);
+			class Roman extends Mozel {}
+			romeFactory.register(Roman, 'Person');
 
-			class Egyptian extends Mozel {
-				static get type() {
-					return 'Person'
-				}
-			}
-			egyptFactory.register(Egyptian);
+			class Egyptian extends Mozel {}
+			egyptFactory.register(Egyptian, 'Person');
 
 			const data = {_type: 'Person'};
 			let roman = romeFactory.create(Mozel, data);

@@ -43,19 +43,24 @@ export default class MozelFactory implements MozelFactoryInterface {
 	/**
 	 * Registers the class to the default mozel DI Container, under the class name or static `type`.
 	 * @param {MozelClass} MozelClass
+	 * @param {string} [type]			The type for which to register the class. When initializing mozels from raw data,
+	 * 									the `_type` property will match against the registered types of the mozels to
+	 * 									find a suitable candidate for instantiation. If left empty, will default to
+	 * 									the `type()` getter of the class or the class name.
 	 */
-	register(MozelClass:(typeof Mozel)|(typeof Mozel)[]) {
+	register(MozelClass:(typeof Mozel)|(typeof Mozel)[], type?:string) {
 		if(isArray(MozelClass)) {
 			for(let Class of MozelClass) {
 				this.register(Class);
 			}
 			return;
 		}
-		let type;
-		if(MozelClass.hasOwnProperty('type')) {
-			type = MozelClass.type;
-		} else {
-			type = MozelClass.name;
+		if(type === undefined) {
+			if(MozelClass.hasOwnProperty('type')) {
+				type = MozelClass.type;
+			} else {
+				type = MozelClass.name;
+			}
 		}
 		this.localDependencies.bind<Mozel>(Mozel).to(MozelClass).whenTargetNamed(type);
 	}

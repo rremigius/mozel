@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node -r esm -r ts-node/register ./server/index.ts",
     "client": "node -r esm -r ts-node/register ./server/client.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha --require ts-node/register --require esm tests/*.spec.ts",
     "build": "tsc"
   },
   "keywords": [

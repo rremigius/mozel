@@ -784,6 +784,20 @@ describe('Mozel', () => {
 			root.foo!.bar = 7;
 			assert.equal(root.foo!.bar, 7);
 		});
+		it("with `validator` only runs for validation, not after change is applied", () => {
+			class Foo extends Mozel {
+				@property(Number)
+				foo?:number;
+			}
+			const foo = Foo.create<Foo>({ foo: 1});
+			let count = 0;
+			foo.$watch('foo', value => {
+				count++;
+				return true;
+			}, { validator: true });
+			foo.foo = 2;
+			assert.equal(count, 1);
+		});
 	});
 	describe("$strict = false", () => {
 		class Foo extends Mozel {

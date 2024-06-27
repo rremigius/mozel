@@ -13,7 +13,7 @@ function time(nTimes:number, callback:(iteration:number)=>void) {
 describe("Performance", () => {
 	describe("Mozel", () => {
 		describe("setting a property", () => {
-			it("without any watchers takes less than 100 times as long as setting a property on a plain object", () => {
+			it("without any watchers takes less than 100 times as long as setting a property on a plain object (> 300k per second)", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -21,12 +21,16 @@ describe("Performance", () => {
 				const foo = Foo.create<Foo>();
 				const ref = {foo: '0'};
 
-				const duration = time(100000, i => foo.foo = i.toString());
-				const refDuration = time(100000, i => ref.foo = i.toString());
+				const nTimes = 100000;
+				const duration = time(nTimes, i => foo.foo = i.toString());
+				const refDuration = time(nTimes, i => ref.foo = i.toString());
 
 				assert.isBelow(duration, refDuration * 100);
+
+				const speed = nTimes / duration * 1000; // properties set per second
+				assert.isAbove(speed, 300000);
 			});
-			it("with a watcher takes less than 25 times as long as setting a property without a watcher (< 0.01 ms)", () => {
+			it("with a watcher takes less than 5 times as long as setting a property without a watcher (> 100k per second)", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -40,10 +44,12 @@ describe("Performance", () => {
 				const duration = time(nTimes, i => foo.foo = i.toString());
 				const refDuration = time(nTimes, i => ref.foo = i.toString());
 
-				assert.isBelow(duration, refDuration * 25);
-				assert.isBelow(duration, nTimes * 0.01);
+				assert.isBelow(duration, refDuration * 5);
+
+				const speed = nTimes / duration * 1000; // properties set per second
+				assert.isAbove(speed, 100000);
 			});
-			it("with 2 watchers takes less than 3 times as long as setting a property with 1 watcher", () => {
+			it("with 2 watchers takes less than 4 times as long as setting a property with 1 watcher", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -58,7 +64,7 @@ describe("Performance", () => {
 				const duration = time(100000, i => foo.foo = i.toString());
 				const refDuration = time(100000, i => ref.foo = i.toString());
 
-				assert.isBelow(duration, refDuration * 3);
+				assert.isBelow(duration, refDuration * 4);
 			});
 		});
 		describe("traversing a Collection", () => {

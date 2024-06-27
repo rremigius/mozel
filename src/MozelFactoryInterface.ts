@@ -9,7 +9,7 @@ import Registry from "./Registry";
 export default interface MozelFactoryInterface {
 	registry:Registry<Mozel>;
 
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>):T;
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, init?:(mozel:T)=>void, root?:boolean):T;
 	destroy(mozel:Mozel):void;
 	readonly dependencies:Container;
 }

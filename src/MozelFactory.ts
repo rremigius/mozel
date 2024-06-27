@@ -73,17 +73,18 @@ export default class MozelFactory implements MozelFactoryInterface {
 		this.registry.remove(mozel);
 	}
 
-	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
-		return data.map(item => this.create<T>(ExpectedClass, item, true));
+	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[], init?:(mozel:T)=>void) {
+		return data.map(item => this.create<T>(ExpectedClass, item, init, true));
 	}
 
 	/**
 	 * Alias for `create`, with `root = true`
 	 * @param ExpectedClass
 	 * @param data
+	 * @param init
 	 */
-	createRoot<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
-		return this.create(ExpectedClass, data, true);
+	createRoot<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, init?:(mozel:T)=>void) {
+		return this.create(ExpectedClass, data, init, true);
 	}
 
 	/**
@@ -91,11 +92,12 @@ export default class MozelFactory implements MozelFactoryInterface {
 	 * If <T> matches ExpectedClass, is guaranteed to provide the correct class (or throw).
 	 *
 	 * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
-	 * @param {Class} ExpectedClass
-	 * @param {mozel} data
+	 * @param {Class} ExpectedClass		Class to instantiate
+	 * @param {mozel} data				Data to fill the Mozel
+	 * @param {Function} init			Init function to call before setting data.
 	 * @param {boolean} root			Unless set to true, orphaned Mozels will destroy themselves.
 	 */
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root = false) {
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, init?: (mozel:T)=>void, root = false) {
 		function isT(mozel:any) : mozel is T {
 			return mozel instanceof ExpectedClass;
 		}
@@ -128,6 +130,10 @@ export default class MozelFactory implements MozelFactoryInterface {
 
 		if(!mozel) {
 			throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
+		}
+
+		if(init) {
+			init(mozel);
 		}
 
 		if(data) {

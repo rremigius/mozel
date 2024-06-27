@@ -1,7 +1,7 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
-import Mozel, {collection, deep, property, reference, string} from "../src/Mozel";
+import Mozel, {deep, property, reference, string} from "../src/Mozel";
 import Collection, {
 	CollectionChangedEvent,
 	CollectionItemAddedEvent,
@@ -13,7 +13,7 @@ describe("Collection", () => {
 	describe("on(ChangedEvent)", () => {
 		it("callback is fired when an item is added to the Collection", () => {
 			class FooMozel extends Mozel {
-				@collection(FooMozel)
+				@property(Collection)
 				other!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.create<FooMozel>();
@@ -28,7 +28,7 @@ describe("Collection", () => {
 		});
 		it("callback is fired when an item is removed from the Collection", () => {
 			class FooMozel extends Mozel {
-				@collection(FooMozel)
+				@property(Collection)
 				other!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.create<FooMozel>();
@@ -49,7 +49,7 @@ describe("Collection", () => {
 			class FooMozel extends Mozel {
 				@property(String)
 				foo?:string;
-				@collection(FooMozel)
+				@property(Collection)
 				items!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.createFactory().create(FooMozel, {
@@ -79,7 +79,7 @@ describe("Collection", () => {
 				removed.push(model.gid);
 			});
 
-			foo.items.setData([{gid: 1, foo: 'a'}, {gid: 2, foo: 'B'}, {gid: 4, foo: 'd'}], true);
+			foo.items.$setData([{gid: 1, foo: 'a'}, {gid: 2, foo: 'B'}, {gid: 4, foo: 'd'}], true);
 
 			assert.equal(changes, 1, "collection notifications correct");
 			assert.deepEqual(added, [4], "'added' notifications correct");
@@ -95,19 +95,19 @@ describe("Collection", () => {
 			class Foo extends Mozel {
 				@string()
 				foo?:string;
-				@collection(Foo)
+				@property(Collection, {init: collection => collection.setType(Foo) })
 				foos!:Collection<Foo>
 			}
 			const model = Foo.create<Foo>({
 				foos: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}]
 			});
-			model.foos.setData([{gid:2}]);
+			model.foos.$setData([{gid:2}]);
 			assert.deepEqual(model.foos.map(item => item.foo), ['b']);
 		});
 	});
 	describe("CollectionItemAddedEvent", () => {
 		class Foo extends Mozel {
-			@collection(Number)
+			@property(Collection)
 			items!:Collection<number>;
 		}
 		it("is fired if `add` is called", () => {
@@ -129,13 +129,13 @@ describe("Collection", () => {
 				assert.equal(event.index, 2);
 				count++;
 			});
-			foo.items.setData([2,3,4]);
+			foo.items.$setData([2,3,4]);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
 	});
 	describe("CollectionItemRemovedEvent", () => {
 		class Foo extends Mozel {
-			@collection(Number)
+			@property(Collection)
 			items!:Collection<number>;
 		}
 		it("is fired if `remove` is called", () => {
@@ -157,15 +157,15 @@ describe("Collection", () => {
 				assert.equal(event.index, 0);
 				count++;
 			});
-			foo.items.setData([2,3,4]);
+			foo.items.$setData([2,3,4]);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@collection(Foo, {reference})
+			@property(Collection, {reference, init: collection => collection.setType(Foo)})
 			refs!:Collection<Foo>;
-			@collection(Foo)
+			@property(Collection, {init: collection => collection.setType(Foo)})
 			foos!:Collection<Foo>;
 		}
 		const foo = Foo.create<Foo>({

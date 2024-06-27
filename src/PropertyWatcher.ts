@@ -1,7 +1,6 @@
 import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
 import {debounce, isNumber} from "lodash";
-import Collection from "./Collection";
 import {includes} from "./utils";
 
 export type WatcherDebounceOptions = {
@@ -118,13 +117,6 @@ export default class PropertyWatcher {
 			const deepNewValue = newWatcherValue.$path(deeperPath);
 			return deepOldValue !== deepNewValue;
 		}
-		if(newWatcherValue instanceof Collection) {
-			if(!(currentDeep instanceof Collection)) return true;
-
-			const deepOldValue = currentDeep.path(deeperPath);
-			const deepNewValue = newWatcherValue.path(deeperPath);
-			return deepOldValue !== deepNewValue;
-		}
 		return true; // if we could not properly check whether it changed, better pass it as changed
 	}
 
@@ -150,17 +142,12 @@ export default class PropertyWatcher {
 	destroyDeepValues(value:PropertyValue) {
 		if(value instanceof Mozel) {
 			return value.$destroy();
-		} else if (value instanceof Collection) {
-			return value.parent.$destroy();
 		}
 	}
 
 	cloneDeepValues(value:PropertyValue):PropertyValue {
 		if(value instanceof Mozel) {
 			return value.$cloneDeep();
-		} else if (value instanceof Collection) {
-			const mozel = value.parent.$cloneDeep();
-			return mozel.$get(value.relation);
 		}
 		return value;
 	}

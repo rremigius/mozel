@@ -389,7 +389,7 @@ export default class Mozel {
 		this.$root = false;
 	}
 
-	$remove(child:PropertyType, includeReferences = false) {
+	$remove(child:PropertyValue, includeReferences = false) {
 		for (let key in this.$properties) {
 			const property = this.$properties[key];
 			if(!includeReferences && property.isReference) continue;

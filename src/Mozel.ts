@@ -129,7 +129,7 @@ export class ChangedEvent {
 }
 
 export class MozelEvents extends EventInterface {
-	destroyed = this.$event(DestroyedEvent);
+	destroyed = this.$event<DestroyedEvent>(DestroyedEvent);
 	changed = this.$event(ChangedEvent);
 }
 
@@ -240,11 +240,10 @@ export default class Mozel {
 	protected _config: Record<string, unknown> = {};
 	private _properties: Record<string, Property> = {};
 
-	private _parent: Mozel | null = null;
-	private _relation: string | null = null;
+	private _property: Property | null = null;
+	private _propertyLock: boolean = false;
 	private _strict?: boolean;
 	private readonly _watchers: PropertyWatcher[];
-	private $parentLock: boolean = false;
 	private _settingData:boolean = false;
 	get settingData() {
 		return this._settingData;
@@ -347,7 +346,7 @@ export default class Mozel {
 	 * Will destroy itself if not root and without parent.
 	 */
 	$maybeCleanUp() {
-		if(!this.$root && !this._parent) {
+		if(!this.$root && !this._property) {
 			this.$destroy();
 		}
 	}
@@ -356,15 +355,14 @@ export default class Mozel {
 	 * Removes the Mozel from its parent.
 	 * @param {boolean} makeRoot	Set to `true` to prevent the Mozel from cleaning up next tick.
 	 */
-	$detach(makeRoot = false) {
-		if (this.$parentLock) {
+	$detach(makeRoot: boolean = false) {
+		if (this._propertyLock) {
 			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
 		}
-		if(this._parent) {
-			this._parent.$remove(this);
+		if(this._property) {
+			this._property.set(undefined);
 		}
-		this._parent = null;
-		this._relation = "";
+		this._property = null;
 
 		if(makeRoot) this.$root = true;
 		setTimeout(() => {
@@ -372,31 +370,26 @@ export default class Mozel {
 		});
 	}
 
-	/**
-	 * Set the Mozel's parent Mozel.
-	 * @param {Mozel} parent			The parent this Mozel is a child of.
-	 * @param {string} relation			The name of the parent-child relationship.
-	 * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
-	 */
-	$setParent(parent: Mozel, relation: string, lock: boolean = false) {
-		if(parent.$factory !== this.$factory || parent.$registry !== this.$registry) {
-			throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
-		}
-		if(parent === this._parent) return; // nothing to do
+	$setProperty(property:Property, lock = false) {
+		if(property == this._property) return; // nothing to do
 
-		if (this.$parentLock) {
+		if(this._propertyLock) {
 			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
 		}
-		if(this._parent) {
-			this._parent.$remove(this);
+
+		if(property.getParent().$factory !== this.$factory || property.getParent().$registry !== this.$registry) {
+			throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
 		}
-		this._parent = parent;
-		this._relation = relation;
-		this.$parentLock = lock;
+
+		if(this._property) {
+			this._property.set(undefined);
+		}
+		this._property = property;
+		this._propertyLock = lock;
 		this.$root = false;
 	}
 
-	$remove(child:Mozel, includeReferences = false) {
+	$remove(child:PropertyType, includeReferences = false) {
 		for (let key in this.$properties) {
 			const property = this.$properties[key];
 			if(!includeReferences && property.isReference) continue;
@@ -418,14 +411,16 @@ export default class Mozel {
 	 * The Mozel's parent.
 	 */
 	get $parent() {
-		return this._parent;
+		if(!this._property) return null;
+		return this._property.getParent();
 	}
 
 	/**
 	 * The Mozel's relation to its parent.
 	 */
 	get $relation() {
-		return this._relation;
+		if(!this._property) return null;
+		return this._property.name;
 	}
 
 	/**
@@ -474,9 +469,16 @@ export default class Mozel {
 		return property;
 	}
 
+	$undefineProperty(name: string) {
+		const property = this._properties[name];
+		if(!property) return;
+		this._properties[name].set(undefined);
+		delete this._properties[name];
+	}
+
 	/**
 	 * Set value with type checking.
-	 * @param {string} property			The name of the property
+	 * @param {string|number} property  The name of the property
 	 * @param {PropertyInput} value		The value to set on the property
 	 * @param {boolean} init			If set to true, Mozels may be initialized from objects and arrays, respectively.
 	 * @param {boolean} merge			If set to true, Mozels will be kept if gid did not change; data will be set instead
@@ -513,7 +515,10 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	$property(property:string):Property|undefined {
+	$property(property?: string):Property|undefined|null {
+		if(property === undefined) {
+			return this._property;
+		}
 		return this._properties[property];
 	}
 
@@ -587,10 +592,10 @@ export default class Mozel {
 	}
 
 	$getPathArray():string[] {
-		if(!this._parent || !this._relation) {
+		if(!this.$parent || !this.$relation) {
 			return [];
 		}
-		return [...this._parent.$getPathArray(), this._relation];
+		return [...this.$parent.$getPathArray(), this.$relation];
 	}
 
 	$getPathFrom(mozel:Mozel):string {
@@ -600,9 +605,9 @@ export default class Mozel {
 	$getPathArrayFrom(mozel:Mozel):string[] {
 		if(this === mozel) return [];
 
-		if(!this._parent || !this._relation) throw new Error("No path from given Mozel found.");
+		if(!this.$parent || !this.$relation) throw new Error("No path from given Mozel found.");
 
-		return [...this._parent.$getPathArrayFrom(mozel), this._relation];
+		return [...this.$parent.$getPathArrayFrom(mozel), this.$relation];
 	}
 
 	$setPath(path:string|string[], value:any, initAlongPath = true):unknown {
@@ -696,8 +701,8 @@ export default class Mozel {
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.updateValues(pathString)
 		});
-		if(this._parent && this._relation) {
-			this._parent.$notifyPropertyBeforeChange([this._relation, ...path]);
+		if(this.$parent && this.$relation) {
+			this.$parent.$notifyPropertyBeforeChange([this.$relation, ...path]);
 		}
 	}
 
@@ -714,7 +719,7 @@ export default class Mozel {
 		) {
 			return false;
 		}
-		if (this._parent && this._relation && !this._parent.$validatePropertyChange([this._relation, ...path])) {
+		if (this.$parent && this.$relation && !this.$parent.$validatePropertyChange([this.$relation, ...path])) {
 			return false;
 		}
 		return true;
@@ -730,8 +735,8 @@ export default class Mozel {
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.execute(pathString);
 		});
-		if (this._parent && this._relation) {
-			this._parent.$notifyPropertyChanged([this._relation, ...path]);
+		if (this.$parent && this.$relation) {
+			this.$parent.$notifyPropertyChanged([this.$relation, ...path]);
 		}
 		this.$events.changed.fire(new ChangedEvent(pathString));
 	}
@@ -899,8 +904,8 @@ export default class Mozel {
 
 	get $strict():boolean {
 		// Get
-		if(this._strict === undefined && this._parent) {
-			return this._parent.$strict;
+		if(this._strict === undefined && this.$parent) {
+			return this.$parent.$strict;
 		}
 		return this._strict !== false;
 	}

@@ -13,7 +13,7 @@ import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 export default class GenericMozel<K extends Data = Data> extends Mozel {
 	[key:string]:any;
 
-	MozelDataType:{[I in keyof K]?:K[I]} = {};
+	MozelDataType:{[I in keyof K]?:K[I]} = {} as {[I in keyof K]?:K[I]};
 
 	private genericProperties:Record<string,Property> = {};
 

@@ -56,7 +56,7 @@ export function isMozelClass(value:any): value is MozelClass {
 	return isSubClass(value, Mozel);
 }
 export function isPrimitiveObject(object:any): object is PrimitiveObject {
-	return isPlainObject(object) && !find(object, (value:any, key:string) => {
+	return isPlainObject(object) && !find(object, (value:any, key:alphanumeric) => {
 		return !isPrimitive(value);
 	});
 }
@@ -121,6 +121,7 @@ export default class Property {
 	name:string;
 	type?:PropertyType;
 	error?:Error;
+	options?:PropertyOptions<unknown>
 
 	/**
 	 * Determines whether the Property is part of a hierarchy, or just a reference.
@@ -146,6 +147,7 @@ export default class Property {
 		this.parent = parent;
 		this.name = name;
 		this.type = type;
+		this.options = options;
 
 		if(options) {
 			this._required = options.required === true;
@@ -182,6 +184,17 @@ export default class Property {
 
 	get isReference():boolean {
 		return this._reference;
+	}
+
+	getParent() {
+		return this.parent;
+	}
+
+	/**
+	 * Get original options of the Property
+	 */
+	getOptions() {
+		return this.options;
 	}
 
 	/**
@@ -295,7 +308,7 @@ export default class Property {
 		// If Property is not just a reference but part of a hierarchy, set Parent on Mozels.
 		if (!this.isReference) {
 			if(value instanceof Mozel) {
-				value.$setParent(this.parent, this.name);
+				value.$setProperty(this);
 			}
 		} else {
 			this._ref = null;
@@ -339,19 +352,19 @@ export default class Property {
 		return value;
 	}
 
-	notifyBeforeChange(path?:string) {
+	notifyBeforeChange(path?:alphanumeric) {
 		if(!this.parent) return;
 		const name = path ? `${this.name}.${path}` : this.name;
 		this.parent.$notifyPropertyBeforeChange([name]);
 	}
 
-	validateChange(path?:string) {
+	validateChange(path?:alphanumeric) {
 		if(!this.parent) return;
 		const name = path ? `${this.name}.${path}` : this.name;
 		return this.parent.$validatePropertyChange([name]);
 	}
 
-	notifyChange(path?:string) {
+	notifyChange(path?:alphanumeric) {
 		if(!this.parent) return;
 		const name = path ? `${this.name}.${path}` : this.name;
 		this.parent.$notifyPropertyChanged([name]);

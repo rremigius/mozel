@@ -222,7 +222,7 @@ describe('Mozel', () => {
 				foo: [VALUES.string, VALUES.number, VALUES.boolean, undefined],
 				bar: [VALUES.number, VALUES.boolean, undefined],
 				qux: [VALUES.boolean, undefined],
-				baz: [VALUES.mozel, VALUES.object, undefined]
+				baz: [VALUES.mozel, VALUES.object, VALUES.collection, undefined]
 			});
 		});
 	});
@@ -258,8 +258,6 @@ describe('Mozel', () => {
 				xyz?:number;
 				@property(Number, {default: 789})
 				baz?:number;
-				@collection(Number)
-				abc!:Collection<number>
 			}
 			let bar = new BarMozel();
 			bar.baz = 456;
@@ -270,7 +268,6 @@ describe('Mozel', () => {
 			assert.ok(bar.foo && bar.foo.$property('qux')!.isDefault(), "Nested mozel marked as default");
 			assert.equal(bar.baz, 456, "Preset value not overwritten by default.");
 			assert.notOk(bar.$property('baz')!.isDefault(), "Overridden value not marked as default");
-			assert.instanceOf(bar.abc, Collection, "Collections are instantiated by default");
 		});
 		it('generates default values for required Properties without defaults', () => {
 			class FooMozel extends Mozel {
@@ -401,7 +398,7 @@ describe('Mozel', () => {
 				foo: [VALUES.string, VALUES.number, VALUES.boolean, undefined],
 				bar: [VALUES.number, VALUES.boolean, undefined],
 				qux: [VALUES.boolean, undefined],
-				baz: [VALUES.mozel, VALUES.object, undefined]
+				baz: [VALUES.mozel, VALUES.object, VALUES.collection, undefined]
 			}
 
 			checkAll(mozel, acceptable);

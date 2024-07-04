@@ -251,10 +251,9 @@ export default class Mozel {
 	private _propertyLock: boolean = false;
 	private _strict?: boolean;
 	private readonly _watchers: PropertyWatcher[];
-	private _settingData:boolean = false;
-	get settingData() {
-		return this._settingData;
-	}
+
+	private _trackChangesID?:string = undefined;
+	private _trackedChangePaths:Set<string> = new Set<string>();
 
 	public $root:boolean = false;
 	public $destroyed: boolean = false;
@@ -325,6 +324,26 @@ export default class Mozel {
 
 	get $properties() {
 		return this._properties;
+	}
+
+	$startTrackingChanges() {
+		this._trackedChangePaths.clear();
+		this.$notifyPropertyBeforeChange([]); // let watcher get current state
+		this._trackChangesID = uuid();
+		return this._trackChangesID;
+	}
+
+	$finishTrackingChanges(id:string) {
+		if(this._trackChangesID !== id) {
+			return; // current tracking session is owned by someone else
+		}
+		this._trackChangesID = undefined; // release tracking session
+		if(this._trackedChangePaths.size > 0) {
+			for(let path of this._trackedChangePaths.values()) {
+				this.$notifyPropertyChanged(path.split('.'));
+			}
+		}
+		this._trackedChangePaths.clear();
 	}
 
 	/**
@@ -546,11 +565,14 @@ export default class Mozel {
 		}
 		if(path.length === 0) return this;
 
-		const step = this.$get(path[0]);
-		if(path.length === 1) return step;
+		const step = path[0];
+		if(!this.$has(step)) return undefined;
 
-		if(step instanceof Mozel) {
-			return step.$path(path.slice(1));
+		const value = this.$get(step);
+		if(path.length === 1) return value;
+
+		if(value instanceof Mozel) {
+			return value.$path(path.slice(1));
 		}
 		return undefined;
 	}
@@ -653,11 +675,13 @@ export default class Mozel {
 	 * @param {boolean} merge		If set to `true`, only defined keys will be set.
 	 */
 	$setData(data: Data, merge = false) {
+		const trackID = this.$startTrackingChanges();
 		forEach(this._properties, (property: Property, key: string) => {
 			if (!merge || key in data) {
 				this.$set(key, data[key], true, merge);
 			}
 		});
+		this.$finishTrackingChanges(trackID);
 	}
 
 	/**
@@ -705,6 +729,11 @@ export default class Mozel {
 	 * @param {string[]} path		The path at which the change occurred.
 	 */
 	$notifyPropertyBeforeChange(path: string[]) {
+		if(this._trackChangesID) {
+			// Don't notify parents/watchers, collecting all changes
+			return;
+		}
+
 		const pathString = path.join('.');
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.updateValues(pathString)
@@ -740,13 +769,20 @@ export default class Mozel {
 	 */
 	$notifyPropertyChanged(path: string[]) {
 		const pathString = path.join('.');
+		this.$events.changed.fire(new ChangedEvent(pathString));
+
+		if(this._trackChangesID) {
+			// Don't notify parents or watchers, wait for end of tracking
+			this._trackedChangePaths.add(path.join('.'));
+			return;
+		}
+
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.execute(pathString);
 		});
 		if (this.$parent && this.$relation) {
 			this.$parent.$notifyPropertyChanged([this.$relation, ...path]);
 		}
-		this.$events.changed.fire(new ChangedEvent(pathString));
 	}
 
 	/**

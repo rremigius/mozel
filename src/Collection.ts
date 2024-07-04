@@ -64,6 +64,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 	$setData(data: PropertyInput[], merge: boolean = false) {
 		if(isArray(data)) {
+			const trackID = this.$startTrackingChanges();
 			for(let i = 0; i < data.length; i ++) {
 				this.$set(i, data[i], true, merge);
 			}
@@ -73,12 +74,14 @@ export default class Collection<T extends PropertyType> extends Mozel {
 					this.$removeIndex(i);
 				}
 			}
+			this.$finishTrackingChanges(trackID);
 			return;
 		}
 		return super.$setData(data, merge);
 	}
 
 	$add(item:PropertyData<T>) {
+		const trackID = this.$startTrackingChanges();
 		const index = this._count;
 
 		let  nextProperty = this.$property(index);
@@ -95,6 +98,8 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		// Events
 		this.$events.added.fire(new CollectionItemAddedEvent(finalItem, index));
 		this._count++;
+
+		this.$finishTrackingChanges(trackID);
 		return finalItem;
 	}
 
@@ -152,16 +157,20 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	}
 
 	$remove(child:PropertyValue) {
+		const trackID = this.$startTrackingChanges();
 		for(let i = 0; i < this._count; i++) {
 			const value = this.$get(i);
 			if(value == child) {
 				this.$removeIndex(i);
 			}
 		}
+		this.$finishTrackingChanges(trackID);
 	}
 
 	$removeIndex(indexToRemove:number) {
 		if(indexToRemove >= this._count) return;
+
+		const trackID = this.$startTrackingChanges();
 
 		const itemToRemove = this.$get(indexToRemove);
 
@@ -185,9 +194,13 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		this.$events.removed.fire(new CollectionItemRemovedEvent(itemToRemove, indexToRemove));
 
 		this._count--;
+
+		this.$finishTrackingChanges(trackID);
 	}
 
 	$clear() {
+		const trackID = this.$startTrackingChanges();
+
 		const removed:(PropertyValue)[] = [];
 		const count = this._count;
 
@@ -203,6 +216,8 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		for(let i = 0; i < count; i++) {
 			this.$events.removed.fire(new CollectionItemRemovedEvent(removed[i], i));
 		}
+
+		this.$finishTrackingChanges(trackID);
 	}
 
 	$undefineProperty(index:alphanumeric) {

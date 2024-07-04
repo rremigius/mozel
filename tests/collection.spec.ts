@@ -1,7 +1,7 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
-import Mozel, {property, reference, string} from "../src/Mozel";
+import Mozel, {property, reference, required, string} from "../src/Mozel";
 import Collection, {collection} from "../src/Collection";
 import {alphanumeric} from "validation-kit";
 
@@ -20,7 +20,7 @@ describe("Collection", () => {
 			class FooMozel extends Mozel {
 				@property(String)
 				foo?:string;
-				@collection(FooMozel)
+				@collection(FooMozel, {required})
 				items!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.createFactory().create(FooMozel, {
@@ -66,7 +66,7 @@ describe("Collection", () => {
 			class Foo extends Mozel {
 				@string()
 				foo?:string;
-				@collection(Foo)
+				@collection(Foo, {required})
 				foos!:Collection<Foo>
 			}
 			const model = Foo.create<Foo>({

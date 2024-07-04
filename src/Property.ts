@@ -451,7 +451,7 @@ export default class Property {
 		}
 
 		// Init Mozel
-		if(this.type && isMozelClass(this.type)) {
+		if(this.type && isMozelClass(this.type) && this.type.validateInitData(value)) {
 			if(current instanceof Mozel && (
 				value.gid === current.gid // new data has same gid
 				|| (merge && !value.gid)) // or new data has no gid and we merge

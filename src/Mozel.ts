@@ -174,6 +174,10 @@ export default class Mozel {
 		return (<typeof Mozel>Parent).getPropertyDefinition(key);
 	}
 
+	static validateInitData(data:unknown) {
+		return isPlainObject(data);
+	}
+
 	/**
 	 * Get this Mozel's schema.
 	 * @param {SchemaDefinition} [definition]	The definition from the parent's

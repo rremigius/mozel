@@ -38,6 +38,10 @@ export function collection<T extends PropertyType>(runtimeType?: T, options?: Pr
 export default class Collection<T extends PropertyType> extends Mozel {
 	MozelDataType:PropertyData<T>[] = [];
 
+	static validateInitData(data:unknown) {
+		return isArray(data);
+	}
+
 	protected _count = 0;
 	protected _itemType:PropertyType = undefined;
 
@@ -50,7 +54,13 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	$setData(data: PropertyInput[], merge: boolean = false) {
 		if(isArray(data)) {
 			for(let i = 0; i < data.length; i ++) {
-				this.$set(i, data[i]);
+				this.$set(i, data[i], true, merge);
+			}
+			if(!merge) {
+				// Remove indexes that don't exist in the new data
+				for(let i = this._count-1; i >= data.length; i--) {
+					this.$removeIndex(i);
+				}
 			}
 			return;
 		}
@@ -69,7 +79,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 		// Try to set the value
 		if(!nextProperty.set(item, true)) {
-			throw new Error(`Trying to add invalid item to Collection: (${item}).`)
+			throw new Error(`Trying to add invalid item to Collection: (${typeof item}).`)
 		}
 		const finalItem = nextProperty.value;
 
@@ -142,7 +152,8 @@ export default class Collection<T extends PropertyType> extends Mozel {
 				throw new Error(`Undefined property at index ${i} in range of Collection count.`);
 			}
 			if(!nextProperty) {
-				throw new Error(`Undefined property at index ${i+1} in range of Collection count.`);
+				this.$undefineProperty(i);
+				continue;
 			}
 			const nextValue = nextProperty.value;
 
@@ -150,7 +161,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			property.set(nextValue);
 		}
 
-		this.$events.removed.fire(new CollectionItemAddedEvent(itemToRemove, indexToRemove));
+		this.$events.removed.fire(new CollectionItemRemovedEvent(itemToRemove, indexToRemove));
 
 		this._count--;
 	}
@@ -174,11 +185,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	}
 
 	$undefineProperty(index:alphanumeric) {
-		if(isNumber(index)) {
-			// Safeguard to prevent accidental removal of properties within collection range without proper handling
-			return this.$removeIndex(index);
-		}
-		return super.$undefineProperty(index);
+		return super.$undefineProperty(index + "");
 	}
 
 	$map<V>(func:(item:T, index:number)=>V):V[] {

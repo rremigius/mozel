@@ -1,5 +1,5 @@
 import {PropertyInput, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, MozelData, MozelEvents, number} from "./Mozel";
+import Mozel, {Data, MozelData, MozelEvents, number, PropertyData} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isNumber, merge} from "lodash";
 
@@ -18,7 +18,7 @@ export class CollectionEvents extends MozelEvents {
 type CollectionItemDataType<T> = T extends Mozel ? MozelData<T> : T;
 
 export default class Collection<T extends PropertyValue> extends Mozel {
-	MozelDataType:CollectionItemDataType<T>[] = [];
+	MozelDataType:PropertyData<T>[] = [];
 
 	protected _count = 0;
 	protected _itemType:PropertyType = undefined;
@@ -29,7 +29,7 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 		this._itemType = type;
 	}
 
-	$setData(data: MozelData<Collection<T>>, merge: boolean = false) {
+	$setData(data: PropertyInput[], merge: boolean = false) {
 		if(isArray(data)) {
 			for(let i = 0; i < data.length; i ++) {
 				this.$set(i, data[i]);
@@ -39,7 +39,7 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 		return super.$setData(data, merge);
 	}
 
-	$add(item:T extends Mozel ? MozelData<T> : T) {
+	$add(item:PropertyData<T>) {
 		const ownProperty = this.$property();
 		const options = ownProperty ? ownProperty.getOptions() : {};
 		const index = this._count;
@@ -53,40 +53,53 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 		if(!nextProperty.set(item, true)) {
 			return;
 		}
+		const finalItem = nextProperty.value;
 
 		// Events
-		const finalItem = this.$get(index);
 		this.$events.added.fire(new CollectionItemAddedEvent(finalItem, index));
 		this._count++;
 		return finalItem;
 	}
 
 	$property(property?: alphanumeric) {
+		if(property === undefined) {
+			return super.$property();
+		}
 		return super.$property(property + "");
 	}
 
-	$set(index: alphanumeric, value: CollectionItemDataType<T>, init = true, merge = false) {
+	$set(index: alphanumeric, value: PropertyInput, init = true, merge = false) {
 		if(isNumber(index)) {
 			if(index > this._count) {
 				throw new Error(`Cannot set index ${index} (out of bounds).`);
 			}
 			if(index === this._count) {
-				return this.$add(value);
+				return this.$add(value as PropertyData<T>); // will be validated
 			}
-			// TODO: added/removed events
+			const before = this.$get(index);
+			const after = super.$set(index + "", value, merge);
+			if(before === after) {
+				return;
+			}
+			if(before === undefined) {
+				this.$events.added.fire(new CollectionItemAddedEvent(after, index));
+			} else if(after === undefined) {
+				this.$events.removed.fire(new CollectionItemRemovedEvent(before, index));
+			}
+			return;
 		}
 
 		return super.$set(index + "", value, init, merge);
 	}
 
-	$get(index:alphanumeric, resolveReference:boolean = false):T|undefined {
+	$get(index:alphanumeric, resolveReference:boolean = true):T|undefined {
 		if(isNumber(index) && index >= this._count) {
 			return undefined;
 		}
 		return super.$get(index + "", resolveReference) as T|undefined;
 	}
 
-	$remove(child:PropertyValue, includeReferences = false) {
+	$remove(child:PropertyValue) {
 		for(let i = 0; i < this._count; i++) {
 			const value = this.$get(i);
 			if(value == child) {
@@ -117,9 +130,6 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 		}
 
 		this.$events.removed.fire(new CollectionItemAddedEvent(itemToRemove, indexToRemove));
-		this.$events.collectionChanged.fire(new CollectionChangedEvent({
-			removed: [{index: indexToRemove, item: itemToRemove}]
-		}));
 
 		this._count--;
 	}

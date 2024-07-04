@@ -133,7 +133,7 @@ export default class Property {
 	private readonly _default?:PropertyInput|PropertyInputFactory;
 	private _value:PropertyValue;
 	private _isDefault = false;
-	private _valueInitFunction?:(value:any)=>void = undefined;
+	private _initCallback?:(value:any)=>void = undefined;
 
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
 
@@ -153,7 +153,7 @@ export default class Property {
 			this._required = options.required === true;
 			this._default = options.default;
 			this._reference = options.reference === true;
-			this._valueInitFunction = options.init;
+			this._initCallback = options.init;
 
 			if(this._required && this._reference && !this._default) {
 				// References cannot be auto-generated, so they should not be set to required without default
@@ -305,13 +305,12 @@ export default class Property {
 		// Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
 		if(detach) detach.$detach();
 
-		// If Property is not just a reference but part of a hierarchy, set Parent on Mozels.
-		if (!this.isReference) {
-			if(value instanceof Mozel) {
-				value.$setProperty(this);
-			}
-		} else {
+		if (this.isReference) {
 			this._ref = null;
+		}
+
+		if(value instanceof Mozel) {
+			value.$setProperty(this);
 		}
 
 		// New value is Mozel, listen to changes
@@ -460,8 +459,21 @@ export default class Property {
 				// Same Mozel, different data
 				current.$setData(value, merge);
 			} else {
-				// Create mozel and try to set again, without type check
-				let mozel = this.parent.$create(this.type, value, this._valueInitFunction);
+				// Create Mozel
+
+				// Init function sets Property so Mozel can use information from Property during setData stage.
+				const init = (value:unknown) => {
+					if(value instanceof Mozel) {
+						value.$setProperty(this);
+					}
+					// Callback provided in property definition
+					if(this._initCallback) {
+						this._initCallback(value);
+					}
+				};
+
+				// Create Mozel and set without validation
+				let mozel = this.parent.$create(this.type, value, init);
 				this._set(mozel);
 			}
 			return true;

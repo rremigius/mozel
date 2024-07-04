@@ -49,10 +49,14 @@ export type PropertyData<T> =
 		? T extends Mozel
 			? MozelData<T>
 			: T
-		: false; // not a PropertyValue
-export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
-	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
+		: never; // not a PropertyValue
+export type MozelData<T extends Mozel> =
+	T | (T extends { MozelDataType: any }
+		? T['MozelDataType']
+		: { [K in PropertyKeys<T>]?: PropertyData<T[K]> }
+	);
 
+// Types for schema traversal
 export type PropertySchema<T> = {
 	$:string; // path
 	$path:string; // path
@@ -61,7 +65,6 @@ export type PropertySchema<T> = {
 	$reference:boolean;
 	$required:boolean;
 }
-
 export type MozelSchema<T> = PropertySchema<T> & {
 	[K in keyof T]-?:
 	T[K] extends Mozel|undefined
@@ -326,7 +329,7 @@ export default class Mozel {
 	 * @param data
 	 * @param init
 	 */
-	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, init?: (mozel:T)=>void) {
+	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, init?: (mozel:T)=>void):T {
 		// Preferably, use DI-injected factory
 		return this.$factory.create(Class, data, init);
 	}

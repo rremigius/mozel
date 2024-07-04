@@ -1,48 +1,19 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
-import Mozel, {deep, MozelData, property, reference, string} from "../src/Mozel";
-import Collection, {
-	CollectionChangedEvent,
-	CollectionItemAddedEvent,
-	CollectionItemRemovedEvent
-} from "../src/Collection";
+import Mozel, {property, reference, string} from "../src/Mozel";
+import Collection from "../src/Collection";
 import {alphanumeric} from "validation-kit";
 
 describe("Collection", () => {
-	describe("on(ChangedEvent)", () => {
-		it("callback is fired when an item is added to the Collection", () => {
-			class FooMozel extends Mozel {
-				@property(Collection)
-				other!:Collection<FooMozel>;
-			}
-			let foo = FooMozel.create<FooMozel>();
-			let bar = foo.$create(FooMozel);
-
-			let assertions = 0;
-			foo.other.$events.changed.on(() => {
-				assertions++;
-			});
-			foo.other.$add(bar);
-			assert.equal(assertions, 1, "Right number of listeners called");
+	it("changed event is fired when any of its indexes change", () => {
+		const collection = Collection.create<Collection<number>>([1,2,3,4]);
+		let count = 0;
+		collection.$events.changed.on(()=>{
+			count++;
 		});
-		it("callback is fired when an item is removed from the Collection", () => {
-			class FooMozel extends Mozel {
-				@property(Collection)
-				other!:Collection<FooMozel>;
-			}
-			let foo = FooMozel.create<FooMozel>();
-			let bar = foo.$create(FooMozel);
-
-			foo.other.$add(bar);
-
-			let assertions = 0;
-			foo.other.$events.changed.on(() => {
-				assertions++;
-			});
-			foo.other.$remove(bar);
-			assert.equal(assertions, 1, "Right number of listeners called");
-		});
+		collection.$setData([1,3,4]);
+		assert.equal(count, 1);
 	});
 	describe("setData", () => {
 		it("adds/removes/updates based on diff", () => {
@@ -165,9 +136,10 @@ describe("Collection", () => {
 		class Foo extends Mozel {
 			@property(Collection, {reference, init: collection => collection.$setType(Foo)})
 			refs!:Collection<Foo>;
-			@property(Collection, {init: collection => collection.$setType(Foo)})
+			@property(Collection, {init: collection => collection instanceof Collection && collection.$setType(Foo)})
 			foos!:Collection<Foo>;
 		}
+
 		const foo = Foo.create<Foo>({
 			refs: [{gid: 1}],
 			foos: [{gid: 1}]

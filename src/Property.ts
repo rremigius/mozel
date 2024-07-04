@@ -309,7 +309,8 @@ export default class Property {
 			this._ref = null;
 		}
 
-		if(value instanceof Mozel) {
+		// Set parent property on Mozel (if it's a reference the Mozel should keep its original parent property)
+		if(value instanceof Mozel && !this.isReference) {
 			value.$setProperty(this);
 		}
 

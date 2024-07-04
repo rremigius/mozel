@@ -1,6 +1,7 @@
 import {assert} from "chai";
-import Mozel, {collection, Collection, property} from "../src";
+import Mozel, {Collection, property} from "../src";
 import {describe} from "mocha";
+import {collection} from "../src/Collection";
 
 function time(nTimes:number, callback:(iteration:number)=>void) {
 	const start = Date.now();
@@ -72,10 +73,10 @@ describe("Performance", () => {
 				const foo = Foo.create<Foo>();
 				const refs:number[] = [];
 				for(let i=0; i<nTimes; i++) {
-					foo.foos.add(i);
+					foo.foos.$add(i);
 					refs.push(i);
 				}
-				const duration = time(1, ()=>foo.foos.each(()=>{}));
+				const duration = time(1, ()=>foo.foos.$each(()=>{}));
 				const refDuration = time(1, ()=>refs.forEach(()=>{}));
 
 				assert.isBelow(duration, refDuration * 3);

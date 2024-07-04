@@ -200,4 +200,12 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		}
 		return results;
 	}
+
+	$each<V>(func:(item:T, index:number)=>void):void {
+		this.$map(func);
+	}
+
+	$toArray() {
+		return this.$map(item => item);
+	}
 }

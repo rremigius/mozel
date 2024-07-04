@@ -92,16 +92,18 @@ describe("Collection", () => {
 			foo.items.$add(5);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
-		it("is fired if setData added an item to the collection that was not there before", () => {
+		it("is fired for each new item at each new position", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
-			let count = 0;
+
+			const added: number[] = [];
+			const addedIndexes: number[] = [];
 			foo.items.$events.added.on(event => {
-				assert.equal(event.item, 4);
-				assert.equal(event.index, 2);
-				count++;
+				added.push(event.item);
+				addedIndexes.push(event.index);
 			});
-			foo.items.$setData([2,3,4]);
-			assert.equal(count, 1, "event called exactly 1 time");
+			foo.items.$setData([3,2,1]);
+			assert.deepEqual(added, [3, 1]);
+			assert.deepEqual(addedIndexes, [0, 2]);
 		});
 	});
 	describe("CollectionItemRemovedEvent", () => {
@@ -120,16 +122,17 @@ describe("Collection", () => {
 			foo.items.$remove(1);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
-		it("is fired if setData did not include an item in the collection that was there before", () => {
+		it("is fired for each index from which an item was removed", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
-			let count = 0;
+			const removed:number[] = [];
+			const removedIndexes:number[] = [];
 			foo.items.$events.removed.on(event => {
-				assert.equal(event.item, 1);
-				assert.equal(event.index, 0);
-				count++;
+				removed.push(event.item);
+				removedIndexes.push(event.index);
 			});
-			foo.items.$setData([2,3,4]);
-			assert.equal(count, 1, "event called exactly 1 time");
+			foo.items.$setData([3,2,1]);
+			assert.deepEqual(removed, [1, 3]);
+			assert.deepEqual(removedIndexes, [0, 2]);
 		});
 	});
 	it("references are lazy-loaded", () => {

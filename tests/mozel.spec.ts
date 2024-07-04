@@ -3,7 +3,6 @@ import {describe, it} from 'mocha';
 import Mozel, {
 	Alphanumeric,
 	alphanumeric,
-	collection,
 	property,
 	required,
 	schema,
@@ -11,7 +10,7 @@ import Mozel, {
 	deep,
 	reference, Data, trackOld, string
 } from '../src/Mozel';
-import Collection from '../src/Collection';
+import Collection, {collection} from '../src/Collection';
 import {forEach, get, includes, set, toNumber} from 'lodash';
 import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";

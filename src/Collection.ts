@@ -130,6 +130,10 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		return super.$get(index + "", resolveReference);
 	}
 
+	$at(index:number, resolveReferences:boolean = true):T {
+		return this.$get(index, resolveReferences) as T;
+	}
+
 	$remove(child:PropertyValue) {
 		for(let i = 0; i < this._count; i++) {
 			const value = this.$get(i);

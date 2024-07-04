@@ -1,5 +1,5 @@
-import Collection from "../src/Collection";
-import Mozel, {collection, property, reference} from "../src/Mozel";
+import Collection, {collection} from "../src/Collection";
+import Mozel, {property, reference} from "../src/Mozel";
 import MozelFactory from "../src/MozelFactory";
 import {it} from "mocha";
 import {assert} from "chai";
@@ -25,9 +25,9 @@ describe("MozelFactory", () => {
 
 			let people = factory.createSet(Person, data);
 
-			assert.equal(people[0].likes.get(1), people[3]); // both frank
-			assert.equal(people[0].likes.get(1), people[1].likes.get(1)); // both frank
-			assert.equal(people[2].likes.get(0), people[2]); // jessica likes herself
+			assert.equal(people[0].likes.$at(1), people[3]); // both frank
+			assert.equal(people[0].likes.$at(1), people[1].likes.$at(1)); // both frank
+			assert.equal(people[2].likes.$at(0), people[2]); // jessica likes herself
 		})
 	});
 	describe("create", () => {
@@ -51,8 +51,8 @@ describe("MozelFactory", () => {
 			});
 
 			assert.instanceOf(bar.foo, FooMozel, "Created property submozel is of correct class");
-			assert.instanceOf(bar.foos.get(0), FooMozel, "Created collection submozel is of correct class");
-			assert.instanceOf(bar.foos.get(1), SubFooMozel, "Subclass was instantiated correctly")
+			assert.instanceOf(bar.foos.$at(0), FooMozel, "Created collection submozel is of correct class");
+			assert.instanceOf(bar.foos.$at(1), SubFooMozel, "Subclass was instantiated correctly")
 		});
 		it('resolves Mozel types based on its container', () => {
 			let romeFactory = new MozelFactory();
@@ -119,17 +119,17 @@ describe("MozelFactory", () => {
 				]
 			});
 
-			const child1 = foo.fooChildren.get(0);
-			const child2 = foo.fooChildren.get(1);
-			const child3 = foo.fooChildren.get(2);
-			const lastChild = foo.fooChildren.get(3);
+			const child1 = foo.fooChildren.$at(0);
+			const child2 = foo.fooChildren.$at(1);
+			const child3 = foo.fooChildren.$at(2);
+			const lastChild = foo.fooChildren.$at(3);
 
 			assert.instanceOf(child1, FooMozel, "First child in Collection instantiated properly.");
 			assert.instanceOf(lastChild, FooMozel, "Last child in Collection instantiated properly.");
 
 			const ref1 = lastChild!.fooReference;
-			const ref2 = lastChild!.fooReferences.get(0);
-			const ref3 = lastChild!.fooReferences.get(1);
+			const ref2 = lastChild!.fooReferences.$at(0);
+			const ref3 = lastChild!.fooReferences.$at(1);
 
 			assert.equal(ref1, child1, "Reference Property resolved correctly");
 			assert.equal(ref2, child2, "First Collection reference resolved correctly");

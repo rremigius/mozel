@@ -362,7 +362,8 @@ export default class Mozel {
 		if (this._propertyLock) {
 			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
 		}
-		if(this._property) {
+		// If property still holds this Mozel as its value, unset it
+		if(this._property && this._property.value === this) {
 			this._property.set(undefined);
 		}
 		this._property = null;

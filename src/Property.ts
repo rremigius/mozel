@@ -33,7 +33,7 @@ export type Reference = {gid: alphanumeric};
 
 export type PropertyInputFactory = ()=>PropertyInput;
 
-type InitArgument<T> = T extends Class ? InstanceType<T> : T
+export type InitArgument<T> = T extends Class ? InstanceType<T> : T
 export type PropertyOptions<T> = {default?:PropertyInput|PropertyInputFactory, required?:boolean, reference?:boolean, init?:(value:InitArgument<T>)=>void};
 
 /**

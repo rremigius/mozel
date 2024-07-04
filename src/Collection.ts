@@ -1,5 +1,5 @@
-import {PropertyInput, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, MozelData, MozelEvents, number, PropertyData} from "./Mozel";
+import {InitArgument, PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
+import Mozel, {Data, MozelData, MozelEvents, number, PropertyData, property} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isNumber, merge} from "lodash";
 
@@ -15,9 +15,27 @@ export class CollectionEvents extends MozelEvents {
 	removed = this.$event(CollectionItemRemovedEvent);
 }
 
-type CollectionItemDataType<T> = T extends Mozel ? MozelData<T> : T;
+/**
+ * COLLECTION decorator factory
+ * Defines a runtime type-safe Property instance for this property and overrides the current property
+ * with a getter/setter to access the Property.
+ * @param {PropertyType} runtimeType
+ * @param {object} options
+ */
+export function collection<T extends PropertyType>(runtimeType?: T, options?: PropertyOptions<T>) {
+	const init = (value:unknown) => {
+		// Property options will be re-used for each of the children so check if it's currently applied to the Collection
+		if(value instanceof Collection) {
+			value.$setType(runtimeType);
+		}
+		if(options && options.init) {
+			options.init(value as InitArgument<T>);
+		}
+	};
+	return property(Collection as any, {...options, init});
+}
 
-export default class Collection<T extends PropertyValue> extends Mozel {
+export default class Collection<T extends PropertyType> extends Mozel {
 	MozelDataType:PropertyData<T>[] = [];
 
 	protected _count = 0;
@@ -51,7 +69,7 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 
 		// Try to set the value
 		if(!nextProperty.set(item, true)) {
-			return;
+			throw new Error(`Trying to add invalid item to Collection: (${item}).`)
 		}
 		const finalItem = nextProperty.value;
 
@@ -76,27 +94,30 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 			if(index === this._count) {
 				return this.$add(value as PropertyData<T>); // will be validated
 			}
+
 			const before = this.$get(index);
-			const after = super.$set(index + "", value, merge);
+
+			if(!super.$set(index + "", value, init, merge)) {
+				return false;
+			}
+
+			const after = this.$get(index);
 			if(before === after) {
 				return;
 			}
-			if(before === undefined) {
-				this.$events.added.fire(new CollectionItemAddedEvent(after, index));
-			} else if(after === undefined) {
-				this.$events.removed.fire(new CollectionItemRemovedEvent(before, index));
-			}
+			this.$events.added.fire(new CollectionItemAddedEvent(after, index));
+			this.$events.removed.fire(new CollectionItemRemovedEvent(before, index));
 			return;
 		}
 
 		return super.$set(index + "", value, init, merge);
 	}
 
-	$get(index:alphanumeric, resolveReference:boolean = true):T|undefined {
+	$get(index:alphanumeric, resolveReference:boolean = true):PropertyValue {
 		if(isNumber(index) && index >= this._count) {
 			return undefined;
 		}
-		return super.$get(index + "", resolveReference) as T|undefined;
+		return super.$get(index + "", resolveReference);
 	}
 
 	$remove(child:PropertyValue) {
@@ -135,7 +156,7 @@ export default class Collection<T extends PropertyValue> extends Mozel {
 	}
 
 	$clear() {
-		const removed:(T|undefined)[] = [];
+		const removed:(PropertyValue)[] = [];
 		const count = this._count;
 
 		// Remove all properties within Collection range

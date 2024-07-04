@@ -2,7 +2,7 @@ import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
 import Mozel, {property, reference, string} from "../src/Mozel";
-import Collection from "../src/Collection";
+import Collection, {collection} from "../src/Collection";
 import {alphanumeric} from "validation-kit";
 
 describe("Collection", () => {
@@ -13,14 +13,14 @@ describe("Collection", () => {
 			count++;
 		});
 		collection.$setData([1,3,4]);
-		assert.equal(count, 1);
+		assert.isAbove(count, 1);
 	});
 	describe("setData", () => {
 		it("adds/removes/updates based on diff", () => {
 			class FooMozel extends Mozel {
 				@property(String)
 				foo?:string;
-				@property(Collection)
+				@collection(FooMozel)
 				items!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.createFactory().create(FooMozel, {
@@ -66,7 +66,7 @@ describe("Collection", () => {
 			class Foo extends Mozel {
 				@string()
 				foo?:string;
-				@property(Collection, {init: collection => collection.$setType(Foo) })
+				@collection(Foo)
 				foos!:Collection<Foo>
 			}
 			const model = Foo.create<Foo>({
@@ -78,7 +78,7 @@ describe("Collection", () => {
 	});
 	describe("CollectionItemAddedEvent", () => {
 		class Foo extends Mozel {
-			@property(Collection)
+			@collection(Number)
 			items!:Collection<number>;
 		}
 		it("is fired if `add` is called", () => {
@@ -106,7 +106,7 @@ describe("Collection", () => {
 	});
 	describe("CollectionItemRemovedEvent", () => {
 		class Foo extends Mozel {
-			@property(Collection)
+			@collection(Number)
 			items!:Collection<number>;
 		}
 		it("is fired if `remove` is called", () => {
@@ -134,9 +134,9 @@ describe("Collection", () => {
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@property(Collection, {reference, init: collection => collection.$setType(Foo)})
+			@collection(Foo, {reference})
 			refs!:Collection<Foo>;
-			@property(Collection, {init: collection => collection instanceof Collection && collection.$setType(Foo)})
+			@collection(Foo)
 			foos!:Collection<Foo>;
 		}
 

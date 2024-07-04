@@ -20,7 +20,7 @@ describe("Collection", () => {
 			class FooMozel extends Mozel {
 				@property(String)
 				foo?:string;
-				@collection(FooMozel, {required})
+				@collection(FooMozel, {collection: {required}})
 				items!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.createFactory().create(FooMozel, {
@@ -66,7 +66,7 @@ describe("Collection", () => {
 			class Foo extends Mozel {
 				@string()
 				foo?:string;
-				@collection(Foo, {required})
+				@collection(Foo, {collection: {required}})
 				foos!:Collection<Foo>
 			}
 			const model = Foo.create<Foo>({
@@ -137,7 +137,7 @@ describe("Collection", () => {
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@collection(Foo, {reference})
+			@collection(Foo, {items: {reference}})
 			refs!:Collection<Foo>;
 			@collection(Foo)
 			foos!:Collection<Foo>;
@@ -147,8 +147,8 @@ describe("Collection", () => {
 			refs: [{gid: 1}],
 			foos: [{gid: 1}]
 		});
-		assert.notExists(foo.refs.$get(0, false), "Reference not yet resolved.");
-		assert.exists(foo.refs.$get(0), "Reference can be accessed");
-		assert.exists(foo.refs.$get(0, false), "Reference resolved.");
+		assert.notExists(foo.refs.$at(0, false), "Reference not yet resolved.");
+		assert.exists(foo.refs.$at(0), "Reference can be accessed");
+		assert.exists(foo.refs.$at(0, false), "Reference resolved.");
 	});
 });

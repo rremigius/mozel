@@ -1,7 +1,9 @@
 import {InitArgument, PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, MozelData, MozelEvents, number, PropertyData, property, ExportOptions} from "./Mozel";
+import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isNumber, merge} from "lodash";
+
+export type CollectionOptions<T> = {collection?: PropertyOptions<T>, items?: PropertyOptions<T>};
 
 export class CollectionItemEvent<T> {
 	constructor(public item:T, public index:number) {	}
@@ -20,19 +22,12 @@ export class CollectionEvents extends MozelEvents {
  * Defines a runtime type-safe Property instance for this property and overrides the current property
  * with a getter/setter to access the Property.
  * @param {PropertyType} runtimeType
- * @param {object} options
+ * @param options
+ * @param options.collection			Options for the Collection
+ * @param options.items					Options applied to all Collection items
  */
-export function collection<T extends PropertyType>(runtimeType?: T, options?: PropertyOptions<T>) {
-	const init = (value:unknown) => {
-		// Property options will be re-used for each of the children so check if it's currently applied to the Collection
-		if(value instanceof Collection) {
-			value.$setType(runtimeType);
-		}
-		if(options && options.init) {
-			options.init(value as InitArgument<T>);
-		}
-	};
-	return property(Collection as any, {...options, init});
+export function collection<T extends PropertyType>(runtimeType?: T, options?:CollectionOptions<T>) {
+	return property(Collection as any, Collection.createOptions(runtimeType, options));
 }
 
 export default class Collection<T extends PropertyType> extends Mozel {
@@ -42,12 +37,28 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		return isArray(data);
 	}
 
+	static createOptions(itemRuntimeType:PropertyType, options?:CollectionOptions<any>) {
+		const init = (value:Collection<any>) => {
+			options = options || {};
+			value.$setItemType(itemRuntimeType);
+			value.$setItemPropertyOptions(options.items || {});
+
+			// Also call provided init, since it is about to be overridden
+			if(options.collection && options.collection.init) {
+				options.collection.init(value as InitArgument<any>);
+			}
+		};
+		options = options || {};
+		return {...options.collection, init};
+	}
+
 	protected _count = 0;
 	protected _itemType:PropertyType = undefined;
+	protected _itemPropertyOptions:PropertyOptions<T> = {};
 
 	$events = new CollectionEvents();
 
-	$setType(type:PropertyType) {
+	$setItemType(type:PropertyType) {
 		this._itemType = type;
 	}
 
@@ -68,13 +79,11 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	}
 
 	$add(item:PropertyData<T>) {
-		const ownProperty = this.$property();
-		const options = ownProperty ? ownProperty.getOptions() : {};
 		const index = this._count;
 
 		let  nextProperty = this.$property(index);
 		if(!nextProperty) {
-			nextProperty = this.$defineProperty(index + "", this._itemType, options);
+			nextProperty = this.$defineProperty(index + "", this._itemType, this._itemPropertyOptions as PropertyOptions<unknown>);
 		}
 
 		// Try to set the value
@@ -94,6 +103,14 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			return super.$property();
 		}
 		return super.$property(property + "");
+	}
+
+	/**
+	 * Set property options that will be set on each of the properties containing the Collection's items.
+	 * @param options
+	 */
+	$setItemPropertyOptions(options:PropertyOptions<T>) {
+		this._itemPropertyOptions = options;
 	}
 
 	$set(index: alphanumeric, value: PropertyInput, init = true, merge = false) {

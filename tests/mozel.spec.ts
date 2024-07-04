@@ -121,11 +121,7 @@ describe('Mozel', () => {
 					super.$define();
 					this.$defineProperty('foo', FooMozel);
 					this.$defineProperty('qux');
-					this.$defineProperty('bars', Collection, {
-						init: collection => {
-							if(collection instanceof Collection) collection.$setType(BarMozel)
-						}
-					});
+					this.$defineProperty('bars', Collection, Collection.createOptions(BarMozel));
 				}
 			}
 
@@ -161,13 +157,10 @@ describe('Mozel', () => {
 			class FooMozel extends Mozel {
 				$define() {
 					super.$define();
-					this.$defineProperty('bars', Collection, {
-						required,
-						init: collection => {
-							console.log(collection);
-							if(collection instanceof Collection) collection.$setType(BarMozel)
-						}
-					});
+					this.$defineProperty('bars', Collection, Collection.createOptions(
+						BarMozel,
+						{collection: {required}}
+					));
 				}
 			}
 
@@ -1153,7 +1146,7 @@ describe('Mozel', () => {
 				@property(Foo, {reference})
 				ref?:Foo;
 
-				@collection(Foo, {reference})
+				@collection(Foo, {items: {reference}})
 				refs!:Collection<Foo>;
 			}
 			const foo = Foo.create<Foo>({

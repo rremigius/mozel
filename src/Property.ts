@@ -407,7 +407,7 @@ export default class Property {
 			if(this.isReference) {
 				throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
 			}
-			return this.parent.$create(this.type);
+			return this.parent.$create(this.type, undefined, this._initCallback);
 		}
 		switch(this.type) {
 		case Number: return 0;

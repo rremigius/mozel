@@ -162,7 +162,9 @@ describe('Mozel', () => {
 				$define() {
 					super.$define();
 					this.$defineProperty('bars', Collection, {
+						required,
 						init: collection => {
+							console.log(collection);
 							if(collection instanceof Collection) collection.$setType(BarMozel)
 						}
 					});
@@ -183,7 +185,7 @@ describe('Mozel', () => {
 			let clone = <{[key:string]:any}>FooMozel.create(foo.$export());
 
 			assert.instanceOf(clone.bars, Collection, "Cloned instance has initialized 'bars' collection");
-			assert.equal(clone.bars.length, 2, "'bars' collection of cloned instance has 2 items");
+			assert.equal(clone.bars.$length(), 2, "'bars' collection of cloned instance has 2 items");
 			assert.instanceOf(clone.bars.$at(0), BarMozel, "First item in 'bars' collection is BarMozel");
 			assert.instanceOf(clone.bars.$at(1), BarMozel, "Second item in 'bar's");
 			assert.equal(clone.bars.$at(0).qux, 123, "First item in 'bars' collection was initialized with correct 'qux' property value");

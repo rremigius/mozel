@@ -1,5 +1,5 @@
 import {InitArgument, PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, MozelData, MozelEvents, number, PropertyData, property} from "./Mozel";
+import Mozel, {Data, MozelData, MozelEvents, number, PropertyData, property, ExportOptions} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isNumber, merge} from "lodash";
 
@@ -207,5 +207,18 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 	$toArray() {
 		return this.$map(item => item);
+	}
+
+	$length() {
+		return this._count;
+	}
+
+	$export(options?: ExportOptions): Data {
+		return this.$map(item => {
+			if(item instanceof Mozel) {
+				return item.$export(options);
+			}
+			return item;
+		});
 	}
 }

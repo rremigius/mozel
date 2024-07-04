@@ -244,7 +244,6 @@ export default class Mozel {
 	public readonly $factory: MozelFactoryInterface;
 	public readonly $registry: Registry<Mozel>;
 
-	protected _config: Record<string, unknown> = {};
 	private _properties: Record<string, Property> = {};
 
 	private _property: Property | null = null;
@@ -321,6 +320,7 @@ export default class Mozel {
 
 	$init() {
 	} // for override
+
 
 	get $properties() {
 		return this._properties;
@@ -933,6 +933,12 @@ export default class Mozel {
 		// Use new factory with same dependencies but different Registry.
 		const dependencies = this.$factory.dependencies;
 		const factory = new MozelFactory(dependencies, new Registry<Mozel>());
+
+		// TODO: when cloning, init information is lost (e.g. collection item type).
+		// Cannot simply copy init function because it may contain references to Properties from the old Mozel
+		// Copy relevant properties one by one from an init function here?
+		// Init function in $cloneDeep parameter so child classes (e.g. Collection) can add their stuff?
+
 		return factory.create(this.$static, this.$export() as MozelData<any>) as T;
 	}
 

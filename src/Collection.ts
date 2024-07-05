@@ -1,23 +1,9 @@
-import Property, {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions, MozelConfig, MozelData} from "./Mozel";
+import {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
+import Mozel, {Data, PropertyData, property, ExportOptions, MozelConfig} from "./Mozel";
 import {alphanumeric} from "validation-kit";
-import {isArray, isNumber, isPlainObject} from "lodash";
-import {parse} from "uuid";
-import * as path from "node:path";
+import {isArray, isPlainObject} from "lodash";
 
 export type CollectionDataType<T> = ((PropertyData<Mozel>) & {'$items'?: PropertyData<T>[]}) | PropertyData<T>[]
-
-export class CollectionItemEvent<T> {
-	constructor(public item:T, public index:number) {	}
-}
-
-export class CollectionItemAddedEvent<T> extends CollectionItemEvent<T> {}
-export class CollectionItemRemovedEvent<T> extends CollectionItemEvent<T> {}
-
-export class CollectionEvents extends MozelEvents {
-	added = this.$event(CollectionItemAddedEvent);
-	removed = this.$event(CollectionItemRemovedEvent);
-}
 
 /**
  * COLLECTION decorator factory
@@ -56,9 +42,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	protected _config:MozelConfig<Collection<T>> = {};
 
 	/** Quick access list */
-	public _list:T[] = [];
-
-	$events = new CollectionEvents();
+	protected _list:T[] = [];
 
 	protected isCollectionIndex(key:alphanumeric) {
 		return parseFloat(key as string) % 1 === 0;
@@ -100,10 +84,6 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		if(!nextProperty.set(item, init)) {
 			throw new Error(`Trying to add invalid item to Collection: (${typeof item}).`)
 		}
-		const finalItem = nextProperty.value;
-
-		// Events
-		this.$events.added.fire(new CollectionItemAddedEvent(finalItem, index));
 		this._count++;
 
 		this.$finishTrackingChanges(trackID);
@@ -149,8 +129,6 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			if(before === after) {
 				return true;
 			}
-			this.$events.added.fire(new CollectionItemAddedEvent(after, parsedIndex));
-			this.$events.removed.fire(new CollectionItemRemovedEvent(before, parsedIndex));
 			return true;
 		}
 
@@ -205,8 +183,6 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			property.set(nextValue);
 		}
 
-		this.$events.removed.fire(new CollectionItemRemovedEvent(itemToRemove, indexToRemove));
-
 		this._count--;
 
 		this.$finishTrackingChanges(trackID);
@@ -216,7 +192,6 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		const trackID = this.$startTrackingChanges();
 
 		const removed:(PropertyValue)[] = [];
-		const count = this._count;
 
 		// Remove all properties within Collection range
 		for(let i = 0; i < this._count; i++) {
@@ -225,11 +200,6 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			super.$undefineProperty(i + "");
 		}
 		this._count = 0;
-
-		// Events
-		for(let i = 0; i < count; i++) {
-			this.$events.removed.fire(new CollectionItemRemovedEvent(removed[i], i));
-		}
 
 		this.$finishTrackingChanges(trackID);
 	}
@@ -248,7 +218,10 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	}
 
 	$each(func:(item:T, index:number)=>void):void {
-		this.$map<void>(func);
+		for(let i = 0; i < this._count; i++) {
+			const item = this._list[i];
+			func(item, i);
+		}
 	}
 
 	$toArray() {
@@ -270,7 +243,6 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 	$notifyPropertyChanged(path: string[]) {
 		super.$notifyPropertyChanged(path);
-
 
 		// Update quick-access list if it's a direct property
 		if(path.length !== 1) {

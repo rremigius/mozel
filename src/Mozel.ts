@@ -439,7 +439,7 @@ export default class Mozel {
 
 	$findParent(predicate:(mozel:Mozel, relation:string)=>boolean):Mozel|undefined {
 		if(!this.$parent) return undefined;
-		if(predicate(this.$parent, this.$relation as string)) return this.$parent;
+		if(predicate(this.$parent, this.$parentRelation as string)) return this.$parent;
 
 		return this.$parent.$findParent(predicate);
 	}
@@ -459,7 +459,7 @@ export default class Mozel {
 	/**
 	 * The Mozel's relation to its parent.
 	 */
-	get $relation() {
+	get $parentRelation() {
 		if(!this._parentProperty) return null;
 		return this._parentProperty.name;
 	}
@@ -633,10 +633,10 @@ export default class Mozel {
 	}
 
 	$getPathArray():string[] {
-		if(!this.$parent || !this.$relation) {
+		if(!this.$parent || !this.$parentRelation) {
 			return [];
 		}
-		return [...this.$parent.$getPathArray(), this.$relation];
+		return [...this.$parent.$getPathArray(), this.$parentRelation];
 	}
 
 	$getPathFrom(mozel:Mozel):string {
@@ -646,9 +646,9 @@ export default class Mozel {
 	$getPathArrayFrom(mozel:Mozel):string[] {
 		if(this === mozel) return [];
 
-		if(!this.$parent || !this.$relation) throw new Error("No path from given Mozel found.");
+		if(!this.$parent || !this.$parentRelation) throw new Error("No path from given Mozel found.");
 
-		return [...this.$parent.$getPathArrayFrom(mozel), this.$relation];
+		return [...this.$parent.$getPathArrayFrom(mozel), this.$parentRelation];
 	}
 
 	$setPath(path:string|string[], value:any, initAlongPath = true):unknown {
@@ -751,8 +751,8 @@ export default class Mozel {
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.updateValues(pathString)
 		});
-		if(this.$parent && this.$relation) {
-			this.$parent.$notifyPropertyBeforeChange([this.$relation, ...path]);
+		if(this.$parent && this.$parentRelation) {
+			this.$parent.$notifyPropertyBeforeChange([this.$parentRelation, ...path]);
 		}
 	}
 
@@ -769,7 +769,7 @@ export default class Mozel {
 		) {
 			return false;
 		}
-		if (this.$parent && this.$relation && !this.$parent.$validatePropertyChange([this.$relation, ...path])) {
+		if (this.$parent && this.$parentRelation && !this.$parent.$validatePropertyChange([this.$parentRelation, ...path])) {
 			return false;
 		}
 		return true;
@@ -793,8 +793,8 @@ export default class Mozel {
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.execute(pathString);
 		});
-		if (this.$parent && this.$relation) {
-			this.$parent.$notifyPropertyChanged([this.$relation, ...path]);
+		if (this.$parent && this.$parentRelation) {
+			this.$parent.$notifyPropertyChanged([this.$parentRelation, ...path]);
 		}
 	}
 

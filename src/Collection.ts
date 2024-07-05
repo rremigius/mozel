@@ -70,17 +70,17 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		return super.$setData(data, merge);
 	}
 
-	$add(item:PropertyData<T>) {
+	$add(item:PropertyData<T>, init:boolean = true) {
 		const trackID = this.$startTrackingChanges();
 		const index = this._count;
 
-		let  nextProperty = this.$property(index);
+		let nextProperty = this.$property(index);
 		if(!nextProperty) {
 			nextProperty = this.$defineProperty(index + "", this._config.itemType, this._config.itemPropertyOptions as PropertyOptions<unknown>);
 		}
 
 		// Try to set the value
-		if(!nextProperty.set(item, true)) {
+		if(!nextProperty.set(item, init)) {
 			throw new Error(`Trying to add invalid item to Collection: (${typeof item}).`)
 		}
 		const finalItem = nextProperty.value;
@@ -90,7 +90,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		this._count++;
 
 		this.$finishTrackingChanges(trackID);
-		return finalItem;
+		return true;
 	}
 
 	$property(property?: alphanumeric) {
@@ -117,11 +117,11 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 			const after = this.$get(index);
 			if(before === after) {
-				return;
+				return true;
 			}
 			this.$events.added.fire(new CollectionItemAddedEvent(after, index));
 			this.$events.removed.fire(new CollectionItemRemovedEvent(before, index));
-			return;
+			return true;
 		}
 
 		return super.$set(index + "", value, init, merge);

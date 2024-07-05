@@ -92,18 +92,16 @@ describe("Collection", () => {
 			foo.items.$add(5);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
-		it("is fired for each new item at each new position", () => {
+		it("is fired if setData added an item to the collection that was not there before", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
-
-			const added: number[] = [];
-			const addedIndexes: number[] = [];
+			let count = 0;
 			foo.items.$events.added.on(event => {
-				added.push(event.item);
-				addedIndexes.push(event.index);
+				assert.equal(event.item, 4);
+				assert.equal(event.index, 2);
+				count++;
 			});
-			foo.items.$setData([3,2,1]);
-			assert.deepEqual(added, [3, 1]);
-			assert.deepEqual(addedIndexes, [0, 2]);
+			foo.items.$setData([2,3,4]);
+			assert.equal(count, 1, "event called exactly 1 time");
 		});
 	});
 	describe("CollectionItemRemovedEvent", () => {

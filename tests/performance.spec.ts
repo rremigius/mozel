@@ -63,24 +63,25 @@ describe("Performance", () => {
 			});
 		});
 		describe("traversing a Collection", () => {
-			it("takes less than 5 times as long as traversing an array", () => {
+			it("takes less than 3 times as long as traversing an array", () => {
 				class Foo extends Mozel {
 					@collection(Number, undefined, {required})
 					foos!:Collection<number>
 				}
 
-				const nTimes = 1000;
-				const nItems = 1000;
+				const nTimes = 100;
+				const nItems = 10000;
 				const foo = Foo.create<Foo>();
 				const refs:number[] = [];
 				for(let i=0; i<nItems; i++) {
 					foo.foos.$add(i);
 					refs.push(i);
 				}
-				const duration = time(nTimes, ()=>foo.foos.$each(()=>{}));
+				const foos = foo.foos;
+				const duration = time(nTimes, ()=>foos.$each(()=>{}));
 				const refDuration = time(nTimes, ()=>refs.forEach(()=>{}));
 
-				assert.isBelow(duration, refDuration * 5);
+				assert.isBelow(duration, refDuration * 3);
 			});
 		});
 		describe("creating a Foo instance", () => {

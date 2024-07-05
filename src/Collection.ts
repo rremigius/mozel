@@ -56,7 +56,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	protected _config:MozelConfig<Collection<T>> = {};
 
 	/** Quick access list */
-	protected _list:T[] = [];
+	public _list:T[] = [];
 
 	$events = new CollectionEvents();
 

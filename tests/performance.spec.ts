@@ -1,5 +1,5 @@
 import {assert} from "chai";
-import Mozel, {Collection, property} from "../src";
+import Mozel, {Collection, property, required} from "../src";
 import {describe} from "mocha";
 import {collection} from "../src/Collection";
 
@@ -65,7 +65,7 @@ describe("Performance", () => {
 		describe("traversing a Collection", () => {
 			it("takes less than 3 times as long as traversing an array", () => {
 				class Foo extends Mozel {
-					@collection(Number)
+					@collection(Number, undefined, {required})
 					foos!:Collection<number>
 				}
 

@@ -13,7 +13,6 @@ export {
 	LogLevel,
 	PropertyKeys,
 	schema,
-	$s,
 	PropertySchema,
 	MozelSchema,
 	ChangedEvent,

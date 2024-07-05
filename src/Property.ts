@@ -12,7 +12,7 @@ import {
 } from 'lodash';
 
 import {alphanumeric, Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
-import Mozel, {DestroyedEvent} from "./Mozel";
+import Mozel, {DestroyedEvent, MozelConfig} from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
 import {get} from "./utils";
@@ -34,7 +34,12 @@ export type Reference = {gid: alphanumeric};
 export type PropertyInputFactory = ()=>PropertyInput;
 
 export type InitArgument<T> = T extends Class ? InstanceType<T> : T
-export type PropertyOptions<T> = {default?:PropertyInput|PropertyInputFactory, required?:boolean, reference?:boolean, init?:(value:InitArgument<T>)=>void};
+export type PropertyOptions<T> = {
+	default?:PropertyInput|PropertyInputFactory,
+	required?:boolean,
+	reference?:boolean,
+	config?:T extends Mozel ? MozelConfig<T> : unknown
+};
 
 /**
  * Placeholder class for runtime Property type definition
@@ -133,7 +138,7 @@ export default class Property {
 	private readonly _default?:PropertyInput|PropertyInputFactory;
 	private _value:PropertyValue;
 	private _isDefault = false;
-	private _initCallback?:(value:any)=>void = undefined;
+	private _mozelConfig:MozelConfig<any> = {};
 
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
 
@@ -153,7 +158,7 @@ export default class Property {
 			this._required = options.required === true;
 			this._default = options.default;
 			this._reference = options.reference === true;
-			this._initCallback = options.init;
+			this._mozelConfig = options.config;
 
 			if(this._required && this._reference && !this._default) {
 				// References cannot be auto-generated, so they should not be set to required without default
@@ -349,7 +354,7 @@ export default class Property {
 				this._ref = gid ? {gid} : undefined;
 			}
 		}
-		return value;
+		return true;
 	}
 
 	notifyBeforeChange(path?:alphanumeric) {
@@ -407,7 +412,7 @@ export default class Property {
 			if(this.isReference) {
 				throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
 			}
-			return this.parent.$create(this.type, undefined, this._initCallback);
+			return this.parent.$create(this.type, undefined, this._mozelConfig);
 		}
 		switch(this.type) {
 		case Number: return 0;
@@ -460,21 +465,8 @@ export default class Property {
 				// Same Mozel, different data
 				current.$setData(value, merge);
 			} else {
-				// Create Mozel
-
-				// Init function sets Property so Mozel can use information from Property during setData stage.
-				const init = (value:unknown) => {
-					if(value instanceof Mozel) {
-						value.$setProperty(this);
-					}
-					// Callback provided in property definition
-					if(this._initCallback) {
-						this._initCallback(value);
-					}
-				};
-
 				// Create Mozel and set without validation
-				let mozel = this.parent.$create(this.type, value, init);
+				let mozel = this.parent.$create(this.type, value, this._mozelConfig);
 				this._set(mozel);
 			}
 			return true;

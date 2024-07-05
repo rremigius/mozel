@@ -20,7 +20,7 @@ describe("Collection", () => {
 			class FooMozel extends Mozel {
 				@property(String)
 				foo?:string;
-				@collection(FooMozel, {collection: {required}})
+				@collection(FooMozel, undefined, {required})
 				items!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.createFactory().create(FooMozel, {
@@ -66,7 +66,7 @@ describe("Collection", () => {
 			class Foo extends Mozel {
 				@string()
 				foo?:string;
-				@collection(Foo, {collection: {required}})
+				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>
 			}
 			const model = Foo.create<Foo>({
@@ -137,7 +137,7 @@ describe("Collection", () => {
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@collection(Foo, {items: {reference}})
+			@collection(Foo, undefined, {required})
 			refs!:Collection<Foo>;
 			@collection(Foo)
 			foos!:Collection<Foo>;

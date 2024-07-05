@@ -72,7 +72,7 @@ export type MozelSchema<T> = PropertySchema<T> & {
 		: PropertySchema<T[K]>
 }
 
-
+export type MozelConfig<T extends Mozel> = T['MozelConfigType'];
 
 type PropertyDefinition<T extends PropertyType> = { name: string, type?: PropertyType, options?: PropertyOptions<T>};
 type SchemaDefinition = {type: PropertyType, reference:boolean, required:boolean, path:string[]};
@@ -94,11 +94,11 @@ export function isData(value: any): value is Data {
  * Defines a runtime type-safe Property instance for this property and overrides the current property
  * with a getter/setter to access the Property.
  * @param {PropertyType} runtimeType
- * @param {object} options
+ * @param {object} propertyOptions
  */
-export function property<T extends PropertyType>(runtimeType?: T, options?: PropertyOptions<T>) {
+export function property<T extends PropertyType>(runtimeType?: T, propertyOptions?: PropertyOptions<T>) {
 	return function (target: Mozel, propertyName: string) {
-		target.$static.defineClassProperty(propertyName, runtimeType, options);
+		target.$static.defineClassProperty(propertyName, runtimeType, propertyOptions);
 	};
 }
 export function string(options?: PropertyOptions<StringConstructor>) {
@@ -122,7 +122,6 @@ export const shallow = true;
 export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof Mozel):MozelSchema<M> {
 	return MozelClass.$schema<M>();
 }
-export const $s = schema; // shorter alias
 
 export class DestroyedEvent {
 	constructor(public mozel:Mozel) {}
@@ -143,6 +142,8 @@ export class MozelEvents extends EventInterface {
 export default class Mozel {
 	public _type?: string; // just for MozelData typing
 	static Events = MozelEvents;
+
+	MozelConfigType:{} = {}
 
 	static get type() {
 		return this.name; // Try using class name (will not work when uglified).
@@ -244,6 +245,7 @@ export default class Mozel {
 	public readonly $factory: MozelFactoryInterface;
 	public readonly $registry: Registry<Mozel>;
 
+	protected _config: MozelConfig<Mozel> = {};
 	private _properties: Record<string, Property> = {};
 
 	private _property: Property | null = null;
@@ -278,10 +280,11 @@ export default class Mozel {
 	 * Instantiate a Mozel, based on raw data.
 	 * Set as $root, so will not destroy itself when removed from hierarchy.
 	 * @param {Data} [data]
+	 * @param config
 	 */
-	static create<T extends Mozel>(data?: MozelData<T>):T {
+	static create<T extends Mozel>(data?: MozelData<T>, config?:MozelConfig<T>):T {
 		const factory = this.createFactory();
-		return <T>factory.createRoot(this, data as any);
+		return <T>factory.createRoot(this, data as any, config);
 	}
 
 	static getParentClass() {
@@ -312,6 +315,10 @@ export default class Mozel {
 		this.$applyDefaults();
 
 		this.$init();
+	}
+
+	$setConfig(config:MozelConfig<Mozel>) {
+		this._config = {...config};
 	}
 
 	get $static(): typeof Mozel {
@@ -350,11 +357,11 @@ export default class Mozel {
 	 * Instantiate a Mozel based on the given class and the data.
 	 * @param Class
 	 * @param data
-	 * @param init
+	 * @param config
 	 */
-	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, init?: (mozel:T)=>void):T {
+	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, config?:MozelConfig<T>):T {
 		// Preferably, use DI-injected factory
-		return this.$factory.create(Class, data, init);
+		return this.$factory.create(Class, data, config);
 	}
 
 	$destroy() {
@@ -934,12 +941,7 @@ export default class Mozel {
 		const dependencies = this.$factory.dependencies;
 		const factory = new MozelFactory(dependencies, new Registry<Mozel>());
 
-		// TODO: when cloning, init information is lost (e.g. collection item type).
-		// Cannot simply copy init function because it may contain references to Properties from the old Mozel
-		// Copy relevant properties one by one from an init function here?
-		// Init function in $cloneDeep parameter so child classes (e.g. Collection) can add their stuff?
-
-		return factory.create(this.$static, this.$export() as MozelData<any>) as T;
+		return factory.create(this.$static, this.$export() as MozelData<any>, this._config) as T;
 	}
 
 	/**

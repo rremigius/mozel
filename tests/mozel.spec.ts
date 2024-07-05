@@ -6,7 +6,6 @@ import Mozel, {
 	property,
 	required,
 	schema,
-	$s,
 	deep,
 	reference, Data, trackOld, string
 } from '../src/Mozel';
@@ -121,7 +120,7 @@ describe('Mozel', () => {
 					super.$define();
 					this.$defineProperty('foo', FooMozel);
 					this.$defineProperty('qux');
-					this.$defineProperty('bars', Collection, Collection.createOptions(BarMozel));
+					this.$defineProperty('bars', Collection, {config: {itemType: BarMozel}});
 				}
 			}
 
@@ -157,10 +156,7 @@ describe('Mozel', () => {
 			class FooMozel extends Mozel {
 				$define() {
 					super.$define();
-					this.$defineProperty('bars', Collection, Collection.createOptions(
-						BarMozel,
-						{collection: {required}}
-					));
+					this.$defineProperty('bars', Collection, {required, config: {itemType: BarMozel}});
 				}
 			}
 
@@ -1146,7 +1142,7 @@ describe('Mozel', () => {
 				@property(Foo, {reference})
 				ref?:Foo;
 
-				@collection(Foo, {items: {reference}})
+				@collection(Foo, {reference})
 				refs!:Collection<Foo>;
 			}
 			const foo = Foo.create<Foo>({

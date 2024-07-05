@@ -3,7 +3,6 @@ import Mozel from "./Mozel";
 export default Mozel;
 
 export {
-	collection,
 	property,
 	alphanumeric,
 	Alphanumeric,
@@ -14,10 +13,8 @@ export {
 	LogLevel,
 	PropertyKeys,
 	schema,
-	$s,
 	PropertySchema,
 	MozelSchema,
-	CollectionSchema,
 	ChangedEvent,
 	DestroyedEvent
 } from './Mozel';

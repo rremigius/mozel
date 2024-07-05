@@ -3,15 +3,13 @@ import {describe, it} from 'mocha';
 import Mozel, {
 	Alphanumeric,
 	alphanumeric,
-	collection,
 	property,
 	required,
 	schema,
-	$s,
 	deep,
-	reference, Data, trackOld, string
+	reference, Data, trackOld, string, MozelData
 } from '../src/Mozel';
-import Collection from '../src/Collection';
+import Collection, {collection} from '../src/Collection';
 import {forEach, get, includes, set, toNumber} from 'lodash';
 import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";
@@ -24,10 +22,10 @@ const VALUES = {
 	array: [],
 	function: ()=>{},
 	mozel: new Mozel(),
-	collection: (mozel:Mozel) => new Collection(mozel, 'foo', Mozel)
+	collection: new Collection()
 }
 function checkAll(mozel:Mozel, acceptable:Record<string, any[]>) {
-	const values = {...VALUES, collection: VALUES.collection(mozel)};
+	const values = {...VALUES, collection: VALUES.collection};
 
 	const _mozel = <Mozel&{[key:string]:any}>mozel;
 	// Try all values on all properties
@@ -122,7 +120,7 @@ describe('Mozel', () => {
 					super.$define();
 					this.$defineProperty('foo', FooMozel);
 					this.$defineProperty('qux');
-					this.$defineCollection('bars', BarMozel);
+					this.$defineProperty('bars', Collection, {config: {itemType: BarMozel}});
 				}
 			}
 
@@ -140,11 +138,11 @@ describe('Mozel', () => {
 			assert.instanceOf(foo.foo, FooMozel, "Nested FooMozel was instantiated");
 			assert.equal(foo.foo.qux, 123, "Nested FooMozel was initialized with 'qux' property value");
 			assert.instanceOf(foo.bars, Collection, "'bars' collection was instantiated");
-			assert.equal(foo.bars.toArray().length, 2, "'bars' collection has 2 items");
-			assert.instanceOf(foo.bars.get(0), BarMozel, "First item in 'bars' collection is BarMozel");
-			assert.instanceOf(foo.bars.get(1), BarMozel, "Second item in 'bar's");
-			assert.equal(foo.bars.get(0).bar, 111, "First item in 'bars' collection was initialized with correct 'bar' property value");
-			assert.equal(foo.bars.get(1).bar, 222, "Second item in 'bars' collection was initialized with correct 'bar' property value");
+			assert.equal(foo.bars.$toArray().length, 2, "'bars' collection has 2 items");
+			assert.instanceOf(foo.bars.$at(0), BarMozel, "First item in 'bars' collection is BarMozel");
+			assert.instanceOf(foo.bars.$at(1), BarMozel, "Second item in 'bar's");
+			assert.equal(foo.bars.$at(0).bar, 111, "First item in 'bars' collection was initialized with correct 'bar' property value");
+			assert.equal(foo.bars.$at(1).bar, 222, "Second item in 'bars' collection was initialized with correct 'bar' property value");
 		});
 		it('with exported data from another object clones the exported object recursively.', () => {
 			@injectable()
@@ -158,7 +156,7 @@ describe('Mozel', () => {
 			class FooMozel extends Mozel {
 				$define() {
 					super.$define();
-					this.$defineCollection('bars', BarMozel);
+					this.$defineProperty('bars', Collection, {required, config: {itemType: BarMozel}});
 				}
 			}
 
@@ -170,17 +168,17 @@ describe('Mozel', () => {
 			bar1.qux = 123;
 			bar2.qux = 456;
 
-			foo.bars.add(bar1);
-			foo.bars.add(bar2);
+			foo.bars.$add(bar1);
+			foo.bars.$add(bar2);
 
 			let clone = <{[key:string]:any}>FooMozel.create(foo.$export());
 
 			assert.instanceOf(clone.bars, Collection, "Cloned instance has initialized 'bars' collection");
-			assert.equal(clone.bars.length, 2, "'bars' collection of cloned instance has 2 items");
-			assert.instanceOf(clone.bars.get(0), BarMozel, "First item in 'bars' collection is BarMozel");
-			assert.instanceOf(clone.bars.get(1), BarMozel, "Second item in 'bar's");
-			assert.equal(clone.bars.get(0).qux, 123, "First item in 'bars' collection was initialized with correct 'qux' property value");
-			assert.equal(clone.bars.get(1).qux, 456, "Second item in 'bars' collection was initialized with correct 'qux' property value");
+			assert.equal(clone.bars.$length(), 2, "'bars' collection of cloned instance has 2 items");
+			assert.instanceOf(clone.bars.$at(0), BarMozel, "First item in 'bars' collection is BarMozel");
+			assert.instanceOf(clone.bars.$at(1), BarMozel, "Second item in 'bar's");
+			assert.equal(clone.bars.$at(0).qux, 123, "First item in 'bars' collection was initialized with correct 'qux' property value");
+			assert.equal(clone.bars.$at(1).qux, 456, "Second item in 'bars' collection was initialized with correct 'qux' property value");
 		});
 	});
 
@@ -189,20 +187,10 @@ describe('Mozel', () => {
 			class FooMozel extends Mozel {}
 			FooMozel.property('foo', String);
 
-			const mozel:any = FooMozel.create({foo: 'bar', qux: 123});
+			const mozel:any = FooMozel.create({foo: 'bar', qux: 123} as any);
 			mozel.foo = {};
 			assert.equal(mozel.foo, 'bar', "Property set to correct value");
 			assert.notProperty(mozel, 'qux', "Non-existing property not set");
-		});
-	});
-	describe("(static collection)", () => {
-		it("can define collection on class", () => {
-			class FooMozel extends Mozel {}
-			FooMozel.collection('foo', Number);
-
-			const mozel:any = FooMozel.create({foo: [1,2,3]});
-			assert.instanceOf(mozel.foo, Collection);
-			assert.deepEqual(mozel.foo.toArray(), [1,2,3]);
 		});
 	});
 
@@ -223,7 +211,7 @@ describe('Mozel', () => {
 				foo: [VALUES.string, VALUES.number, VALUES.boolean, undefined],
 				bar: [VALUES.number, VALUES.boolean, undefined],
 				qux: [VALUES.boolean, undefined],
-				baz: [VALUES.mozel, VALUES.object, undefined]
+				baz: [VALUES.mozel, VALUES.object, VALUES.collection, undefined]
 			});
 		});
 	});
@@ -241,7 +229,7 @@ describe('Mozel', () => {
 				bar: [{foo:'abc'}]
 			});
 
-			let bar = foo.bar && foo.bar.get(0);
+			let bar = foo.bar && foo.bar.$at(0);
 			assert.equal(bar && bar.foo, 'abc', "Collection 'bar' properly initialized");
 		});
 	});
@@ -259,8 +247,6 @@ describe('Mozel', () => {
 				xyz?:number;
 				@property(Number, {default: 789})
 				baz?:number;
-				@collection(Number)
-				abc!:Collection<number>
 			}
 			let bar = new BarMozel();
 			bar.baz = 456;
@@ -271,7 +257,6 @@ describe('Mozel', () => {
 			assert.ok(bar.foo && bar.foo.$property('qux')!.isDefault(), "Nested mozel marked as default");
 			assert.equal(bar.baz, 456, "Preset value not overwritten by default.");
 			assert.notOk(bar.$property('baz')!.isDefault(), "Overridden value not marked as default");
-			assert.instanceOf(bar.abc, Collection, "Collections are instantiated by default");
 		});
 		it('generates default values for required Properties without defaults', () => {
 			class FooMozel extends Mozel {
@@ -332,7 +317,7 @@ describe('Mozel', () => {
 			});
 			const reconstructed = FooMozel.create<FooMozel>(foo.$export());
 			assert.equal(reconstructed.foo, foo.foo);
-			assert.deepEqual(reconstructed.bar.toArray(), foo.bar.toArray());
+			assert.deepEqual(reconstructed.bar.$toArray(), foo.bar.$toArray());
 		});
 		it("with 'keys' option only exports properties included in the given array (but only first level)", () => {
 			class Foo extends Mozel {
@@ -402,7 +387,7 @@ describe('Mozel', () => {
 				foo: [VALUES.string, VALUES.number, VALUES.boolean, undefined],
 				bar: [VALUES.number, VALUES.boolean, undefined],
 				qux: [VALUES.boolean, undefined],
-				baz: [VALUES.mozel, VALUES.object, undefined]
+				baz: [VALUES.mozel, VALUES.object, VALUES.collection, undefined]
 			}
 
 			checkAll(mozel, acceptable);
@@ -412,7 +397,7 @@ describe('Mozel', () => {
 			let mozel = <Mozel&{[key:string]:any}>new Mozel();
 			mozel.$defineProperty('foo');
 
-			let obj = {}, arr:any[] = [], func = ()=>{}, otherMozel = new Mozel(), collection = new Collection(mozel, 'xyz', Mozel);
+			let obj = {}, arr:any[] = [], func = ()=>{}, otherMozel = new Mozel(), collection = new Collection();
 			const acceptable:any[] = ['abc', 123, true, undefined];
 
 			const values = ['abc', 123, true, obj, arr, func, otherMozel, collection];
@@ -620,11 +605,11 @@ describe('Mozel', () => {
 			foo.$watch('bars', ({newValue, oldValue}) => {
 				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "oldValue");
-				assert.deepEqual(value.toArray(), [4,5,6]);
-				assert.deepEqual(old.toArray(), [1,2,3]);
+				assert.deepEqual(value.$toArray(), [4,5,6]);
+				assert.deepEqual(old.$toArray(), [1,2,3]);
 				count++;
 			}, { deep, trackOld });
-			foo.bars.setData([4,5,6]);
+			foo.bars.$setData([4,5,6]);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
 		it("notifies about additions/removals to/from Collection ", () => {
@@ -641,13 +626,13 @@ describe('Mozel', () => {
 			({newValue, oldValue}) => {
 				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				assert.deepEqual(value.toArray(), [1,2,3,4]);
-				assert.deepEqual(old.toArray(), [1,2,3]);
+				assert.deepEqual(value.$toArray(), [1,2,3,4]);
+				assert.deepEqual(old.$toArray(), [1,2,3]);
 				count++;
 			}, {
 				deep, trackOld // is necessary to keep a clone of the old value
 			});
-			foo.bars.add(4);
+			foo.bars.$add(4);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
 		it("notifies about changes to any item in Collection ", () => {
@@ -667,8 +652,8 @@ describe('Mozel', () => {
 			foo.$watch('bars', ({newValue, oldValue}) => {
 				const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
 				const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				const newBar = value.get(1);
-				const oldBar = old.get(1);
+				const newBar = value.$at(1);
+				const oldBar = old.$at(1);
 				assert.exists(newBar);
 				assert.exists(oldBar);
 				if(newBar && oldBar) {
@@ -687,7 +672,7 @@ describe('Mozel', () => {
 			});
 
 			// Change item
-			const bar = foo.bars.get(1);
+			const bar = foo.bars.$at(1);
 			if(bar) bar.bar = 3;
 
 			assert.equal(count, 2, "Correct number of watchers called.");
@@ -706,23 +691,19 @@ describe('Mozel', () => {
 			foo.foo = 1;
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
-		it("does not trigger handler for collection even if provided with new array", () => {
+		it("does not trigger handler for collection even if merged with new array", () => {
 			class Foo extends Mozel {
-				@collection(Foo)
+				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>;
 			}
 			const foo = Foo.create<Foo>();
 			const bar = foo.$create(Foo);
 
-			let count = 0;
 			foo.$watch(schema(Foo).foos, ({newValue, oldValue}) => {
-				assert.notEqual(newValue, oldValue);
-				count++;
+				assert.ok(false, "Watcher is not triggered.");
 			});
-			foo.foos.add(bar);
-			assert.equal(count, 0, "Watcher not fired after addition.");
-			foo.$set('foos', [bar]);
-			assert.equal(count, 0, "Watcher not fired after replacement.");
+			foo.foos.$add(bar);
+			foo.$set('foos', [bar], true, true);
 		});
 		it("with `debounce` limits the calls to the handler", () => {
 			class Foo extends Mozel {
@@ -759,7 +740,7 @@ describe('Mozel', () => {
 			foo.$watch('foos.*', () => {
 				called++;
 			});
-			foo.foos.remove('c');
+			foo.foos.$remove('c');
 			assert.equal(called, 1);
 		});
 		it("with `validator` can prevent a change from being applied by returning false", () => {
@@ -820,7 +801,7 @@ describe('Mozel', () => {
 		mozel.$strict = false;
 		mozel.name = name;
 		mozel.foo.foo = 'nofoo';
-		mozel.foos.setData([1, {name: 'foos3'}]);
+		mozel.foos.$setData([1, {name: 'foos3'}]);
 
 		it("disables rejection of mismatching values", () => {
 			assert.equal(mozel.name, name);
@@ -880,13 +861,9 @@ describe('Mozel', () => {
 			}
 
 			assert.equal(Tree.$schema<Tree>().left.$path, 'left');
-			assert.equal(Tree.$<Tree>().right.left.right.$, 'right.left.right');
+			assert.equal(schema(Tree).right.left.right.$, 'right.left.right');
 			assert.equal(Tree.$<Tree>().right.left.$type, Tree);
-			assert.equal(Tree.$<Tree>().branches.left.right.$, 'branches.left.right');
-			assert.equal(Tree.$<Tree>().branches.$type, Tree);
-			assert.equal(Tree.$<Tree>().branches.$collection, true);
-			assert.equal(schema(Tree).branches.left.right.$, 'branches.left.right');
-			assert.equal($s(Tree).branches.left.right.$, 'branches.left.right');
+			assert.equal(Tree.$<Tree>().branches.$type, Collection);
 		});
 		it("includes properties belonging to parent classes", () => {
 			class Foo extends Mozel {
@@ -905,19 +882,19 @@ describe('Mozel', () => {
 				@property(Foo)
 				oneFoo?:Foo;
 
-				@collection(Foo)
-				manyFoos!:Collection<Foo>;
+				@property(Foo)
+				otherFoo?:Foo;
 			}
 
 			const foo = Foo.create<Foo>({
 				gid: 1,
 				oneFoo: {gid: 11},
-				manyFoos: [{gid: 121}, {gid: 122}]
+				otherFoo: {gid: 12}
 			});
 
 			const gids:alphanumeric[] = [];
 			foo.$forEachChild(mozel => gids.push(mozel.gid));
-			assert.deepEqual(gids, [11, 121, 122]);
+			assert.deepEqual(gids, [11, 12]);
 		});
 	});
 	describe("$setData", () => {
@@ -979,8 +956,8 @@ describe('Mozel', () => {
 				ref: {gid: 'root.other'}
 			});
 			const rootOther = root.other;
-			const rootFoos1 = root.foos!.get(0);
-			const rootFoos2 = root.foos!.get(1);
+			const rootFoos1 = root.foos!.$at(0);
+			const rootFoos2 = root.foos!.$at(1);
 			const rootRef = root.ref;
 
 			const changes:string[] = [];
@@ -1002,14 +979,20 @@ describe('Mozel', () => {
 			});
 
 			const newRootOther = root.other;
-			const newRootFoos1 = root.foos!.get(0);
-			const newRootFoos2 = root.foos!.get(1);
+			const newRootFoos1 = root.foos!.$at(0);
+			const newRootFoos2 = root.foos!.$at(1);
 			const newRootRef = root.ref;
 
 			assert.equal(newRootOther, rootOther, "root.other");
 			assert.notEqual(newRootFoos1, rootFoos1, "root.foos.1");
 			assert.equal(newRootFoos2, rootFoos2, "root.foos.2");
 			assert.equal(newRootRef, rootRef, "root.ref");
+
+			assert.equal(root.other!.name, 'B');
+			assert.equal(root.foos!.$at(0).gid, 'root.foos.1A');
+			assert.equal(root.foos!.$at(1).name, 'C');
+			assert.equal(root.foos!.$at(2).gid, 'root.foos.3');
+
 			assert.deepEqual(changes.sort(), [
 				'other.name',
 				'foos.0',
@@ -1040,9 +1023,9 @@ describe('Mozel', () => {
 				ref: {gid: 'root.other'}
 			});
 			const rootOther = root.other;
-			const rootList0 = root.list!.get(0);
-			const rootList1 = root.list!.get(1);
-			const rootList2 = root.list!.get(2);
+			const rootList0 = root.list!.$at(0);
+			const rootList1 = root.list!.$at(1);
+			const rootList2 = root.list!.$at(2);
 			const rootList1Other = rootList1!.other;
 
 			root.$setData({
@@ -1053,9 +1036,9 @@ describe('Mozel', () => {
 			}, true);
 
 			const newRootOther = root.other;
-			const newRootList0 = root.list!.get(0);
-			const newRootList1 = root.list!.get(1);
-			const newRootList2 = root.list!.get(2);
+			const newRootList0 = root.list!.$at(0);
+			const newRootList1 = root.list!.$at(1);
+			const newRootList2 = root.list!.$at(2);
 			const newRootList1Other = newRootList1!.other;
 
 			assert.equal(root.name, 'root2', "Direct property set");
@@ -1092,6 +1075,7 @@ describe('Mozel', () => {
 				@collection(Foo)
 				foos!:Collection<Foo>
 			}
+
 			const root = Foo.create<Foo>({
 				name: 'root',
 				foo: {
@@ -1099,10 +1083,11 @@ describe('Mozel', () => {
 				},
 				foos: [{}]
 			});
+
 			root.$setPath('foo.name', 'root.name2');
 			root.$setPath('foos.0.name', 'root.foos.0.name');
 			assert.equal(root.foo!.name, 'root.name2');
-			assert.equal(root.foos.get(0)!.name, 'root.foos.0.name');
+			assert.equal(root.foos.$at(0)!.name, 'root.foos.0.name');
 		});
 		it("initializes any non-existing values along the path", () => {
 			class Foo extends Mozel {
@@ -1119,7 +1104,7 @@ describe('Mozel', () => {
 			root.$setPath('foo.name', 'root.name2');
 			root.$setPath('foos.0.name', 'root.foos.0.name');
 			assert.equal(root.foo!.name, 'root.name2');
-			assert.equal(root.foos.get(0)!.name, 'root.foos.0.name');
+			assert.equal(root.foos.$at(0)!.name, 'root.foos.0.name');
 		});
 		it("with `initAlongPath: false` does not initialize any non-existing values along the path", () => {
 			class Foo extends Mozel {
@@ -1127,7 +1112,7 @@ describe('Mozel', () => {
 				name?:string;
 				@property(Foo)
 				foo?:Foo
-				@collection(Foo)
+				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>
 			}
 			const root = Foo.create<Foo>({
@@ -1146,7 +1131,7 @@ describe('Mozel', () => {
 				assert.ok(true, "Error thrown");
 			}
 			assert.notExists(root.foo, 'root.foo not created');
-			assert.notExists(root.foos.get(0), 'root.foos.0 not created');
+			assert.notExists(root.foos.$at(0), 'root.foos.0 not created');
 		});
 	});
 
@@ -1172,15 +1157,15 @@ describe('Mozel', () => {
 			});
 
 			const gid1 = foo.foo;
-			const gid3 = foo.foos.get(1);
+			const gid3 = foo.foos.$at(1);
 
 			gid1!.$destroy();
 			gid3!.$destroy();
 
 			assert.notExists(foo.foo, "Foo property removed");
-			assert.notExists(foo.foos.get(1), "Foos item removed");
+			assert.notExists(foo.foos.$at(1), "Foos item removed");
 			assert.notExists(foo.ref, "Foo reference removed");
-			assert.notExists(foo.refs.get(1), "Reference collection item removed");
+			assert.notExists(foo.refs.$at(1), "Reference collection item removed");
 		});
 		it("removes the Mozel from the registry", () => {
 			const mozel = Mozel.create();

@@ -1,7 +1,7 @@
 import {Container, inject, injectable, optional} from "inversify";
 import {alphanumeric, Class} from "validation-kit";
 import Registry from "./Registry";
-import Mozel, {MozelClass, MozelConstructor, MozelData} from "./Mozel";
+import Mozel, {MozelClass, MozelConfig, MozelConstructor, MozelData} from "./Mozel";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
 import {isArray} from "lodash";
@@ -73,17 +73,18 @@ export default class MozelFactory implements MozelFactoryInterface {
 		this.registry.remove(mozel);
 	}
 
-	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[]) {
-		return data.map(item => this.create<T>(ExpectedClass, item, true));
+	createSet<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data:MozelData<T>[], init?:(mozel:T)=>void) {
+		return data.map(item => this.create<T>(ExpectedClass, item, init, true));
 	}
 
 	/**
 	 * Alias for `create`, with `root = true`
 	 * @param ExpectedClass
 	 * @param data
+	 * @param config
 	 */
-	createRoot<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>) {
-		return this.create(ExpectedClass, data, true);
+	createRoot<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, config?:MozelConfig<T>) {
+		return this.create(ExpectedClass, data, config, true);
 	}
 
 	/**
@@ -91,11 +92,12 @@ export default class MozelFactory implements MozelFactoryInterface {
 	 * If <T> matches ExpectedClass, is guaranteed to provide the correct class (or throw).
 	 *
 	 * Note: Factory has no knowledge of subclasses of Mozel (among other reasons to prevent circular dependencies).
-	 * @param {Class} ExpectedClass
-	 * @param {mozel} data
+	 * @param {Class} ExpectedClass		Class to instantiate
+	 * @param {mozel} data				Data to fill the Mozel
+	 * @param {MozelConfig} config		Config for Mozel to be set before data
 	 * @param {boolean} root			Unless set to true, orphaned Mozels will destroy themselves.
 	 */
-	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, root = false) {
+	create<T extends Mozel>(ExpectedClass:MozelConstructor<T>, data?:MozelData<T>, config?: MozelConfig<T>, root: boolean = false) {
 		function isT(mozel:any) : mozel is T {
 			return mozel instanceof ExpectedClass;
 		}
@@ -130,6 +132,9 @@ export default class MozelFactory implements MozelFactoryInterface {
 			throw new Error("Could not instantiate Mozel. Unknown class or data _type.");
 		}
 
+		if(config) {
+			mozel.$setConfig(config);
+		}
 		if(data) {
 			mozel.$setData(data);
 		}

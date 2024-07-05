@@ -11,7 +11,6 @@ import Property, {
 	PropertyType,
 	PropertyValue
 } from './Property';
-import Collection, {CollectionOptions, CollectionType} from './Collection';
 
 import {concat, find, forEach, get, isPlainObject, isString, remove, map} from 'lodash';
 
@@ -45,23 +44,19 @@ export type ExportOptions = {type?:string, keys?:string[], shallow?:boolean, non
 
 // Types for Mozel creation by plain object
 export type PropertyKeys<T extends Mozel> = { [K in keyof T]: T[K] extends PropertyValue ? K : never }[keyof T];
-export type CollectionData<T> =
-	T extends Mozel
-		? MozelData<T>[]|T[]
-		: T extends primitive
-			? T[] | Collection<T>
-			: never;
 export type PropertyData<T> =
 	T extends PropertyValue
 		? T extends Mozel
 			? MozelData<T>
-			: T extends Collection<infer C>
-				? CollectionData<C>
-				: T
-		: false; // not a PropertyValue
-export type MozelData<T extends Mozel> = T extends { MozelDataType: any }
-	? T['MozelDataType'] : { [K in PropertyKeys<T>]?: PropertyData<T[K]> };
+			: T
+		: never; // not a PropertyValue
+export type MozelData<T extends Mozel> =
+	T | (T extends { MozelDataType: any }
+		? T['MozelDataType']
+		: { [K in PropertyKeys<T>]?: PropertyData<T[K]> }
+	);
 
+// Types for schema traversal
 export type PropertySchema<T> = {
 	$:string; // path
 	$path:string; // path
@@ -69,27 +64,18 @@ export type PropertySchema<T> = {
 	$type:PropertyType;
 	$reference:boolean;
 	$required:boolean;
-	$collection:boolean;
 }
-
-export type CollectionSchema<C> = PropertySchema<C> & {$collection: true} & (
-	C extends Mozel
-		? Omit<MozelSchema<C>, '$collection'>
-		: PropertySchema<C>
-)
-
-export type MozelSchema<T> = PropertySchema<T> & {$collection: false} & {
+export type MozelSchema<T> = PropertySchema<T> & {
 	[K in keyof T]-?:
 	T[K] extends Mozel|undefined
 		? MozelSchema<Exclude<T[K], undefined>>
-		: T[K] extends Collection<infer C>
-			? CollectionSchema<C>
-			: PropertySchema<T[K]>
+		: PropertySchema<T[K]>
 }
 
-type PropertyDefinition = { name: string, type?: PropertyType, options?: PropertyOptions };
-type CollectionDefinition = { name: string, type?: CollectionType, options?: CollectionOptions };
-type SchemaDefinition = {type: PropertyType, reference:boolean, required:boolean, collection:boolean, path:string[]};
+export type MozelConfig<T extends Mozel> = T['MozelConfigType'];
+
+type PropertyDefinition<T extends PropertyType> = { name: string, type?: PropertyType, options?: PropertyOptions<T>};
+type SchemaDefinition = {type: PropertyType, reference:boolean, required:boolean, path:string[]};
 
 // re-export for easy import together with Mozel
 export {Alphanumeric, alphanumeric, MozelClass};
@@ -108,34 +94,21 @@ export function isData(value: any): value is Data {
  * Defines a runtime type-safe Property instance for this property and overrides the current property
  * with a getter/setter to access the Property.
  * @param {PropertyType} runtimeType
- * @param {object} options
+ * @param {object} propertyOptions
  */
-export function property(runtimeType?: PropertyType, options?: PropertyOptions) {
+export function property<T extends PropertyType>(runtimeType?: T, propertyOptions?: PropertyOptions<T>) {
 	return function (target: Mozel, propertyName: string) {
-		target.static.defineClassProperty(propertyName, runtimeType, options);
+		target.$static.defineClassProperty(propertyName, runtimeType, propertyOptions);
 	};
 }
-export function string(options?: PropertyOptions) {
+export function string(options?: PropertyOptions<StringConstructor>) {
 	return property(String, options);
 }
-export function number(options?: PropertyOptions) {
+export function number(options?: PropertyOptions<NumberConstructor>) {
 	return property(Number, options);
 }
-export function boolean(options?: PropertyOptions) {
-	return property(String, options);
-}
-
-/**
- * PROPERTY decorator factory
- * Defines a runtime type-safe Collection for this property and overrides the the current property
- * with a getter/setter to access the Collection.
- * @param {PropertyType} runtimeType
- * @param {CollectionOptions} options
- */
-export function collection(runtimeType?: CollectionType, options?: CollectionOptions) {
-	return function (target: Mozel, propertyName: string) {
-		target.static.defineClassCollection(propertyName, runtimeType, options);
-	};
+export function boolean(options?: PropertyOptions<BooleanConstructor>) {
+	return property(Boolean, options);
 }
 
 // Some keywords that can shorten property declarations from e.g. {required:true} to {required}
@@ -149,7 +122,6 @@ export const shallow = true;
 export function schema<M extends Mozel>(MozelClass:MozelConstructor<M> & typeof Mozel):MozelSchema<M> {
 	return MozelClass.$schema<M>();
 }
-export const $s = schema; // shorter alias
 
 export class DestroyedEvent {
 	constructor(public mozel:Mozel) {}
@@ -159,7 +131,7 @@ export class ChangedEvent {
 }
 
 export class MozelEvents extends EventInterface {
-	destroyed = this.$event(DestroyedEvent);
+	destroyed = this.$event<DestroyedEvent>(DestroyedEvent);
 	changed = this.$event(ChangedEvent);
 }
 
@@ -170,6 +142,8 @@ export class MozelEvents extends EventInterface {
 export default class Mozel {
 	public _type?: string; // just for MozelData typing
 	static Events = MozelEvents;
+
+	MozelConfigType:{} = {}
 
 	static get type() {
 		return this.name; // Try using class name (will not work when uglified).
@@ -190,7 +164,7 @@ export default class Mozel {
 		return log;
 	}
 
-	static getPropertyDefinition(key:string):PropertyDefinition|undefined {
+	static getPropertyDefinition(key:string):PropertyDefinition<any>|undefined {
 		if(key in this.classPropertyDefinitions) {
 			return this.classPropertyDefinitions[key];
 		}
@@ -201,15 +175,8 @@ export default class Mozel {
 		return (<typeof Mozel>Parent).getPropertyDefinition(key);
 	}
 
-	static getCollectionDefinition(key:string):CollectionDefinition|undefined {
-		if(key in this.classCollectionDefinitions) {
-			return this.classCollectionDefinitions[key];
-		}
-		const Parent = Object.getPrototypeOf(this);
-		if(!isSubClass(Parent, Mozel)) {
-			return undefined;
-		}
-		return (<typeof Mozel>Parent).getCollectionDefinition(key);
+	static validateInitData(data:unknown) {
+		return isPlainObject(data);
 	}
 
 	/**
@@ -226,8 +193,7 @@ export default class Mozel {
 				$required: definition.required,
 				$pathArray: pathArray,
 				$path: path,
-				$: path,
-				$collection: definition.collection
+				$: path
 			}
 		}
 		return new Proxy(this, {
@@ -235,7 +201,7 @@ export default class Mozel {
 				// Current schema (based on parent definition, if provided)
 				if(!definition) {
 					// Default starting 'definition'
-					definition = {type: target, required: false, reference: false, collection: false, path: []};
+					definition = {type: target, required: false, reference: false, path: []};
 				}
 
 				if(!isString(key)) {
@@ -249,12 +215,7 @@ export default class Mozel {
 				}
 
 				// Try sub-properties
-				let def, collection = false;
-				def = target.getPropertyDefinition(key);
-				if(!def) {
-					def = target.getCollectionDefinition(key);
-					collection = true;
-				}
+				let def = target.getPropertyDefinition(key);
 				if(!def) {
 					throw new Error(`Mozel path does not exist: ${[...definition.path, key]}`);
 				}
@@ -262,11 +223,10 @@ export default class Mozel {
 					type: def.type,
 					reference: get(def, 'options.reference', false),
 					required: get(def, 'options.required', false),
-					collection: collection,
 					path: [...definition.path, key]
 				}
 				if(isSubClass(def.type, Mozel)) {
-					const SubType = def.type as typeof Mozel;
+					const SubType = def.type as unknown as typeof Mozel;
 					return SubType.$schema(subDefinition);
 				} else {
 					// Cannot go deeper because next level is not a Mozel
@@ -279,24 +239,22 @@ export default class Mozel {
 		return this.$schema(definition);
 	}
 
-	private static _classPropertyDefinitions: Record<string, PropertyDefinition> = {};
-	private static _classCollectionDefinitions: Record<string, CollectionDefinition> = {};
+	private static _classPropertyDefinitions: Record<string, PropertyDefinition<PropertyType>> = {};
 
 	// Injected properties
 	public readonly $factory: MozelFactoryInterface;
 	public readonly $registry: Registry<Mozel>;
 
+	protected _config: MozelConfig<Mozel> = {};
 	private _properties: Record<string, Property> = {};
 
-	private _parent: Mozel | null = null;
-	private _relation: string | null = null;
+	private _property: Property | null = null;
+	private _propertyLock: boolean = false;
 	private _strict?: boolean;
 	private readonly _watchers: PropertyWatcher[];
-	private $parentLock: boolean = false;
-	private _settingData:boolean = false;
-	get settingData() {
-		return this._settingData;
-	}
+
+	private _trackChangesID?:string = undefined;
+	private _trackedChangePaths:Set<string> = new Set<string>();
 
 	public $root:boolean = false;
 	public $destroyed: boolean = false;
@@ -311,34 +269,22 @@ export default class Mozel {
 	 * @param {PropertyType} [runtimeType]	Type to check at runtime
 	 * @param {PropertyOptions} [options]
 	 */
-	static property(name:string, runtimeType?:PropertyType, options?:PropertyOptions) {
+	static property<T extends PropertyType>(name:string, runtimeType?:T, options?:PropertyOptions<T>) {
 		return this.defineClassProperty(name, runtimeType, options);
 	}
-	static defineClassProperty(name: string, runtimeType?: PropertyType, options?: PropertyOptions) {
-		this.classPropertyDefinitions[name] = {name, type: runtimeType, options};
-	}
-
-	/**
-	 * Define a collection for the mozel.
-	 * @param {string} name					Name of the collection
-	 * @param {CollectionType} runtimeType	Type to check on the items in the collection
-	 * @param {CollectionOptions} options
-	 */
-	static collection(name: string, runtimeType?: CollectionType, options?: CollectionOptions) {
-		return this.defineClassCollection(name, runtimeType, options);
-	}
-	static defineClassCollection(name: string, runtimeType?: CollectionType, options?: CollectionOptions) {
-		this.classCollectionDefinitions[name] = {name, type: runtimeType, options};
+	static defineClassProperty<T extends PropertyType>(name: string, runtimeType?:T, options?: PropertyOptions<T>) {
+		this.classPropertyDefinitions[name] = {name, type: runtimeType, options: options as PropertyOptions<PropertyType>|undefined};
 	}
 
 	/**
 	 * Instantiate a Mozel, based on raw data.
 	 * Set as $root, so will not destroy itself when removed from hierarchy.
 	 * @param {Data} [data]
+	 * @param config
 	 */
-	static create<T extends Mozel>(data?: MozelData<T>):T {
+	static create<T extends Mozel>(data?: MozelData<T>, config?:MozelConfig<T>):T {
 		const factory = this.createFactory();
-		return <T>factory.createRoot(this, data as any);
+		return <T>factory.createRoot(this, data as any, config);
 	}
 
 	static getParentClass() {
@@ -356,51 +302,70 @@ export default class Mozel {
 		return this._classPropertyDefinitions;
 	}
 
-	/**
-	 * Definitions of Collections made at class level.
-	 */
-	protected static get classCollectionDefinitions() {
-		// Override _classPropertyDefinitions so this class has its own set and it will not add its properties to its parent
-		if (!this.hasOwnProperty('_classCollectionDefinitions')) {
-			this._classCollectionDefinitions = {};
-		}
-		return this._classCollectionDefinitions;
-	}
-
 	constructor(
 		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface
 	) {
-		this.$factory = mozelFactory || this.static.createFactory();
+		this.$factory = mozelFactory || this.$static.createFactory();
 		this.$registry = this.$factory.registry;
 		this._watchers = [];
 
 		this.$define();
-		this.$events = new this.static.Events();
+		this.$events = new this.$static.Events();
 
 		this.$applyDefaults();
 
 		this.$init();
 	}
 
-	get static(): typeof Mozel {
+	$setConfig(config:MozelConfig<Mozel>) {
+		this._config = {...config};
+	}
+
+	get $static(): typeof Mozel {
 		return <typeof Mozel>this.constructor;
 	}
 
 	$init() {
 	} // for override
 
+
 	get $properties() {
 		return this._properties;
+	}
+
+	$startTrackingChanges() {
+		if(this._trackChangesID) {
+			// Already tracking somewhere
+			return;
+		}
+		this._trackedChangePaths.clear();
+		this.$notifyPropertyBeforeChange([]); // let watcher get current state
+		this._trackChangesID = uuid();
+		return this._trackChangesID;
+	}
+
+	$finishTrackingChanges(id?:string) {
+		if(this._trackChangesID !== id) {
+			return; // current tracking session is owned by someone else
+		}
+		this._trackChangesID = undefined; // release tracking session
+		if(this._trackedChangePaths.size > 0) {
+			for(let path of this._trackedChangePaths.values()) {
+				this.$notifyPropertyChanged(path.split('.'));
+			}
+		}
+		this._trackedChangePaths.clear();
 	}
 
 	/**
 	 * Instantiate a Mozel based on the given class and the data.
 	 * @param Class
 	 * @param data
+	 * @param config
 	 */
-	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>) {
+	$create<T extends Mozel>(Class: MozelConstructor<T>, data?: MozelData<T>, config?:MozelConfig<T>):T {
 		// Preferably, use DI-injected factory
-		return this.$factory.create(Class, data);
+		return this.$factory.create(Class, data, config);
 	}
 
 	$destroy() {
@@ -418,7 +383,7 @@ export default class Mozel {
 	 * Will destroy itself if not root and without parent.
 	 */
 	$maybeCleanUp() {
-		if(!this.$root && !this._parent) {
+		if(!this.$root && !this._property) {
 			this.$destroy();
 		}
 	}
@@ -427,15 +392,15 @@ export default class Mozel {
 	 * Removes the Mozel from its parent.
 	 * @param {boolean} makeRoot	Set to `true` to prevent the Mozel from cleaning up next tick.
 	 */
-	$detach(makeRoot = false) {
-		if (this.$parentLock) {
-			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
+	$detach(makeRoot: boolean = false) {
+		if (this._propertyLock) {
+			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
 		}
-		if(this._parent) {
-			this._parent.$remove(this);
+		// If property still holds this Mozel as its value, unset it
+		if(this._property && this._property.value === this) {
+			this._property.set(undefined);
 		}
-		this._parent = null;
-		this._relation = "";
+		this._property = null;
 
 		if(makeRoot) this.$root = true;
 		setTimeout(() => {
@@ -443,38 +408,31 @@ export default class Mozel {
 		});
 	}
 
-	/**
-	 * Set the Mozel's parent Mozel.
-	 * @param {Mozel} parent			The parent this Mozel is a child of.
-	 * @param {string} relation			The name of the parent-child relationship.
-	 * @param {boolean} lock			Locks the Mozel to the parent, so it cannot be transferred to another parent.
-	 */
-	$setParent(parent: Mozel, relation: string, lock: boolean = false) {
-		if(parent.$factory !== this.$factory || parent.$registry !== this.$registry) {
+	$setProperty(property:Property, lock = false) {
+		if(property == this._property) return; // nothing to do
+
+		if(this._propertyLock) {
+			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
+		}
+
+		if(property.getParent().$factory !== this.$factory || property.getParent().$registry !== this.$registry) {
 			throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
 		}
-		if(parent === this._parent) return; // nothing to do
 
-		if (this.$parentLock) {
-			throw new Error(this.static.name + " is locked to its parent and cannot be transferred.");
+		if(this._property) {
+			this._property.set(undefined);
 		}
-		if(this._parent) {
-			this._parent.$remove(this);
-		}
-		this._parent = parent;
-		this._relation = relation;
-		this.$parentLock = lock;
+		this._property = property;
+		this._propertyLock = lock;
 		this.$root = false;
 	}
 
-	$remove(child:Mozel, includeReferences = false) {
+	$remove(child:PropertyValue, includeReferences = false) {
 		for (let key in this.$properties) {
 			const property = this.$properties[key];
 			if(!includeReferences && property.isReference) continue;
 
-			if(property.type === Collection) {
-				(property.value as Collection<any>).remove(child);
-			} else if(property.value === child) {
+			if(property.value === child) {
 				property.set(undefined);
 			}
 		}
@@ -491,19 +449,21 @@ export default class Mozel {
 	 * The Mozel's parent.
 	 */
 	get $parent() {
-		return this._parent;
+		if(!this._property) return null;
+		return this._property.getParent();
 	}
 
 	/**
 	 * The Mozel's relation to its parent.
 	 */
 	get $relation() {
-		return this._relation;
+		if(!this._property) return null;
+		return this._property.name;
 	}
 
 	/**
 	 * @protected
-	 * For override. Any properties and collections of the mozel should be defined here.
+	 * For override. Any properties of the mozel should be defined here.
 	 */
 	$define() {
 		// To be called for each class on the prototype chain
@@ -513,27 +473,24 @@ export default class Mozel {
 				_defineData(Object.getPrototypeOf(Class));
 			}
 			// Define class properties of this class
-			forEach(Class.classPropertyDefinitions, (property: PropertyDefinition) => {
+			forEach(Class.classPropertyDefinitions, (property: PropertyDefinition<PropertyType>) => {
 				this.$defineProperty(property.name, property.type, property.options);
 			});
-			forEach(Class.classCollectionDefinitions, (collection: CollectionDefinition) => {
-				this.$defineCollection(collection.name, collection.type, collection.options);
-			});
 		};
-		_defineData(this.static);
+		_defineData(this.$static);
 	}
 
 	/**
 	 * Defines a property to be part of the Mozel's data. Only defined properties will be exported and imported
 	 * to and from plain objects and arrays. A getter and setter will be created, overwriting the original property.
 	 *
-	 * @param {string} name							The name of the property.
+	 * @param {string} name						The name of the property.
 	 * @param {PropertyType} type				The runtime type of the property. Can be one of the following values:
-	 * 																	Number, String, Alphanumeric, Boolean, (subclass of) Mozel, Collection or undefined.
+	 * 											Number, String, Alphanumeric, Boolean, (subclass of) Mozel or undefined.
 	 * @param {PropertyOptions} [options]
 	 */
-	$defineProperty(name: string, type?: PropertyType, options?: PropertyOptions) {
-		let property = new Property(this, name, type, options);
+	$defineProperty<T extends PropertyType>(name: string, type?: T, options?: PropertyOptions<T>) {
+		let property = new Property(this, name, type, options as PropertyOptions<unknown>);
 		this._properties[name] = property;
 
 		// Create getter/setter
@@ -550,30 +507,19 @@ export default class Mozel {
 		return property;
 	}
 
-	/**
-	 * Defines a property and instantiates it as a Collection.
-	 * @param {string} relation       				The relation name.
-	 * @param {Mozel} [type]       					The class of the items in the Collection.
-	 * @param {CollectionOptions} [options]
-	 * @return {Collection}
-	 */
-	$defineCollection(relation: string, type?: CollectionType, options?: CollectionOptions) {
-		let collection = new Collection(this, relation, type) as Collection<any>;
-		collection.isReference = (options && options.reference) === true;
-
-		this.$defineProperty(relation, Collection, {
-			required: true,
-			default: collection
-		});
-		return collection;
+	$undefineProperty(name: string) {
+		const property = this._properties[name];
+		if(!property) return;
+		this._properties[name].set(undefined);
+		delete this._properties[name];
 	}
 
 	/**
 	 * Set value with type checking.
-	 * @param {string} property				The name of the property
+	 * @param {string|number} property  The name of the property
 	 * @param {PropertyInput} value		The value to set on the property
-	 * @param {boolean} init					If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
-	 * @param {boolean} merge					If set to true, Mozels will be kept if gid did not change; data will be set instead
+	 * @param {boolean} init			If set to true, Mozels may be initialized from objects and arrays, respectively.
+	 * @param {boolean} merge			If set to true, Mozels will be kept if gid did not change; data will be set instead
 	 */
 	$set(property: string, value: PropertyInput, init = true, merge = false) {
 		if(this.$destroyed) {
@@ -590,7 +536,7 @@ export default class Mozel {
 	 * @param {string} property
 	 * @param {boolean} resolveReference	If set to false, will not try to resolve any references.
 	 */
-	$get(property: string, resolveReference = true) {
+	$get(property: string, resolveReference = true):PropertyValue {
 		if(this.$destroyed && property !== 'gid') { // we accept gid because it may still be needed to identify
 			throw new Error(`Accessing Mozel after it has been destroyed.`);
 		}
@@ -607,7 +553,10 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	$property(property:string):Property|undefined {
+	$property(property?: string):Property|undefined|null {
+		if(property === undefined) {
+			return this._property;
+		}
 		return this._properties[property];
 	}
 
@@ -627,14 +576,14 @@ export default class Mozel {
 		}
 		if(path.length === 0) return this;
 
-		const step = this.$get(path[0]);
-		if(path.length === 1) return step;
+		const step = path[0];
+		if(!this.$has(step)) return undefined;
 
-		if(step instanceof Collection) {
-			return step.path(path.slice(1));
-		}
-		if(step instanceof Mozel) {
-			return step.$path(path.slice(1));
+		const value = this.$get(step);
+		if(path.length === 1) return value;
+
+		if(value instanceof Mozel) {
+			return value.$path(path.slice(1));
 		}
 		return undefined;
 	}
@@ -670,9 +619,7 @@ export default class Mozel {
 			if(!isComplexValue(value)) {
 				continue; // cannot continue on this path
 			}
-			const subValues = value instanceof Mozel
-				? value.$pathPattern(pathPattern.slice(1), [...startingPath, name], resolveReferences)
-				: value.pathPattern(pathPattern.slice(1), [...startingPath, name], resolveReferences)
+			const subValues = value.$pathPattern(pathPattern.slice(1), [...startingPath, name], resolveReferences)
 			values = {
 				...values,
 				...subValues
@@ -686,10 +633,10 @@ export default class Mozel {
 	}
 
 	$getPathArray():string[] {
-		if(!this._parent || !this._relation) {
+		if(!this.$parent || !this.$relation) {
 			return [];
 		}
-		return [...this._parent.$getPathArray(), this._relation];
+		return [...this.$parent.$getPathArray(), this.$relation];
 	}
 
 	$getPathFrom(mozel:Mozel):string {
@@ -699,9 +646,9 @@ export default class Mozel {
 	$getPathArrayFrom(mozel:Mozel):string[] {
 		if(this === mozel) return [];
 
-		if(!this._parent || !this._relation) throw new Error("No path from given Mozel found.");
+		if(!this.$parent || !this.$relation) throw new Error("No path from given Mozel found.");
 
-		return [...this._parent.$getPathArrayFrom(mozel), this._relation];
+		return [...this.$parent.$getPathArrayFrom(mozel), this.$relation];
 	}
 
 	$setPath(path:string|string[], value:any, initAlongPath = true):unknown {
@@ -712,14 +659,16 @@ export default class Mozel {
 		if(pathArray.length === 1) {
 			return this.$set(pathArray[0], value);
 		}
-		const property = this.$property(pathArray[0]);
-		if(!property || !property.isMozelType() && !property.isCollectionType()) {
-			throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}.'`);
+
+		const step = pathArray[0];
+		const property = this.$property(step);
+		if(!property || !property.isMozelType()) {
+			throw new Error(`Cannot follow path at property '${step} of ${this}.'`);
 		}
 
 		// Initialize property value if necessary
 		if(!property.value && property.isMozelType() && initAlongPath) {
-			property.set({}, true);
+			this.$set(step, {});
 		}
 
 		// Continue path
@@ -727,9 +676,8 @@ export default class Mozel {
 		const newPath = pathArray.slice(1);
 		if(sub instanceof Mozel) {
 			return sub.$setPath(newPath, value, initAlongPath);
-		} else if (sub instanceof Collection) {
-			return sub.setPath(newPath, value, initAlongPath);
 		}
+
 		// Should not be possible:
 		throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}. Unexpected error.'`);
 	}
@@ -740,11 +688,13 @@ export default class Mozel {
 	 * @param {boolean} merge		If set to `true`, only defined keys will be set.
 	 */
 	$setData(data: Data, merge = false) {
+		const trackID = this.$startTrackingChanges();
 		forEach(this._properties, (property: Property, key: string) => {
 			if (!merge || key in data) {
 				this.$set(key, data[key], true, merge);
 			}
 		});
+		this.$finishTrackingChanges(trackID);
 	}
 
 	/**
@@ -783,30 +733,6 @@ export default class Mozel {
 	}
 
 	/**
-	 * If the given submozel is part of a collection of this mozel, will add the collection index of the submozel to
-	 * the given path.
-	 *
-	 * @param {Mozel} submozel	Direct submozel.
-	 * @param {string[]} path	Path to add the collection index to.
-	 * @return {string[]} 		New path including collection index (does not modify given path).
-	 */
-	private $maybeAddCollectionIndex(submozel:Mozel, path:string[]) {
-		// Property changed in submozel
-		let relation = path[0];
-		const property = this.$property(relation as any);
-		if(!property) {
-			throw new Error(`Path does not exist on ${this.constructor.name}: ${path}`);
-		}
-		if(!(property.value instanceof Collection)) {
-			return path;
-		}
-		const index = property.value.indexOf(submozel);
-
-		// Put the relation with index in front of the path
-		return [relation, index.toString(), ...path.slice(1)];
-	}
-
-	/**
 	 * Notify that a property is about to change. Will set the current value for any relevant _watchers, so they can
 	 * compare the new value to the old value, and provide the old value to the handler.
 	 *
@@ -814,31 +740,27 @@ export default class Mozel {
 	 * never change.
 	 *
 	 * @param {string[]} path		The path at which the change occurred.
-	 * @param {Mozel} [submozel] 	The direct submozel reporting the change.
 	 */
-	$notifyPropertyBeforeChange(path: string[], submozel?:Mozel) {
-		if(submozel) {
-			// If submozel is part of a collection, we should add its index in the collection to the path
-			path = this.$maybeAddCollectionIndex(submozel, path);
+	$notifyPropertyBeforeChange(path: string[]) {
+		if(this._trackChangesID) {
+			// Don't notify parents/watchers, collecting all changes
+			return;
 		}
+
 		const pathString = path.join('.');
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.updateValues(pathString)
 		});
-		if(this._parent && this._relation) {
-			this._parent.$notifyPropertyBeforeChange([this._relation, ...path], this);
+		if(this.$parent && this.$relation) {
+			this.$parent.$notifyPropertyBeforeChange([this.$relation, ...path]);
 		}
 	}
 
 	/**
 	 * Check with all registered watchers if property can be changed to its new value.
 	 * @param {string[]} path
-	 * @param {Mozel} [submozel]
 	 */
-	$validatePropertyChange(path: string[], submozel?:Mozel) {
-		if(submozel) {
-			path = this.$maybeAddCollectionIndex(submozel, path);
-		}
+	$validatePropertyChange(path: string[]) {
 		const pathString = path.join('.');
 
 		// If any of the watchers does not agree, cancel the change
@@ -847,7 +769,7 @@ export default class Mozel {
 		) {
 			return false;
 		}
-		if (this._parent && this._relation && !this._parent.$validatePropertyChange([this._relation, ...path], this)) {
+		if (this.$parent && this.$relation && !this.$parent.$validatePropertyChange([this.$relation, ...path])) {
 			return false;
 		}
 		return true;
@@ -858,18 +780,22 @@ export default class Mozel {
 	 * @param {string[]} path		Path at which the property changed.
 	 * @param {Mozel} [submozel]	The direct submozel reporting the change.
 	 */
-	$notifyPropertyChanged(path: string[], submozel?:Mozel) {
-		if(submozel) {
-			path = this.$maybeAddCollectionIndex(submozel, path);
-		}
+	$notifyPropertyChanged(path: string[]) {
 		const pathString = path.join('.');
+		this.$events.changed.fire(new ChangedEvent(pathString));
+
+		if(this._trackChangesID) {
+			// Don't notify parents or watchers, wait for end of tracking
+			this._trackedChangePaths.add(path.join('.'));
+			return;
+		}
+
 		this.$watchers(pathString).forEach(watcher => {
 			watcher.execute(pathString);
 		});
-		if (this._parent && this._relation) {
-			this._parent.$notifyPropertyChanged([this._relation, ...path], this);
+		if (this.$parent && this.$relation) {
+			this.$parent.$notifyPropertyChanged([this.$relation, ...path]);
 		}
-		this.$events.changed.fire(new ChangedEvent(pathString));
 	}
 
 	/**
@@ -884,7 +810,7 @@ export default class Mozel {
 	}
 
 	/**
-	 * Resolves all reference Properties and Collections
+	 * Resolves all reference Properties
 	 */
 	$resolveReferences() {
 		forEach(this._properties, (property: Property, key: string) => {
@@ -958,7 +884,7 @@ export default class Mozel {
 	 */
 	$isPrimitiveProperty(key: string) {
 		let type = this._properties[key].type;
-		return !isMozelClass(type) && type !== Collection;
+		return !isMozelClass(type);
 	}
 
 	/**
@@ -990,8 +916,8 @@ export default class Mozel {
 		const $options = options || {};
 
 		let exported: Data = {};
-		if (this.static.hasOwnProperty('type') && !$options.keys || includes($options.keys, '_type')) {
-			exported._type = this.static.type; // using parent's type confuses any factory trying to instantiate based on this export
+		if (this.$static.hasOwnProperty('type') && !$options.keys || includes($options.keys, '_type')) {
+			exported._type = this.$static.type; // using parent's type confuses any factory trying to instantiate based on this export
 		}
 
 		forEach(this._properties, (property: Property, name: string) => {
@@ -1003,9 +929,8 @@ export default class Mozel {
 				return exported[name] = property.value ? {gid: (property.value as Mozel).gid} : undefined;
 			}
 			let value = property.value;
-			if(value instanceof Collection) {
-				return exported[name] = value.export(omit($options, 'keys'));
-			} else if (value instanceof Mozel) {
+
+			if (value instanceof Mozel) {
 				return exported[name] = $options.shallow ? value.$export({keys: ['gid']}) : value.$export(omit($options, 'keys'));
 			}
 			exported[name] = value;
@@ -1021,7 +946,8 @@ export default class Mozel {
 		// Use new factory with same dependencies but different Registry.
 		const dependencies = this.$factory.dependencies;
 		const factory = new MozelFactory(dependencies, new Registry<Mozel>());
-		return factory.create(this.static, this.$export() as MozelData<any>) as T;
+
+		return factory.create(this.$static, this.$export() as MozelData<any>, this._config) as T;
 	}
 
 	/**
@@ -1036,8 +962,8 @@ export default class Mozel {
 
 	get $strict():boolean {
 		// Get
-		if(this._strict === undefined && this._parent) {
-			return this._parent.$strict;
+		if(this._strict === undefined && this.$parent) {
+			return this.$parent.$strict;
 		}
 		return this._strict !== false;
 	}
@@ -1063,7 +989,7 @@ export default class Mozel {
 		for(let name in this._properties) {
 			const property = this._properties[name];
 			if (isComplexValue(property.value)) {
-				const subErrors = property.value instanceof Mozel ? property.value.$errorsDeep() : property.value.errorsDeep();
+				const subErrors = property.value.$errorsDeep();
 				for (let path in subErrors) {
 					errors[`${name}.${path}`] = subErrors[path];
 				}
@@ -1089,9 +1015,6 @@ export default class Mozel {
 				value.$renderTemplates(templater);
 				return;
 			}
-			if(value instanceof Collection) {
-				value.renderTemplates(templater);
-			}
 			if (isString(value)) {
 				// Render template on string and set new value
 				this.$set(key, templater.render(value));
@@ -1105,18 +1028,13 @@ export default class Mozel {
 			if(property.value instanceof Mozel) {
 				return callback(property.value, key);
 			}
-			if(property.value instanceof Collection) {
-				if(!property.value.isMozelType()) return;
-				const items = property.value.toArray(); // to prevent disruptions in iteration (e.g. by $destroy)
-				return items.forEach((mozel, index) => callback(mozel, key + "." + index));
-			}
 		});
 	}
 
 	// For override
 
 	get $name() {
-		return `${this.static.type} (${this.gid})`;
+		return `${this.$static.type} (${this.gid})`;
 	}
 
 	toString() {

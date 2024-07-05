@@ -1,55 +1,26 @@
 import {assert} from 'chai';
 import {describe, it} from 'mocha';
 
-import Mozel, {collection, deep, property, reference, string} from "../src/Mozel";
-import Collection, {
-	CollectionChangedEvent,
-	CollectionItemAddedEvent,
-	CollectionItemRemovedEvent
-} from "../src/Collection";
+import Mozel, {property, reference, required, string} from "../src/Mozel";
+import Collection, {collection} from "../src/Collection";
 import {alphanumeric} from "validation-kit";
 
 describe("Collection", () => {
-	describe("on(ChangedEvent)", () => {
-		it("callback is fired when an item is added to the Collection", () => {
-			class FooMozel extends Mozel {
-				@collection(FooMozel)
-				other!:Collection<FooMozel>;
-			}
-			let foo = FooMozel.create<FooMozel>();
-			let bar = foo.$create(FooMozel);
-
-			let assertions = 0;
-			foo.other.events.changed.on(() => {
-				assertions++;
-			});
-			foo.other.add(bar);
-			assert.equal(assertions, 1, "Right number of listeners called");
+	it("changed event is fired when any of its indexes change", () => {
+		const collection = Collection.create<Collection<number>>([1,2,3,4]);
+		let count = 0;
+		collection.$events.changed.on(()=>{
+			count++;
 		});
-		it("callback is fired when an item is removed from the Collection", () => {
-			class FooMozel extends Mozel {
-				@collection(FooMozel)
-				other!:Collection<FooMozel>;
-			}
-			let foo = FooMozel.create<FooMozel>();
-			let bar = foo.$create(FooMozel);
-
-			foo.other.add(bar);
-
-			let assertions = 0;
-			foo.other.events.changed.on(() => {
-				assertions++;
-			});
-			foo.other.remove(bar);
-			assert.equal(assertions, 1, "Right number of listeners called");
-		});
+		collection.$setData([1,3,4]);
+		assert.isAbove(count, 1);
 	});
 	describe("setData", () => {
 		it("adds/removes/updates based on diff", () => {
 			class FooMozel extends Mozel {
 				@property(String)
 				foo?:string;
-				@collection(FooMozel)
+				@collection(FooMozel, undefined, {required})
 				items!:Collection<FooMozel>;
 			}
 			let foo = FooMozel.createFactory().create(FooMozel, {
@@ -68,18 +39,18 @@ describe("Collection", () => {
 			foo.$watch('items.*.*', ({valuePath}) => {
 				modifiedPaths.push(valuePath);
 			});
-			foo.items.events.added.on(event => {
+			foo.items.$events.added.on(event => {
 				assert.instanceOf(event.item, FooMozel);
 				const model = event.item as FooMozel;
 				added.push(model.gid);
 			});
-			foo.items.events.removed.on(event => {
+			foo.items.$events.removed.on(event => {
 				assert.instanceOf(event.item, FooMozel);
 				const model = event.item as FooMozel;
 				removed.push(model.gid);
 			});
 
-			foo.items.setData([{gid: 1, foo: 'a'}, {gid: 2, foo: 'B'}, {gid: 4, foo: 'd'}], true);
+			foo.items.$setData([{gid: 1, foo: 'a'}, {gid: 2, foo: 'B'}, {gid: 4, foo: 'd'}], true);
 
 			assert.equal(changes, 1, "collection notifications correct");
 			assert.deepEqual(added, [4], "'added' notifications correct");
@@ -95,14 +66,14 @@ describe("Collection", () => {
 			class Foo extends Mozel {
 				@string()
 				foo?:string;
-				@collection(Foo)
+				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>
 			}
 			const model = Foo.create<Foo>({
 				foos: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}]
 			});
-			model.foos.setData([{gid:2}]);
-			assert.deepEqual(model.foos.map(item => item.foo), ['b']);
+			model.foos.$setData([{gid:2}]);
+			assert.deepEqual(model.foos.$map(item => item.foo), ['b']);
 		});
 	});
 	describe("CollectionItemAddedEvent", () => {
@@ -113,24 +84,26 @@ describe("Collection", () => {
 		it("is fired if `add` is called", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
 			let count = 0;
-			foo.items.events.added.on(event => {
+			foo.items.$events.added.on(event => {
 				assert.equal(event.item, 5);
 				assert.equal(event.index, 3);
 				count++;
 			});
-			foo.items.add(5);
+			foo.items.$add(5);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
-		it("is fired if setData added an item to the collection that was not there before", () => {
+		it("is fired for each new item at each new position", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
-			let count = 0;
-			foo.items.events.added.on(event => {
-				assert.equal(event.item, 4);
-				assert.equal(event.index, 2);
-				count++;
+
+			const added: number[] = [];
+			const addedIndexes: number[] = [];
+			foo.items.$events.added.on(event => {
+				added.push(event.item);
+				addedIndexes.push(event.index);
 			});
-			foo.items.setData([2,3,4]);
-			assert.equal(count, 1, "event called exactly 1 time");
+			foo.items.$setData([3,2,1]);
+			assert.deepEqual(added, [3, 1]);
+			assert.deepEqual(addedIndexes, [0, 2]);
 		});
 	});
 	describe("CollectionItemRemovedEvent", () => {
@@ -141,39 +114,41 @@ describe("Collection", () => {
 		it("is fired if `remove` is called", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
 			let count = 0;
-			foo.items.events.removed.on(event => {
+			foo.items.$events.removed.on(event => {
 				assert.equal(event.item, 1);
 				assert.equal(event.index, 0);
 				count++;
 			});
-			foo.items.remove(1);
+			foo.items.$remove(1);
 			assert.equal(count, 1, "event called exactly 1 time");
 		});
-		it("is fired if setData did not include an item in the collection that was there before", () => {
+		it("is fired for each index from which an item was removed", () => {
 			const foo = Foo.create<Foo>({items: [1,2,3]});
-			let count = 0;
-			foo.items.events.removed.on(event => {
-				assert.equal(event.item, 1);
-				assert.equal(event.index, 0);
-				count++;
+			const removed:number[] = [];
+			const removedIndexes:number[] = [];
+			foo.items.$events.removed.on(event => {
+				removed.push(event.item);
+				removedIndexes.push(event.index);
 			});
-			foo.items.setData([2,3,4]);
-			assert.equal(count, 1, "event called exactly 1 time");
+			foo.items.$setData([3,2,1]);
+			assert.deepEqual(removed, [1, 3]);
+			assert.deepEqual(removedIndexes, [0, 2]);
 		});
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@collection(Foo, {reference})
+			@collection(Foo, {reference}, {required})
 			refs!:Collection<Foo>;
 			@collection(Foo)
 			foos!:Collection<Foo>;
 		}
+
 		const foo = Foo.create<Foo>({
 			refs: [{gid: 1}],
 			foos: [{gid: 1}]
 		});
-		assert.notExists(foo.refs.get(0, false), "Reference not yet resolved.");
-		assert.exists(foo.refs.get(0), "Reference can be accessed");
-		assert.exists(foo.refs.get(0, false), "Reference resolved.");
+		assert.notExists(foo.refs.$at(0, false), "Reference not yet resolved.");
+		assert.exists(foo.refs.$at(0), "Reference can be accessed");
+		assert.exists(foo.refs.$at(0, false), "Reference resolved.");
 	});
 });

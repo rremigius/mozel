@@ -1112,7 +1112,7 @@ describe('Mozel', () => {
 				name?:string;
 				@property(Foo)
 				foo?:Foo
-				@collection(Foo)
+				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>
 			}
 			const root = Foo.create<Foo>({

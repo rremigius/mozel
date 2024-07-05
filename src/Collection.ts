@@ -1,7 +1,9 @@
-import {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
+import Property, {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
 import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions, MozelConfig, MozelData} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isNumber, isPlainObject} from "lodash";
+import {parse} from "uuid";
+import * as path from "node:path";
 
 export type CollectionDataType<T> = ((PropertyData<Mozel>) & {'$items'?: PropertyData<T>[]}) | PropertyData<T>[]
 
@@ -52,6 +54,9 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 	protected _count = 0;
 	protected _config:MozelConfig<Collection<T>> = {};
+
+	/** Quick access list */
+	protected _list:T[] = [];
 
 	$events = new CollectionEvents();
 
@@ -112,12 +117,12 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 		// If the requested property is a collection index, allow to create it on the fly
 		if(!this.$has(property + "") && this.isCollectionIndex(property)) {
-			this.$defineProperty(property + "", this._config.itemType, this._config.itemPropertyOptions as PropertyOptions<unknown>);
+			const newProperty = this.$defineProperty(property + "", this._config.itemType, this._config.itemPropertyOptions as PropertyOptions<unknown>);
 
 			// Automatically clean up next tick if automatically created property was not used successfully.
 			setTimeout(()=>{
 				if(this._count <= property) {
-					this.$undefineProperty(property);
+					this.$undefineProperty(newProperty.name);
 				}
 			});
 		}
@@ -236,14 +241,14 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	$map<V>(func:(item:T, index:number)=>V):V[] {
 		const results = [];
 		for(let i = 0; i < this._count; i++) {
-			const item = this.$get(i) as T;
+			const item = this._list[i];
 			results.push(func(item, i));
 		}
 		return results;
 	}
 
-	$each<V>(func:(item:T, index:number)=>void):void {
-		this.$map(func);
+	$each(func:(item:T, index:number)=>void):void {
+		this.$map<void>(func);
 	}
 
 	$toArray() {
@@ -261,5 +266,20 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			}
 			return item;
 		});
+	}
+
+	$notifyPropertyChanged(path: string[]) {
+		super.$notifyPropertyChanged(path);
+
+
+		// Update quick-access list if it's a direct property
+		if(path.length !== 1) {
+			return;
+		}
+		const property = path[0];
+		if(!this.isCollectionIndex(property)) {
+			return;
+		}
+		this._list[parseInt(property as string)] = this.$properties[property].value as T;
 	}
 }

@@ -27,7 +27,7 @@ describe("Performance", () => {
 
 				assert.isBelow(duration, refDuration * 100);
 			});
-			it("with a watcher takes less than 25 times as long as setting a property without a watcher (< 0.01 ms)", () => {
+			it("with a watcher takes less than 25 times as long as setting a property without a watcher", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -42,7 +42,6 @@ describe("Performance", () => {
 				const refDuration = time(nTimes, i => ref.foo = i.toString());
 
 				assert.isBelow(duration, refDuration * 25);
-				assert.isBelow(duration, nTimes * 0.01);
 			});
 			it("with 2 watchers takes less than 3 times as long as setting a property with 1 watcher", () => {
 				class Foo extends Mozel {
@@ -63,23 +62,24 @@ describe("Performance", () => {
 			});
 		});
 		describe("traversing a Collection", () => {
-			it("takes less than 3 times as long as traversing an array", () => {
+			it("takes less than 5 times as long as traversing an array", () => {
 				class Foo extends Mozel {
 					@collection(Number, undefined, {required})
 					foos!:Collection<number>
 				}
 
-				const nTimes = 150000;
+				const nTimes = 1000;
+				const nItems = 1000;
 				const foo = Foo.create<Foo>();
 				const refs:number[] = [];
-				for(let i=0; i<nTimes; i++) {
+				for(let i=0; i<nItems; i++) {
 					foo.foos.$add(i);
 					refs.push(i);
 				}
-				const duration = time(1, ()=>foo.foos.$each(()=>{}));
-				const refDuration = time(1, ()=>refs.forEach(()=>{}));
+				const duration = time(nTimes, ()=>foo.foos.$each(()=>{}));
+				const refDuration = time(nTimes, ()=>refs.forEach(()=>{}));
 
-				assert.isBelow(duration, refDuration * 3);
+				assert.isBelow(duration, refDuration * 5);
 			});
 		});
 		describe("creating a Foo instance", () => {

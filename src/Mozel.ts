@@ -247,7 +247,7 @@ export default class Mozel {
 	protected _config: MozelConfig<Mozel> = {};
 	private _properties: Record<string, Property> = {};
 
-	private _property: Property | null = null;
+	private _parentProperty: Property | null = null;
 	private _propertyLock: boolean = false;
 	private _strict?: boolean;
 	private readonly _watchers: PropertyWatcher[];
@@ -382,7 +382,7 @@ export default class Mozel {
 	 * Will destroy itself if not root and without parent.
 	 */
 	$maybeCleanUp() {
-		if(!this.$root && !this._property) {
+		if(!this.$root && !this._parentProperty) {
 			this.$destroy();
 		}
 	}
@@ -396,10 +396,10 @@ export default class Mozel {
 			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
 		}
 		// If property still holds this Mozel as its value, unset it
-		if(this._property && this._property.value === this) {
-			this._property.set(undefined);
+		if(this._parentProperty && this._parentProperty.value === this) {
+			this._parentProperty.set(undefined);
 		}
-		this._property = null;
+		this._parentProperty = null;
 
 		if(makeRoot) this.$root = true;
 		setTimeout(() => {
@@ -407,21 +407,21 @@ export default class Mozel {
 		});
 	}
 
-	$setProperty(property:Property, lock = false) {
-		if(property == this._property) return; // nothing to do
+	$setParentProperty(property:Property, lock = false) {
+		if(property == this._parentProperty) return; // nothing to do
 
 		if(this._propertyLock) {
 			throw new Error(this.$static.name + " is locked to its parent and cannot be transferred.");
 		}
 
-		if(property.getParent().$factory !== this.$factory || property.getParent().$registry !== this.$registry) {
+		if(property.getOwner().$factory !== this.$factory || property.getOwner().$registry !== this.$registry) {
 			throw new Error("Cannot mix Mozels from different Factories or Registries within the same hierarchy.");
 		}
 
-		if(this._property) {
-			this._property.set(undefined);
+		if(this._parentProperty) {
+			this._parentProperty.set(undefined);
 		}
-		this._property = property;
+		this._parentProperty = property;
 		this._propertyLock = lock;
 		this.$root = false;
 	}
@@ -448,16 +448,20 @@ export default class Mozel {
 	 * The Mozel's parent.
 	 */
 	get $parent() {
-		if(!this._property) return null;
-		return this._property.getParent();
+		if(!this._parentProperty) return null;
+		return this._parentProperty.getOwner();
+	}
+
+	get $parentProperty() {
+		return this._parentProperty;
 	}
 
 	/**
 	 * The Mozel's relation to its parent.
 	 */
 	get $relation() {
-		if(!this._property) return null;
-		return this._property.name;
+		if(!this._parentProperty) return null;
+		return this._parentProperty.name;
 	}
 
 	/**
@@ -552,10 +556,7 @@ export default class Mozel {
 	 * Get the Property object with the given name.
 	 * @param property
 	 */
-	$property(property?: string):Property|undefined|null {
-		if(property === undefined) {
-			return this._property;
-		}
+	$property(property: string):Property|undefined|null {
 		return this._properties[property];
 	}
 

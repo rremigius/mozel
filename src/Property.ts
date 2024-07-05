@@ -140,14 +140,14 @@ export default class Property {
 
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
 
-	private readonly parent:Mozel;
+	private readonly owner:Mozel;
 
 	constructor(parent:Mozel, name:string, type?:PropertyType, options?:PropertyOptions<unknown>) {
 		if(this.type && !includes(Property.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
 			log.error("Type argument can be " + Property.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel or undefined. Using default: undefined.");
 			type = undefined;
 		}
-		this.parent = parent;
+		this.owner = parent;
 		this.name = name;
 		this.type = type;
 		this.options = options;
@@ -189,8 +189,8 @@ export default class Property {
 		return this._reference;
 	}
 
-	getParent() {
-		return this.parent;
+	getOwner() {
+		return this.owner;
 	}
 
 	/**
@@ -227,7 +227,7 @@ export default class Property {
 		}
 
 		// Replace placeholder mozel with the resolved reference
-		let mozel = this.parent.$resolveReference(this._ref);
+		let mozel = this.owner.$resolveReference(this._ref);
 		if(!mozel){
 			return;
 		} else if (!this.checkType(mozel)) {
@@ -314,7 +314,7 @@ export default class Property {
 
 		// Set parent property on Mozel (if it's a reference the Mozel should keep its original parent property)
 		if(value instanceof Mozel && !this.isReference) {
-			value.$setProperty(this);
+			value.$setParentProperty(this);
 		}
 
 		// New value is Mozel, listen to changes
@@ -336,7 +336,7 @@ export default class Property {
 			if(init && this.tryInit(value, merge)) {
 				return true;
 			}
-			if(this.parent.$strict) {
+			if(this.owner.$strict) {
 				return false;
 			}
 			this.setErrorValue(value);
@@ -356,21 +356,21 @@ export default class Property {
 	}
 
 	notifyBeforeChange(path?:alphanumeric) {
-		if(!this.parent) return;
+		if(!this.owner) return;
 		const name = path ? `${this.name}.${path}` : this.name;
-		this.parent.$notifyPropertyBeforeChange([name]);
+		this.owner.$notifyPropertyBeforeChange([name]);
 	}
 
 	validateChange(path?:alphanumeric) {
-		if(!this.parent) return;
+		if(!this.owner) return;
 		const name = path ? `${this.name}.${path}` : this.name;
-		return this.parent.$validatePropertyChange([name]);
+		return this.owner.$validatePropertyChange([name]);
 	}
 
 	notifyChange(path?:alphanumeric) {
-		if(!this.parent) return;
+		if(!this.owner) return;
 		const name = path ? `${this.name}.${path}` : this.name;
-		this.parent.$notifyPropertyChanged([name]);
+		this.owner.$notifyPropertyChanged([name]);
 	}
 
 	setErrorValue(value:any) {
@@ -410,7 +410,7 @@ export default class Property {
 			if(this.isReference) {
 				throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
 			}
-			return this.parent.$create(this.type, undefined, this._mozelConfig);
+			return this.owner.$create(this.type, undefined, this._mozelConfig);
 		}
 		switch(this.type) {
 		case Number: return 0;
@@ -435,7 +435,7 @@ export default class Property {
 
 		// Maybe it's an existing Mozel (reference defined only by its gid and no other properties)
 		if(isPlainObject(value) && Object.keys(value).length === 1 && !isNil(value.gid)) {
-			const mozel = this.parent.$resolveReference(value);
+			const mozel = this.owner.$resolveReference(value);
 			if(mozel && this.checkType(mozel)) {
 				this._set(mozel);
 				if(!this.isReference && (Object.keys(value).length > 1 || merge)) { // unless object is a gid-only {gid:...} object
@@ -463,7 +463,7 @@ export default class Property {
 				current.$setData(value, merge);
 			} else {
 				// Create Mozel and set without validation
-				let mozel = this.parent.$create(this.type, value, this._mozelConfig);
+				let mozel = this.owner.$create(this.type, value, this._mozelConfig);
 				this._set(mozel);
 			}
 			return true;
@@ -486,6 +486,6 @@ export default class Property {
 	}
 
 	getPathFrom(mozel:Mozel) {
-		return [...this.parent.$getPathArrayFrom(mozel), this.name].join('.');
+		return [...this.owner.$getPathArrayFrom(mozel), this.name].join('.');
 	}
 }

@@ -90,11 +90,7 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		return true;
 	}
 
-	$property(property?: alphanumeric) {
-		if(property === undefined) {
-			return super.$property();
-		}
-
+	$property(property: alphanumeric) {
 		// If the requested property is a collection index, allow to create it on the fly
 		if(!this.$has(property + "") && this.isCollectionIndex(property)) {
 			const newProperty = this.$defineProperty(property + "", this._config.itemType, this._config.itemPropertyOptions as PropertyOptions<unknown>);

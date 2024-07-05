@@ -7,7 +7,7 @@ import Mozel, {
 	required,
 	schema,
 	deep,
-	reference, Data, trackOld, string
+	reference, Data, trackOld, string, MozelData
 } from '../src/Mozel';
 import Collection, {collection} from '../src/Collection';
 import {forEach, get, includes, set, toNumber} from 'lodash';
@@ -691,23 +691,19 @@ describe('Mozel', () => {
 			foo.foo = 1;
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
-		it("does not trigger handler for collection even if provided with new array", () => {
+		it("does not trigger handler for collection even if merged with new array", () => {
 			class Foo extends Mozel {
-				@collection(Foo)
+				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>;
 			}
 			const foo = Foo.create<Foo>();
 			const bar = foo.$create(Foo);
 
-			let count = 0;
 			foo.$watch(schema(Foo).foos, ({newValue, oldValue}) => {
-				assert.notEqual(newValue, oldValue);
-				count++;
+				assert.ok(false, "Watcher is not triggered.");
 			});
 			foo.foos.$add(bar);
-			assert.equal(count, 0, "Watcher not fired after addition.");
-			foo.$set('foos', [bar]);
-			assert.equal(count, 0, "Watcher not fired after replacement.");
+			foo.$set('foos', [bar], true, true);
 		});
 		it("with `debounce` limits the calls to the handler", () => {
 			class Foo extends Mozel {
@@ -867,7 +863,7 @@ describe('Mozel', () => {
 			assert.equal(Tree.$schema<Tree>().left.$path, 'left');
 			assert.equal(schema(Tree).right.left.right.$, 'right.left.right');
 			assert.equal(Tree.$<Tree>().right.left.$type, Tree);
-			assert.equal(Tree.$<Tree>().branches.$type, Tree);
+			assert.equal(Tree.$<Tree>().branches.$type, Collection);
 		});
 		it("includes properties belonging to parent classes", () => {
 			class Foo extends Mozel {
@@ -886,19 +882,19 @@ describe('Mozel', () => {
 				@property(Foo)
 				oneFoo?:Foo;
 
-				@collection(Foo)
-				manyFoos!:Collection<Foo>;
+				@property(Foo)
+				otherFoo?:Foo;
 			}
 
 			const foo = Foo.create<Foo>({
 				gid: 1,
 				oneFoo: {gid: 11},
-				manyFoos: [{gid: 121}, {gid: 122}]
+				otherFoo: {gid: 12}
 			});
 
 			const gids:alphanumeric[] = [];
 			foo.$forEachChild(mozel => gids.push(mozel.gid));
-			assert.deepEqual(gids, [11, 121, 122]);
+			assert.deepEqual(gids, [11, 12]);
 		});
 	});
 	describe("$setData", () => {
@@ -991,6 +987,12 @@ describe('Mozel', () => {
 			assert.notEqual(newRootFoos1, rootFoos1, "root.foos.1");
 			assert.equal(newRootFoos2, rootFoos2, "root.foos.2");
 			assert.equal(newRootRef, rootRef, "root.ref");
+
+			assert.equal(root.other!.name, 'B');
+			assert.equal(root.foos!.$at(0).gid, 'root.foos.1A');
+			assert.equal(root.foos!.$at(1).name, 'C');
+			assert.equal(root.foos!.$at(2).gid, 'root.foos.3');
+
 			assert.deepEqual(changes.sort(), [
 				'other.name',
 				'foos.0',
@@ -1073,6 +1075,7 @@ describe('Mozel', () => {
 				@collection(Foo)
 				foos!:Collection<Foo>
 			}
+
 			const root = Foo.create<Foo>({
 				name: 'root',
 				foo: {
@@ -1080,6 +1083,7 @@ describe('Mozel', () => {
 				},
 				foos: [{}]
 			});
+
 			root.$setPath('foo.name', 'root.name2');
 			root.$setPath('foos.0.name', 'root.foos.0.name');
 			assert.equal(root.foo!.name, 'root.name2');

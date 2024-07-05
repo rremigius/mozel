@@ -334,13 +334,17 @@ export default class Mozel {
 	}
 
 	$startTrackingChanges() {
+		if(this._trackChangesID) {
+			// Already tracking somewhere
+			return;
+		}
 		this._trackedChangePaths.clear();
 		this.$notifyPropertyBeforeChange([]); // let watcher get current state
 		this._trackChangesID = uuid();
 		return this._trackChangesID;
 	}
 
-	$finishTrackingChanges(id:string) {
+	$finishTrackingChanges(id?:string) {
 		if(this._trackChangesID !== id) {
 			return; // current tracking session is owned by someone else
 		}
@@ -655,14 +659,16 @@ export default class Mozel {
 		if(pathArray.length === 1) {
 			return this.$set(pathArray[0], value);
 		}
-		const property = this.$property(pathArray[0]);
+
+		const step = pathArray[0];
+		const property = this.$property(step);
 		if(!property || !property.isMozelType()) {
-			throw new Error(`Cannot follow path at property '${pathArray[0]} of ${this}.'`);
+			throw new Error(`Cannot follow path at property '${step} of ${this}.'`);
 		}
 
 		// Initialize property value if necessary
 		if(!property.value && property.isMozelType() && initAlongPath) {
-			property.set({}, true);
+			this.$set(step, {});
 		}
 
 		// Continue path

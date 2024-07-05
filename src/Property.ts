@@ -428,15 +428,14 @@ export default class Property {
 	}
 
 	/**
-	 * Try to initialize the value for this property using initialization data. Will only work for Mozels
-	 * with objects or arrays, respectively.
+	 * Try to initialize the value for this property using initialization data.
 	 * @param value
 	 * @param merge
 	 */
 	tryInit(value:any, merge = false) {
 		const current = this._value;
 
-		// Maybe it's an existing Mozel
+		// Maybe it's an existing Mozel (reference defined only by its gid and no other properties)
 		if(isPlainObject(value) && Object.keys(value).length === 1 && !isNil(value.gid)) {
 			const mozel = this.parent.$resolveReference(value);
 			if(mozel && this.checkType(mozel)) {
@@ -460,7 +459,7 @@ export default class Property {
 		if(this.type && isMozelClass(this.type) && this.type.validateInitData(value)) {
 			if(current instanceof Mozel && (
 				value.gid === current.gid // new data has same gid
-				|| (merge && !value.gid)) // or new data has no gid and we merge
+				|| !value.gid) // or new data has no gid
 			) {
 				// Same Mozel, different data
 				current.$setData(value, merge);

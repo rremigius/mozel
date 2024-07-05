@@ -137,7 +137,7 @@ describe("Collection", () => {
 	});
 	it("references are lazy-loaded", () => {
 		class Foo extends Mozel {
-			@collection(Foo, undefined, {required})
+			@collection(Foo, {reference}, {required})
 			refs!:Collection<Foo>;
 			@collection(Foo)
 			foos!:Collection<Foo>;

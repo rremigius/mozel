@@ -1,7 +1,9 @@
 import {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions, MozelConfig} from "./Mozel";
+import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions, MozelConfig, MozelData} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isNumber, isPlainObject} from "lodash";
+
+export type CollectionDataType<T> = ((PropertyData<Mozel>) & {'$items'?: PropertyData<T>[]}) | PropertyData<T>[]
 
 export class CollectionItemEvent<T> {
 	constructor(public item:T, public index:number) {	}
@@ -40,11 +42,12 @@ export function collection<T extends PropertyType>(runtimeType?: T, itemProperty
 }
 
 export default class Collection<T extends PropertyType> extends Mozel {
-	MozelDataType:PropertyData<T>[] = [];
+	// Either an array of its items, or an object with gid and an array in its '$items' key.
+	MozelDataType:CollectionDataType<T> = {};
 	MozelConfigType:{itemType?: PropertyType, itemPropertyOptions?: PropertyOptions<T>} = {};
 
 	static validateInitData(data:unknown) {
-		return isArray(data);
+		return isPlainObject(data) || isArray(data);
 	}
 
 	protected _count = 0;
@@ -52,7 +55,11 @@ export default class Collection<T extends PropertyType> extends Mozel {
 
 	$events = new CollectionEvents();
 
-	$setData(data: PropertyInput[], merge: boolean = false) {
+	protected isCollectionIndex(key:alphanumeric) {
+		return parseFloat(key as string) % 1 === 0;
+	}
+
+	$setData(data: Data, merge: boolean = false) {
 		if(isArray(data)) {
 			const trackID = this.$startTrackingChanges();
 			for(let i = 0; i < data.length; i ++) {
@@ -67,6 +74,11 @@ export default class Collection<T extends PropertyType> extends Mozel {
 			this.$finishTrackingChanges(trackID);
 			return;
 		}
+		// Object with $items
+		if(isPlainObject(data) && isArray(data.$items)) {
+			// Let this same function handle the items, then continue to set the regular properties.
+			this.$setData(data.$items);
+		}
 		return super.$setData(data, merge);
 	}
 
@@ -74,9 +86,9 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		const trackID = this.$startTrackingChanges();
 		const index = this._count;
 
-		let nextProperty = this.$property(index);
+		let nextProperty = this.$property(index); // should create if it doesn't exist
 		if(!nextProperty) {
-			nextProperty = this.$defineProperty(index + "", this._config.itemType, this._config.itemPropertyOptions as PropertyOptions<unknown>);
+			throw new Error(`Could not create new Property at index ${index}.`);
 		}
 
 		// Try to set the value
@@ -97,30 +109,43 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		if(property === undefined) {
 			return super.$property();
 		}
+
+		// If the requested property is a collection index, allow to create it on the fly
+		if(!this.$has(property + "") && this.isCollectionIndex(property)) {
+			this.$defineProperty(property + "", this._config.itemType, this._config.itemPropertyOptions as PropertyOptions<unknown>);
+
+			// Automatically clean up next tick if automatically created property was not used successfully.
+			setTimeout(()=>{
+				if(this._count <= property) {
+					this.$undefineProperty(property);
+				}
+			});
+		}
 		return super.$property(property + "");
 	}
 
 	$set(index: alphanumeric, value: PropertyInput, init = true, merge = false) {
-		if(isNumber(index)) {
-			if(index > this._count) {
-				throw new Error(`Cannot set index ${index} (out of bounds).`);
+		if(this.isCollectionIndex(index)) {
+			const parsedIndex = parseInt(index as string);
+			if(parsedIndex > this._count) {
+				throw new Error(`Cannot set index ${parsedIndex} (out of bounds).`);
 			}
-			if(index === this._count) {
+			if(parsedIndex === this._count) {
 				return this.$add(value as PropertyData<T>); // will be validated
 			}
 
-			const before = this.$get(index);
+			const before = this.$get(parsedIndex);
 
-			if(!super.$set(index + "", value, init, merge)) {
+			if(!super.$set(parsedIndex + "", value, init, merge)) {
 				return false;
 			}
 
-			const after = this.$get(index);
+			const after = this.$get(parsedIndex);
 			if(before === after) {
 				return true;
 			}
-			this.$events.added.fire(new CollectionItemAddedEvent(after, index));
-			this.$events.removed.fire(new CollectionItemRemovedEvent(before, index));
+			this.$events.added.fire(new CollectionItemAddedEvent(after, parsedIndex));
+			this.$events.removed.fire(new CollectionItemRemovedEvent(before, parsedIndex));
 			return true;
 		}
 
@@ -128,7 +153,9 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	}
 
 	$get(index:alphanumeric, resolveReference:boolean = true):PropertyValue {
-		if(isNumber(index) && index >= this._count) {
+		const parsedIndex = parseFloat(index as string);
+		if(parsedIndex % 1 === 0 && parsedIndex >= this._count) {
+			// Numeric indexes (or parsable) should not throw error but just return undefined
 			return undefined;
 		}
 		return super.$get(index + "", resolveReference);

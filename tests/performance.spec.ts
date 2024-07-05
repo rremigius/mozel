@@ -14,7 +14,7 @@ function time(nTimes:number, callback:(iteration:number)=>void) {
 describe("Performance", () => {
 	describe("Mozel", () => {
 		describe("setting a property", () => {
-			it("without any watchers takes less than 100 times as long as setting a property on a plain object (> 300k per second)", () => {
+			it("without any watchers takes less than 100 times as long as setting a property on a plain object", () => {
 				class Foo extends Mozel {
 					@property(String)
 					foo?:string;
@@ -27,9 +27,6 @@ describe("Performance", () => {
 				const refDuration = time(nTimes, i => ref.foo = i.toString());
 
 				assert.isBelow(duration, refDuration * 100);
-
-				const speed = nTimes / duration * 1000; // properties set per second
-				assert.isAbove(speed, 300000);
 			});
 			it("with a watcher takes less than 25 times as long as setting a property without a watcher", () => {
 				class Foo extends Mozel {

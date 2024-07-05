@@ -1,4 +1,4 @@
-import {isComplexValue, PropertyValue} from "./Property";
+import {PropertyValue} from "./Property";
 import Mozel from "./Mozel";
 import {debounce, isNumber} from "lodash";
 import {includes} from "./utils";

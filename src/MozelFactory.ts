@@ -1,7 +1,6 @@
 import {Container, inject, injectable, optional} from "inversify";
-import {alphanumeric, Class} from "validation-kit";
 import Registry from "./Registry";
-import Mozel, {MozelClass, MozelConfig, MozelConstructor, MozelData} from "./Mozel";
+import Mozel, {MozelConfig, MozelConstructor, MozelData} from "./Mozel";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
 import {isArray} from "lodash";

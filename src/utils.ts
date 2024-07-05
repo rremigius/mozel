@@ -1,4 +1,4 @@
-import {isPlainObject, concat} from "lodash";
+import {isPlainObject} from "lodash";
 
 export {
 	get,

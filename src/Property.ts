@@ -1,12 +1,10 @@
 import {
 	find,
 	includes,
-	isArray,
 	isBoolean,
 	isFunction,
 	isNil,
 	isNumber,
-	isObject,
 	isPlainObject,
 	isString
 } from 'lodash';

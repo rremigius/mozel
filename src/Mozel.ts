@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import Property, {
 	Alphanumeric,
-	ComplexValue, isComplexType,
+	ComplexValue,
 	isComplexValue,
 	isMozelClass,
 	MozelClass,
@@ -15,7 +15,7 @@ import Property, {
 import {concat, find, forEach, get, isPlainObject, isString, remove, map} from 'lodash';
 
 import Templater from './Templater';
-import {Container, inject, injectable, optional} from "inversify";
+import {inject, injectable, optional} from "inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import {alphanumeric, isSubClass, primitive} from 'validation-kit';
@@ -24,7 +24,6 @@ import {LogLevel} from "log-control";
 import log from "./log";
 import PropertyWatcher, {
 	PropertyChangeHandler,
-	PropertyWatcherOptions,
 	PropertyWatcherOptionsArgument
 } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";

@@ -1,6 +1,6 @@
 import {PropertyValue} from "./Property";
 import Mozel from "./Mozel";
-import {debounce, isNumber} from "lodash";
+import {debounce, isNumber, isString} from "lodash";
 import {includes} from "./utils";
 
 export type WatcherDebounceOptions = {
@@ -20,11 +20,11 @@ export type PropertyWatcherOptions = {
 }
 export type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path'|'handler'>
 
-export type PropertyChangeHandler<T> = (change:{newValue:T, oldValue:T, valuePath:string, changePath:string})=>void|boolean;
+export type PropertyChangeHandler<T> = (change:{newValue:T, oldValue:T, valuePath:string[], changePath:string[]})=>void|boolean;
 
 export default class PropertyWatcher {
 	readonly mozel:Mozel;
-	readonly path: string;
+	readonly path: string[];
 	readonly immediate?: boolean;
 	readonly deep?: boolean;
 	readonly trackOld?:boolean;
@@ -38,7 +38,7 @@ export default class PropertyWatcher {
 
 	constructor(mozel:Mozel, options:PropertyWatcherOptions) {
 		this.mozel = mozel;
-		this.path = options.path;
+		this.path = options.path.split('.');
 		this.handler = options.handler;
 		this.immediate = options.immediate;
 		this.deep = options.deep;
@@ -55,16 +55,17 @@ export default class PropertyWatcher {
 		}
 	}
 
-	execute(path:string) {
+	execute(path:string[]) {
 		const appliedPath = this.applyMatchedPath(path);
 		const values = this.mozel.$pathPattern(appliedPath);
 
-		for(let valuePath in values) {
-			const newValue = values[valuePath];
+		for(let valuePathString in values) {
+			const valuePath = valuePathString.split('.');
+			const newValue = values[valuePathString];
 			// Only fire if changed
 			if(this.hasChanged(newValue, valuePath, path)) {
 				const changePath = includes(path, '*') ? valuePath : path;
-				const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
+				const oldValue = this.deep ? this.deepValues[valuePathString] : this.currentValues[valuePathString];
 				if(!this.validator) { // not the time for validation
 					this.handler({newValue, oldValue, valuePath, changePath});
 				}
@@ -73,26 +74,27 @@ export default class PropertyWatcher {
 		}
 	}
 
-	validate(path:string) {
+	validate(path:string[]) {
 		if(!this.validator) return undefined;
 
 		const appliedPath = this.applyMatchedPath(path);
 		const values = this.mozel.$pathPattern(appliedPath);
 
-		for(let valuePath in values) {
-			const newValue = values[valuePath];
+		for(let valuePathString in values) {
+			const valuePath = valuePathString.split('.');
+			const newValue = values[valuePathString];
 			// Only fire if changed
 			if(this.hasChanged(newValue, valuePath, path)) {
 				const changePath = includes(path, '*') ? valuePath : path;
-				const oldValue = this.deep ? this.deepValues[valuePath] : this.currentValues[valuePath];
+				const oldValue = this.deep ? this.deepValues[valuePathString] : this.currentValues[valuePathString];
 				if(!this.handler({newValue, oldValue, valuePath, changePath})) return false;
 			}
 		}
 		return true;
 	}
 
-	hasChanged(newWatcherValue:any, watcherPath:string, changePath:string) {
-		const current = this.currentValues[watcherPath];
+	hasChanged(newWatcherValue:any, watcherPath:string[], changePath:string[]) {
+		const current = this.currentValues[watcherPath.join('.')];
 
 		// Value changed
 		if(current !== newWatcherValue) return true;
@@ -101,14 +103,14 @@ export default class PropertyWatcher {
 		if(!this.deep) return false;
 
 		// Change occurred no deeper than our watcher path
-		if(changePath.length <= watcherPath.length || changePath.substring(0, watcherPath.length) !== watcherPath) {
+		if(changePath.length <= watcherPath.length || this.isSubPath(changePath, watcherPath)) {
 			return false;
 		}
 
 		// Compare deep value with our deep clone
-		const currentDeep = this.deepValues[watcherPath];
-		// remove watcher path, including final '.' (for empty watcherPath, do not expect '.')
-		const deeperPath = changePath.substring(watcherPath.length ? watcherPath.length + 1 : 0);
+		const currentDeep = this.deepValues[watcherPath.join('.')];
+		// remove watcher path
+		const deeperPath = this.removePathFromBeginning(changePath, watcherPath);
 
 		if(newWatcherValue instanceof Mozel) {
 			if(!(currentDeep instanceof Mozel)) return true;
@@ -120,7 +122,7 @@ export default class PropertyWatcher {
 		return true; // if we could not properly check whether it changed, better pass it as changed
 	}
 
-	updateValues(path:string) {
+	updateValues(path:string[]) {
 		// For deep watching, trackOld is disabled by default
 		if(this.trackOld === false || (this.deep && this.trackOld !== true)) return;
 
@@ -157,16 +159,19 @@ export default class PropertyWatcher {
 		this.deepValues = {};
 	}
 
-	matches(path:string) {
+	matches(path:string[]) {
 		// Exact path at which we're watching changes
-		if (path === this.path) return true;
-		if (this.path === '') return this.deep; // if we're watching all of the Mozel, we just need to check `deep`
+		if (this.path.length === 0
+			|| this.path.length === 1 && this.path[0] === "") {
+			return this.deep; // if we're watching everthing of the Mozel, we just need to check `deep`
+		}
 
-		const watcherPath = this.path.split('.');
-		const changePath = path.split('.');
-		for(let i = 0; i < Math.max(watcherPath.length, changePath.length); i++) {
-			let watcherStep = watcherPath[i];
-			let changeStep = changePath[i];
+		if(isString(path)) {
+			path = path.split('.');
+		}
+		for(let i = 0; i < Math.max(this.path.length, path.length); i++) {
+			let watcherStep = this.path[i];
+			let changeStep = path[i];
 
 			// Change happened deeper than watcher path, then 'deep' determines whether it should match
 			if(watcherStep === undefined) return this.deep;
@@ -182,21 +187,56 @@ export default class PropertyWatcher {
 		return true;
 	}
 
-	applyMatchedPath(matchedPath:string) {
-		if(matchedPath === this.path) return matchedPath;
-		if(this.path === '') return [];
+	applyMatchedPath(matchedPath:string[]) {
+		if(this.pathsEqual(matchedPath, this.path)) {
+			return matchedPath;
+		}
+		if(this.path.length === 0) {
+			return [];
+		}
 
 		// We use the matched path until:
 		// - end of matched path
 		// - end of watcher path
 		// if watcher path is longer, we complete the path with watcher path steps
-		let matchedChunks = matchedPath.split('.');
-		let watcherChunks = this.path.split('.');
 		const result = [];
-		for(let i = 0; i < watcherChunks.length; i++) {
-			if(i < matchedChunks.length) result.push(matchedChunks[i]);
-			else result.push(watcherChunks[i]);
+		for(let i = 0; i < this.path.length; i++) {
+			if(i < matchedPath.length) result.push(matchedPath[i]);
+			else result.push(this.path[i]);
 		}
 		return result.join('.');
 	}
+
+	isSubPath(path:string[], otherPath:string[]) {
+		if(path.length > otherPath.length) return false;
+		for(let i = 0; i < path.length; i++) {
+			if(path[i] !== otherPath[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	removePathFromBeginning(path:string[], remove:string[]) {
+		let i = 0;
+		for(; i < path.length; i++) {
+			if(path[i] !== remove[i]) {
+				break;
+			}
+		}
+		return path.slice(i);
+	}
+
+	pathsEqual(path1:string[], path2:string[]) {
+		if(path1.length !== path2.length) {
+			return false;
+		}
+		for(let i = 0; i < path1.length; i++) {
+			if(path1[i] !== path2[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 }

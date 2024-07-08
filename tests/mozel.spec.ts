@@ -575,9 +575,9 @@ describe('Mozel', () => {
 				}
 			});
 			tree.$watch('left.*.name', ({newValue, oldValue, valuePath}) => {
-				if(valuePath === 'left.left.name') {
+				if(valuePath.join('.') === 'left.left.name') {
 					assert.equal(newValue, 'll2');
-				} else if (valuePath == 'left.right.name') {
+				} else if (valuePath.join('.') == 'left.right.name') {
 					assert.equal(newValue, 'lr2');
 				} else {
 					assert.ok(false, "oldValue");
@@ -635,7 +635,7 @@ describe('Mozel', () => {
 			foo.bars.$add(4);
 			assert.equal(count, 1, "Correct number of watchers called.");
 		});
-		it("notifies about changes to any item in Collection ", () => {
+		it("notifies about changes to any item in Collection", () => {
 			class Bar extends Mozel {
 				@property(Number)
 				bar?:number;
@@ -665,7 +665,7 @@ describe('Mozel', () => {
 				deep, trackOld // is necessary to keep a clone of the old value
 			});
 			foo.$watch('bars.1.bar', ({newValue, oldValue, valuePath}) => {
-				assert.equal(valuePath, 'bars.1.bar');
+				assert.equal(valuePath.join('.'), 'bars.1.bar');
 				assert.equal(newValue, 3);
 				assert.equal(oldValue, 2);
 				count++;
@@ -676,6 +676,32 @@ describe('Mozel', () => {
 			if(bar) bar.bar = 3;
 
 			assert.equal(count, 2, "Correct number of watchers called.");
+		});
+		it("notifies about changes to references", () => {
+			class Foo extends Mozel {
+				@property(String, {required})
+				bar!:string
+
+				@property(Foo)
+				foo?:Foo
+
+				@property(Foo, {reference})
+				fooRef?:Foo
+			}
+			const foo = Foo.create<Foo>({
+				gid: 1,
+				bar: "a",
+				foo: {gid: 11, bar: "aa"},
+				fooRef: {gid: 11}
+			});
+
+			let count = 0;
+			foo.$watch(schema(Foo).fooRef.bar, ({newValue}) => {
+				assert.equal(newValue, "zz");
+				count++;
+			});
+			foo.foo!.bar = "zz";
+			assert.equal(count, 1, "Watcher executed 1 time.");
 		});
 		it("with schema provides typescript checking for handler", () => {
 			class Foo extends Mozel {
@@ -962,7 +988,7 @@ describe('Mozel', () => {
 
 			const changes:string[] = [];
 			root.$watch('*', event => {
-				changes.push(event.changePath);
+				changes.push(event.changePath.join('.'));
 			}, {deep});
 
 			root.$setData({
@@ -997,7 +1023,8 @@ describe('Mozel', () => {
 				'other.name',
 				'foos.0',
 				'foos.2',
-				'foos.1.name'
+				'foos.1.name',
+				'ref.name'
 			].sort());
 		});
 
@@ -1230,7 +1257,7 @@ describe('Mozel', () => {
 
 			let changes: string[] = [];
 			root.$events.changed.on((event) => {
-				changes.push(event.path);
+				changes.push(event.path.join('.'));
 			});
 			root.foo!.bar = 'qux';
 			root.bar = 'qux';

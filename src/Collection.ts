@@ -1,5 +1,5 @@
 import {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
-import Mozel, {Data, PropertyData, property, ExportOptions, MozelConfig} from "./Mozel";
+import Mozel, {Data, PropertyData, property, ExportOptions, MozelConfig, ChangedEvent} from "./Mozel";
 import {alphanumeric} from "validation-kit";
 import {isArray, isPlainObject} from "lodash";
 
@@ -237,14 +237,14 @@ export default class Collection<T extends PropertyType> extends Mozel {
 		});
 	}
 
-	$notifyPropertyChanged(path: string[]) {
-		super.$notifyPropertyChanged(path);
+	$notifyPropertyChanged(event:ChangedEvent) {
+		super.$notifyPropertyChanged(event);
 
 		// Update quick-access list if it's a direct property
-		if(path.length !== 1) {
+		if(event.path.length !== 1) {
 			return;
 		}
-		const property = path[0];
+		const property = event.path[0];
 		if(!this.isCollectionIndex(property)) {
 			return;
 		}

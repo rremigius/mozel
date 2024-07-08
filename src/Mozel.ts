@@ -126,13 +126,20 @@ export class DestroyedEvent {
 	constructor(public mozel:Mozel) {}
 }
 export class ChangedEvent {
-	constructor(public path:string) {}
+	constructor(public path:string[], public _stack?:Set<Property>) {}
+}
+
+export class BeforeChangeEvent {
+	constructor(public path:string[], public _stack?:Set<Property>) {}
 }
 
 export class MozelEvents extends EventInterface {
 	destroyed = this.$event<DestroyedEvent>(DestroyedEvent);
 	changed = this.$event(ChangedEvent);
+	beforeChange = this.$event(BeforeChangeEvent);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Mozel class providing runtime type checking and can be exported and imported to and from plain objects.
@@ -253,7 +260,7 @@ export default class Mozel {
 	private readonly _watchers: PropertyWatcher[];
 
 	private _trackChangesID?:string = undefined;
-	private _trackedChangePaths:Set<string> = new Set<string>();
+	private _trackedChangePaths = new Set<string[]>();
 
 	public $root:boolean = false;
 	public $destroyed: boolean = false;
@@ -338,7 +345,7 @@ export default class Mozel {
 			return;
 		}
 		this._trackedChangePaths.clear();
-		this.$notifyPropertyBeforeChange([]); // let watcher get current state
+		this.$notifyPropertyBeforeChange(new BeforeChangeEvent([])); // let watcher get current state
 		this._trackChangesID = uuid();
 		return this._trackChangesID;
 	}
@@ -350,7 +357,7 @@ export default class Mozel {
 		this._trackChangesID = undefined; // release tracking session
 		if(this._trackedChangePaths.size > 0) {
 			for(let path of this._trackedChangePaths.values()) {
-				this.$notifyPropertyChanged(path.split('.'));
+				this.$notifyPropertyChanged(new ChangedEvent(path));
 			}
 		}
 		this._trackedChangePaths.clear();
@@ -719,8 +726,11 @@ export default class Mozel {
 	 * Get _watchers matching the given path.
 	 * @param {string} path
 	 */
-	$watchers(path:string) {
-		return this._watchers.filter(watcher => watcher.matches(path));
+	$watchers(path:string|string[]) {
+		if(isString(path)) {
+			path = path.split('.');
+		}
+		return this._watchers.filter(watcher => watcher.matches(path as string[]));
 	}
 
 	$addWatcher(watcher:PropertyWatcher) {
@@ -739,21 +749,18 @@ export default class Mozel {
 	 * This just-in-time approach has the slight advantage that we don't have to keep copies of values that will
 	 * never change.
 	 *
-	 * @param {string[]} path		The path at which the change occurred.
+	 * @param event
 	 */
-	$notifyPropertyBeforeChange(path: string[]) {
+	$notifyPropertyBeforeChange(event:BeforeChangeEvent) {
 		if(this._trackChangesID) {
 			// Don't notify parents/watchers, collecting all changes
 			return;
 		}
 
-		const pathString = path.join('.');
-		this.$watchers(pathString).forEach(watcher => {
-			watcher.updateValues(pathString)
+		this.$watchers(event.path).forEach(watcher => {
+			watcher.updateValues(event.path)
 		});
-		if(this.$parent && this.$parentRelation) {
-			this.$parent.$notifyPropertyBeforeChange([this.$parentRelation, ...path]);
-		}
+		this.$events.beforeChange.fire(event);
 	}
 
 	/**
@@ -761,15 +768,13 @@ export default class Mozel {
 	 * @param {string[]} path
 	 */
 	$validatePropertyChange(path: string[]) {
-		const pathString = path.join('.');
-
 		// If any of the watchers does not agree, cancel the change
-		if(!!this.$watchers(pathString).find(watcher =>
-			watcher.validator && !watcher.validate(pathString))
+		if(!!this.$watchers(path).find(watcher =>
+			watcher.validator && !watcher.validate(path))
 		) {
 			return false;
 		}
-		if (this.$parent && this.$parentRelation && !this.$parent.$validatePropertyChange([this.$parentRelation, ...path])) {
+		if(this.$parent && this.$parentRelation && !this.$parent.$validatePropertyChange([this.$parentRelation, ...path])) {
 			return false;
 		}
 		return true;
@@ -777,25 +782,19 @@ export default class Mozel {
 
 	/**
 	 * Notify that a property has changed. Will activate relevant _watchers.
-	 * @param {string[]} path		Path at which the property changed.
-	 * @param {Mozel} [submozel]	The direct submozel reporting the change.
+	 * @param event
 	 */
-	$notifyPropertyChanged(path: string[]) {
-		const pathString = path.join('.');
-		this.$events.changed.fire(new ChangedEvent(pathString));
-
+	$notifyPropertyChanged(event:ChangedEvent) {
 		if(this._trackChangesID) {
 			// Don't notify parents or watchers, wait for end of tracking
-			this._trackedChangePaths.add(path.join('.'));
+			this._trackedChangePaths.add(event.path);
 			return;
 		}
 
-		this.$watchers(pathString).forEach(watcher => {
-			watcher.execute(pathString);
+		this.$watchers(event.path).forEach(watcher => {
+			watcher.execute(event.path);
 		});
-		if (this.$parent && this.$parentRelation) {
-			this.$parent.$notifyPropertyChanged([this.$parentRelation, ...path]);
-		}
+		this.$events.changed.fire(event);
 	}
 
 	/**

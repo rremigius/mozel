@@ -10,7 +10,7 @@ import {
 } from 'lodash';
 
 import {alphanumeric, Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
-import Mozel, {DestroyedEvent, MozelConfig} from "./Mozel";
+import Mozel, {BeforeChangeEvent, ChangedEvent, DestroyedEvent, MozelConfig} from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
 import {get} from "./utils";
@@ -135,10 +135,11 @@ export default class Property {
 	private readonly _required:boolean = false;
 	private readonly _default?:PropertyInput|PropertyInputFactory;
 	private _value:PropertyValue;
-	private _isDefault = false;
-	private _mozelConfig:MozelConfig<any> = {};
+	private readonly _mozelConfig:MozelConfig<any> = {};
 
 	private _mozelDestroyedListener = (event:DestroyedEvent) => this.set(undefined);
+	private _mozelBeforeChangeListener = (event:BeforeChangeEvent) => this.notifyBeforeChange(event);
+	private _mozelChangedListener = (event:ChangedEvent) => this.notifyChanged(event);
 
 	private readonly owner:Mozel;
 
@@ -286,13 +287,17 @@ export default class Property {
 		if(value === this._value) return;
 
 		let detach:Mozel|undefined;
-		if(this._value instanceof Mozel && !this.isReference) {
-			detach = this._value; // keep for later
+		if(this._value instanceof Mozel) {
+			if(!this.isReference) {
+				detach = this._value; // keep for later
+			}
 			this._value.$events.destroyed.off(this._mozelDestroyedListener);
+			this._value.$events.beforeChange.off(this._mozelBeforeChangeListener);
+			this._value.$events.changed.off(this._mozelChangedListener);
 		}
 
 		// Notify watchers before the change, so they can get the old value
-		this.notifyBeforeChange();
+		this.notifyBeforeChange(new ChangedEvent([]));
 
 		// Set value on parent
 		const oldValue = this._value;
@@ -302,8 +307,6 @@ export default class Property {
 		if(!this.validateChange()) {
 			this._value = oldValue;
 		}
-
-		this._isDefault = false;
 
 		// Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
 		if(detach) detach.$detach();
@@ -320,9 +323,11 @@ export default class Property {
 		// New value is Mozel, listen to changes
 		if (value instanceof Mozel) {
 			value.$events.destroyed.on(this._mozelDestroyedListener);
+			value.$events.beforeChange.on(this._mozelBeforeChangeListener);
+			value.$events.changed.on(this._mozelChangedListener);
 		}
 
-		this.notifyChange();
+		this.notifyChanged(new ChangedEvent([]));
 	}
 	/**
 	 * Set value with type checking
@@ -355,10 +360,23 @@ export default class Property {
 		return true;
 	}
 
-	notifyBeforeChange(path?:alphanumeric) {
-		if(!this.owner) return;
-		const name = path ? `${this.name}.${path}` : this.name;
-		this.owner.$notifyPropertyBeforeChange([name]);
+	notifyBeforeChange(event:BeforeChangeEvent) {
+		if(!this.owner) {
+			return;
+		}
+
+		// Avoid infinite loops
+		if(event._stack && event._stack.has(this)) {
+			return;
+		}
+		let stack = event._stack;
+		if(!stack) {
+			stack = new Set<Property>();
+		}
+		stack.add(this);
+
+		const path = [this.name, ...event.path];
+		this.owner.$notifyPropertyBeforeChange(new BeforeChangeEvent(path, stack));
 	}
 
 	validateChange(path?:alphanumeric) {
@@ -367,10 +385,23 @@ export default class Property {
 		return this.owner.$validatePropertyChange([name]);
 	}
 
-	notifyChange(path?:alphanumeric) {
-		if(!this.owner) return;
-		const name = path ? `${this.name}.${path}` : this.name;
-		this.owner.$notifyPropertyChanged([name]);
+	notifyChanged(event:BeforeChangeEvent) {
+		if(!this.owner) {
+			return;
+		}
+
+		// Avoid infinite loops
+		if(event._stack && event._stack.has(this)) {
+			return;
+		}
+		let stack = event._stack;
+		if(!stack) {
+			stack = new Set<Property>();
+		}
+		stack.add(this);
+
+		const path = [this.name, ...event.path];
+		this.owner.$notifyPropertyChanged(new ChangedEvent(path, stack));
 	}
 
 	setErrorValue(value:any) {
@@ -400,7 +431,6 @@ export default class Property {
 		if(value as unknown instanceof Mozel) {
 			(value as unknown as Mozel).$applyDefaults();
 		}
-		this._isDefault = true;
 	}
 
 	generateDefaultValue():PropertyValue {

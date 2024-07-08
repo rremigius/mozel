@@ -34,7 +34,7 @@ describe("Collection", () => {
 				changes++;
 			});
 			foo.$watch('items.*.*', ({valuePath}) => {
-				modifiedPaths.push(valuePath);
+				modifiedPaths.push(valuePath.join('.'));
 			});
 
 			foo.items.$setData([{gid: 1, foo: 'a'}, {gid: 2, foo: 'B'}, {gid: 4, foo: 'd'}], true);

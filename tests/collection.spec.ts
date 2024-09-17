@@ -3,8 +3,17 @@ import {describe, it} from 'mocha';
 
 import Mozel, {property, reference, required, string} from "../src/Mozel";
 import Collection, {collection} from "../src/Collection";
+import {MozelFactory} from "../src";
 
 describe("Collection", () => {
+	it("can be defined from plain Javascript", () => {
+		class FooMozel extends Mozel {}
+		FooMozel.property("bars", Collection, {typeOptions: {itemType: String}});
+
+		const factory = new MozelFactory();
+		const mozel = factory.create(FooMozel, {bars: ["a", "b", "c"]} as any);
+		assert.deepEqual((mozel.bars as Collection<String>).$toArray(), ["a", "b", "c"]);
+	});
 	it("changed event is fired when any of its indexes change", () => {
 		const collection = Collection.create<Collection<number>>([1,2,3,4]);
 		let count = 0;
@@ -22,7 +31,7 @@ describe("Collection", () => {
 				@collection(FooMozel, undefined, {required})
 				items!:Collection<FooMozel>;
 			}
-			let foo = FooMozel.createFactory().create(FooMozel, {
+			let foo = (new MozelFactory()).create(FooMozel, {
 				gid: 'root',
 				items: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}, {gid: 3, foo: 'c'}]
 			});
@@ -54,7 +63,8 @@ describe("Collection", () => {
 				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>
 			}
-			const model = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const model = factory.create(Foo, {
 				foos: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}]
 			});
 			model.foos.$setData([{gid:2}]);

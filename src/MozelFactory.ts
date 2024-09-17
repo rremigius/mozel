@@ -121,6 +121,10 @@ export default class MozelFactory implements MozelFactoryInterface {
 				mozel = new ExpectedClass();
 			}
 		} catch(e) {
+			if(!(e instanceof Error)) {
+				log.error("Unknown error occurred:", e);
+				throw new Error("Unknown error occurred.");
+			}
 			const message = `Mozel creation failed for ${ExpectedClass.type}: ${e.message}`;
 			log.error(message, data);
 			throw new Error(message);

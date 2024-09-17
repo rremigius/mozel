@@ -12,8 +12,6 @@ import Property, {
 	PropertyValue
 } from './Property';
 
-import {concat, find, forEach, get, isPlainObject, isString, remove, map} from 'lodash';
-
 import Templater from './Templater';
 import {Container, inject, injectable, optional} from "inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
@@ -24,12 +22,11 @@ import {LogLevel} from "log-control";
 import log from "./log";
 import PropertyWatcher, {
 	PropertyChangeHandler,
-	PropertyWatcherOptions,
 	PropertyWatcherOptionsArgument
 } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
-import {includes, isArray, omit} from "./utils";
+import {includes, isArray, omit, isPlainObject, get, forEach, isString, remove, find, map, concat} from "lodash";
 import {v4 as uuid} from "uuid";
 
 // TYPES
@@ -444,7 +441,7 @@ export default class Mozel {
 	/**
 	 * The Mozel's parent.
 	 */
-	get $parent() {
+	get $parent():null|Mozel {
 		if(!this._property) return null;
 		return this._property.getParent();
 	}

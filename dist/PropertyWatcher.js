@@ -1,11 +1,17 @@
 import Mozel from "./Mozel";
-import { debounce, isNumber } from "lodash";
-import Collection from "./Collection";
-import { includes } from "./utils";
+import { debounce, isNumber, includes } from "lodash";
 export default class PropertyWatcher {
+    mozel;
+    path;
+    immediate;
+    deep;
+    trackOld;
+    validator;
+    debounce;
+    handler;
+    currentValues = {};
+    deepValues = {};
     constructor(mozel, options) {
-        this.currentValues = {};
-        this.deepValues = {};
         this.mozel = mozel;
         this.path = options.path;
         this.handler = options.handler;
@@ -79,13 +85,6 @@ export default class PropertyWatcher {
             const deepNewValue = newWatcherValue.$path(deeperPath);
             return deepOldValue !== deepNewValue;
         }
-        if (newWatcherValue instanceof Collection) {
-            if (!(currentDeep instanceof Collection))
-                return true;
-            const deepOldValue = currentDeep.path(deeperPath);
-            const deepNewValue = newWatcherValue.path(deeperPath);
-            return deepOldValue !== deepNewValue;
-        }
         return true; // if we could not properly check whether it changed, better pass it as changed
     }
     updateValues(path) {
@@ -110,17 +109,10 @@ export default class PropertyWatcher {
         if (value instanceof Mozel) {
             return value.$destroy();
         }
-        else if (value instanceof Collection) {
-            return value.parent.$destroy();
-        }
     }
     cloneDeepValues(value) {
         if (value instanceof Mozel) {
             return value.$cloneDeep();
-        }
-        else if (value instanceof Collection) {
-            const mozel = value.parent.$cloneDeep();
-            return mozel.$get(value.relation);
         }
         return value;
     }

@@ -1,12 +1,12 @@
 import { PropertyValue } from "./Property";
 import Mozel from "./Mozel";
-export declare type WatcherDebounceOptions = {
+export type WatcherDebounceOptions = {
     wait?: number;
     maxWait?: number;
     leading?: boolean;
     trailing?: boolean;
 };
-export declare type PropertyWatcherOptions = {
+export type PropertyWatcherOptions = {
     path: string;
     handler: PropertyChangeHandler<PropertyValue>;
     immediate?: boolean;
@@ -15,8 +15,8 @@ export declare type PropertyWatcherOptions = {
     debounce?: number | WatcherDebounceOptions;
     validator?: boolean;
 };
-export declare type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path' | 'handler'>;
-export declare type PropertyChangeHandler<T> = (change: {
+export type PropertyWatcherOptionsArgument = Omit<PropertyWatcherOptions, 'path' | 'handler'>;
+export type PropertyChangeHandler<T> = (change: {
     newValue: T;
     oldValue: T;
     valuePath: string;

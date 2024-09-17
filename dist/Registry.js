@@ -1,31 +1,28 @@
 import logRoot from "./log";
 import { isNil } from 'lodash';
-import { uniqueId, values } from "./utils";
+import { uniqueId, values } from "lodash";
 import EventInterface from "event-interface-mixin";
 const log = logRoot.instance("registry");
 export class RegistryItemAdded {
+    item;
     constructor(item) {
         this.item = item;
     }
 }
 export class RegistryItemRemoved {
+    item;
     constructor(item) {
         this.item = item;
     }
 }
 export class RegistryEvents extends EventInterface {
-    constructor() {
-        super(...arguments);
-        this.added = this.$event(RegistryItemAdded);
-        this.removed = this.$event(RegistryItemRemoved);
-    }
+    added = this.$event(RegistryItemAdded);
+    removed = this.$event(RegistryItemRemoved);
 }
 export default class Registry {
-    constructor() {
-        this.id = uniqueId('registry-');
-        this.events = new RegistryEvents();
-        this.indexByGid = {};
-    }
+    id = uniqueId('registry-');
+    events = new RegistryEvents();
+    indexByGid = {};
     register(item) {
         if (!isNil(item.gid)) {
             if (item.gid in this.indexByGid) {

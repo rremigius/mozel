@@ -14,6 +14,7 @@ import {forEach, get, includes, set, toNumber} from 'lodash';
 import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";
 import {MozelFactory} from "../src";
+import heapdump from "heapdump";
 
 const VALUES = {
 	string: 'abc',
@@ -1285,6 +1286,37 @@ describe('Mozel', () => {
 
 			assert.equal(james.name, "James Smith");
 			assert.equal(james.child!.name, "Fred Smith");
+		});
+	});
+	describe("Memory management", () => {
+		it("introduces no memory leaks when creating/destroying Mozels", async () => {
+			if (typeof global.gc !== 'function') {
+				throw new Error('Garbage collection is not exposed. Run the test with --expose-gc flag.');
+			}
+
+			class Foo extends Mozel {
+				@property(String)
+				foo?:string;
+			}
+			const factory = new MozelFactory();
+
+			// Force garbage collection and get 'before' state.
+			global.gc();
+			const memoryBefore = process.memoryUsage().heapUsed;
+
+			const totalMozels = 100000;
+			// Create a number of Mozels and overwrite them. They should then be cleaned up since they will have no parent.
+			for(let i = 0; i < totalMozels; i++) {
+				const mozel = factory.create(Foo, {foo: "abc" + i});
+				mozel.$destroy();
+			}
+
+			// Force garbage collection and get 'after' state
+			global.gc();
+			heapdump.writeSnapshot();
+			const memoryUsedAfter = process.memoryUsage().heapUsed - memoryBefore;
+			assert.equal(factory.registry.all().length, 0, "No Mozels left in Registry");
+			assert.isBelow(memoryUsedAfter, 0 /*1MB*/, "No significant memory increase");
 		});
 	});
 });

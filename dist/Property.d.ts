@@ -1,21 +1,23 @@
-import Collection from './Collection';
 import { alphanumeric, Class, primitive } from "validation-kit";
-import Mozel from "./Mozel";
-export declare type MozelClass = typeof Mozel;
-export declare type ComplexValue = Mozel | Collection<any>;
-export declare type ComplexType = MozelClass | Collection<any>;
-export declare type PropertyValue = primitive | ComplexValue | undefined;
-export declare type PropertyInput = PropertyValue | object | any[];
-export declare type PropertyType = MozelClass | Class | Collection<any> | undefined;
-export declare type PrimitiveObject = Record<string, primitive | undefined | null>;
-export declare type Reference = {
+import Mozel, { MozelConfig } from "./Mozel";
+export type MozelClass = typeof Mozel;
+export type ComplexValue = Mozel;
+export type ComplexType = MozelClass;
+export type PropertyValue = primitive | ComplexValue | undefined;
+export type PropertyInput = PropertyValue | object | any[];
+export type PrimitiveClass = Alphanumeric | StringConstructor | NumberConstructor | BooleanConstructor;
+export type PropertyType = MozelClass | PrimitiveClass | FunctionConstructor | undefined;
+export type PrimitiveObject = Record<string, primitive | undefined | null>;
+export type Reference = {
     gid: alphanumeric;
 };
-export declare type PropertyInputFactory = () => PropertyInput;
-export declare type PropertyOptions = {
+export type PropertyInputFactory = () => PropertyInput;
+export type InitArgument<T> = T extends Class ? InstanceType<T> : T;
+export type PropertyOptions<T> = {
     default?: PropertyInput | PropertyInputFactory;
     required?: boolean;
     reference?: boolean;
+    typeOptions?: T extends Mozel ? MozelConfig<T> : unknown;
 };
 /**
  * Placeholder class for runtime Property type definition
@@ -37,6 +39,7 @@ export default class Property {
     name: string;
     type?: PropertyType;
     error?: Error;
+    options?: PropertyOptions<unknown>;
     /**
      * Determines whether the Property is part of a hierarchy, or just a reference.
      * If set to `false`, no parent will be set on its value.
@@ -47,17 +50,21 @@ export default class Property {
     private readonly _default?;
     private _value;
     private _isDefault;
-    private _collectionBeforeChangeListener;
-    private _collectionChangedListener;
+    private _mozelConfig;
     private _mozelDestroyedListener;
     private readonly parent;
-    constructor(parent: Mozel, name: string, type?: PropertyType, options?: PropertyOptions);
+    constructor(parent: Mozel, name: string, type?: PropertyType, options?: PropertyOptions<unknown>);
     get value(): PropertyValue;
     set value(value: PropertyValue);
     get ref(): Reference | null | undefined;
     get default(): PropertyInput | PropertyInputFactory;
     get required(): boolean;
     get isReference(): boolean;
+    getParent(): Mozel;
+    /**
+     * Get original options of the Property
+     */
+    getOptions(): PropertyOptions<unknown> | undefined;
     /**
      * Attempts to resolve the current reference GID to a value.
      * Will replace the current value with the result (even if reference was not found!)
@@ -72,7 +79,6 @@ export default class Property {
     checkType(value: any): value is PropertyValue;
     isPrimitiveType(): boolean;
     isMozelType(): boolean;
-    isCollectionType(Type?: PropertyType): boolean;
     /**
      * Set value without runtime type checking
      * @param {PropertyValue} value
@@ -82,20 +88,19 @@ export default class Property {
     /**
      * Set value with type checking
      * @param {PropertyInput} value
-     * @param {boolean} init			If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init			If set to true, Mozels may be initialized from objects and arrays, respectively.
      * @param {boolean} merge			If set to true, will set data to existing mozels rather than creating new ones.
      */
-    set(value: PropertyInput, init?: boolean, merge?: boolean): PropertyInput;
-    notifyBeforeChange(path?: string): void;
-    validateChange(path?: string): boolean | undefined;
-    notifyChange(path?: string): void;
+    set(value: PropertyInput, init?: boolean, merge?: boolean): boolean;
+    notifyBeforeChange(path?: alphanumeric): void;
+    validateChange(path?: alphanumeric): boolean | undefined;
+    notifyChange(path?: alphanumeric): void;
     setErrorValue(value: any): void;
     applyDefault(): void;
     generateDefaultValue(): PropertyValue;
     getTypeName(): string;
     /**
-     * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections
-     * with objects or arrays, respectively.
+     * Try to initialize the value for this property using initialization data.
      * @param value
      * @param merge
      */

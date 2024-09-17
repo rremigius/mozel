@@ -10,11 +10,25 @@ import { MozelFactoryType } from "./MozelFactoryInterface";
  *
  */
 let GenericMozel = class GenericMozel extends Mozel {
+    MozelDataType = {};
+    genericProperties = {};
+    static create(data) {
+        // Cannot use `K` in static method unfortunately
+        let mozel = super.create(data);
+        if (!data) {
+            // TS ignore: 'GenericMozel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Mozel'.
+            return mozel;
+        }
+        for (let key in data) {
+            mozel.initProperty(key);
+        }
+        // Try again, with defined properties
+        mozel.$setData(data);
+        return mozel;
+    }
+    initialized = false;
     constructor(mozelFactory) {
         super(mozelFactory);
-        this.MozelDataType = {};
-        this.genericProperties = {};
-        this.initialized = false;
         // All inherited properties and methods have been set; for all future properties, define Properties.
         this.initialized = true;
         return new Proxy(this, {
@@ -36,20 +50,6 @@ let GenericMozel = class GenericMozel extends Mozel {
                 return false;
             }
         });
-    }
-    static create(data) {
-        // Cannot use `K` in static method unfortunately
-        let mozel = super.create(data);
-        if (!data) {
-            // TS ignore: 'GenericMozel<any>' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint 'Mozel'.
-            return mozel;
-        }
-        for (let key in data) {
-            mozel.initProperty(key);
-        }
-        // Try again, with defined properties
-        mozel.$setData(data);
-        return mozel;
     }
     /**
      * Sets a Property value on the GenericMozel. If the Property did not exist, it will be initialized first.
@@ -89,7 +89,8 @@ let GenericMozel = class GenericMozel extends Mozel {
     }
 };
 GenericMozel = __decorate([
-    __param(0, inject(MozelFactoryType)), __param(0, optional())
+    __param(0, inject(MozelFactoryType)),
+    __param(0, optional())
 ], GenericMozel);
 export default GenericMozel;
 //# sourceMappingURL=GenericMozel.js.map

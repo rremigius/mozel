@@ -3,8 +3,8 @@ import format from 'string-format';
 import logRoot from "./log";
 const log = logRoot.instance("templater");
 export default class Templater {
+    data = {};
     constructor(data) {
-        this.data = {};
         if (data) {
             this.setData(data);
         }

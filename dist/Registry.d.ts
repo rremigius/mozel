@@ -1,6 +1,6 @@
 import { Class, alphanumeric } from "validation-kit";
 import EventInterface, { EventEmitter } from "event-interface-mixin";
-export declare type Registerable = {
+export type Registerable = {
     id?: alphanumeric;
     gid?: alphanumeric;
 };

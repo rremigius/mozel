@@ -1,9 +1,7 @@
-import Property, {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
+import {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
 import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions, MozelConfig, MozelData} from "./Mozel";
 import {alphanumeric} from "validation-kit";
-import {isArray, isNumber, isPlainObject} from "lodash";
-import {parse} from "uuid";
-import * as path from "node:path";
+import {isArray, isPlainObject, isString} from "lodash";
 
 export type CollectionDataType<T> = ((PropertyData<Mozel>) & {'$items'?: PropertyData<T>[]}) | PropertyData<T>[]
 
@@ -112,6 +110,9 @@ export default class Collection<T extends PropertyType> extends Mozel {
 	$property(property?: alphanumeric) {
 		if(property === undefined) {
 			return super.$property();
+		}
+		if(isString(property)) {
+			property = parseInt(property);
 		}
 
 		// If the requested property is a collection index, allow to create it on the fly

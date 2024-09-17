@@ -1,5 +1,5 @@
-declare type Data = Record<string, any>;
-export declare type ApiOptions = {
+type Data = Record<string, any>;
+export type ApiOptions = {
     url: string;
     auth?: {
         user: string;

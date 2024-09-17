@@ -1,12 +1,10 @@
 var Property_1;
 import { __decorate } from "tslib";
-import Collection from './Collection';
-import { find, includes, isArray, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString } from 'lodash';
+import { find, includes, isBoolean, isFunction, isNil, isNumber, isPlainObject, isString, get } from 'lodash';
 import { isAlphanumeric, isClass, isPrimitive, isSubClass } from "validation-kit";
 import Mozel from "./Mozel";
 import { injectable } from "inversify";
 import logRoot from "./log";
-import { get } from "./utils";
 const log = logRoot.instance("property");
 /**
  * Placeholder class for runtime Property type definition
@@ -15,10 +13,10 @@ export class Alphanumeric {
 }
 // TYPEGUARDS
 export function isComplexValue(value) {
-    return value instanceof Mozel || value instanceof Collection;
+    return value instanceof Mozel;
 }
 export function isComplexType(value) {
-    return isMozelClass(value) || value instanceof Collection;
+    return isMozelClass(value);
 }
 export function isPropertyValue(value) {
     return isComplexValue(value) || isPrimitive(value);
@@ -34,43 +32,9 @@ export function isPrimitiveObject(object) {
 /**
  * Runtime type-safe property.
  */
-let Property = Property_1 = class Property {
-    constructor(parent, name, type, options) {
-        /**
-         * Determines whether the Property is part of a hierarchy, or just a reference.
-         * If set to `false`, no parent will be set on its value.
-         */
-        this._reference = false;
-        this._ref = null; // null means no reference to be resolved
-        this._required = false;
-        this._isDefault = false;
-        this._collectionBeforeChangeListener = () => this.notifyBeforeChange('*');
-        this._collectionChangedListener = (event) => {
-            if (!event.mutations.changed)
-                return;
-            for (let index of event.mutations.changed.map(change => change.index)) {
-                this.notifyChange(index.toString());
-            }
-        };
-        this._mozelDestroyedListener = (event) => this.set(undefined);
-        if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
-            log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel, Collection or undefined. Using default: undefined.");
-            type = undefined;
-        }
-        this.parent = parent;
-        this.name = name;
-        this.type = type;
-        if (options) {
-            this._required = options.required === true;
-            this._default = options.default;
-            this._reference = options.reference === true;
-            if (this._required && this._reference && !this._default) {
-                // References cannot be auto-generated so they should not be set to required without default
-                const message = `Property '${parent.static.type}.${this.name}' is set as required reference but has no default defined.`;
-                throw new Error(message);
-            }
-        }
-    }
+let Property = class Property {
+    static { Property_1 = this; }
+    static AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean];
     static checkType(value, type, required = false) {
         if (isNil(value) && !required) {
             // All mozel properties can be undefined if not required
@@ -91,9 +55,8 @@ let Property = Property_1 = class Property {
             case Function:
                 return isFunction(value);
             default:
-                // Value should be Mozel or Collection
-                return isMozelClass(type) && value instanceof type ||
-                    type === Collection && value instanceof Collection;
+                // Value should be Mozel
+                return isMozelClass(type) && value instanceof type;
         }
     }
     static tryParseValue(value, type) {
@@ -128,6 +91,44 @@ let Property = Property_1 = class Property {
         }
         return value;
     }
+    name;
+    type;
+    error;
+    options;
+    /**
+     * Determines whether the Property is part of a hierarchy, or just a reference.
+     * If set to `false`, no parent will be set on its value.
+     */
+    _reference = false;
+    _ref = null; // null means no reference to be resolved
+    _required = false;
+    _default;
+    _value;
+    _isDefault = false;
+    _mozelConfig = {};
+    _mozelDestroyedListener = (event) => this.set(undefined);
+    parent;
+    constructor(parent, name, type, options) {
+        if (this.type && !includes(Property_1.AcceptedNonComplexTypes, this.type) && !isMozelClass(this.type)) {
+            log.error("Type argument can be " + Property_1.AcceptedNonComplexTypes.join(',') + ", (subclass of) Mozel or undefined. Using default: undefined.");
+            type = undefined;
+        }
+        this.parent = parent;
+        this.name = name;
+        this.type = type;
+        this.options = options;
+        if (options) {
+            this._required = options.required === true;
+            this._default = options.default;
+            this._reference = options.reference === true;
+            this._mozelConfig = options.typeOptions;
+            if (this._required && this._reference && !this._default) {
+                // References cannot be auto-generated, so they should not be set to required without default
+                const message = `Property '${parent.$static.type}.${this.name}' is set as required reference but has no default defined.`;
+                throw new Error(message);
+            }
+        }
+    }
     get value() {
         return this.get();
     }
@@ -145,6 +146,15 @@ let Property = Property_1 = class Property {
     }
     get isReference() {
         return this._reference;
+    }
+    getParent() {
+        return this.parent;
+    }
+    /**
+     * Get original options of the Property
+     */
+    getOptions() {
+        return this.options;
     }
     /**
      * Attempts to resolve the current reference GID to a value.
@@ -192,15 +202,11 @@ let Property = Property_1 = class Property {
             this.value.$resolveReferences();
             return;
         }
-        if (this.value instanceof Collection) {
-            this.value.resolveReferences();
-            return;
-        }
     }
     isDefault() {
-        // Mozel and Collection pointer can be default but nested properties may have changed
+        // Mozel pointer can be default but nested properties may have changed
         if (isComplexValue(this._value) && this._value === this._default) {
-            return this._value instanceof Mozel ? this._value.$isDefault() : this._value.isDefault();
+            return this._value.$isDefault();
         }
         return this._value === this._default;
     }
@@ -214,20 +220,10 @@ let Property = Property_1 = class Property {
         return Property_1.checkType(value, this.type, this.required);
     }
     isPrimitiveType() {
-        return !this.isMozelType() && !this.isCollectionType();
+        return !this.isMozelType();
     }
     isMozelType() {
         return isMozelClass(this.type);
-    }
-    isCollectionType(Type) {
-        if (this.type !== Collection)
-            return false;
-        if (!Type)
-            return true;
-        const collection = this.value;
-        if (collection.getType() === Type)
-            return true;
-        return isSubClass(collection.getType(), Type);
     }
     /**
      * Set value without runtime type checking
@@ -237,11 +233,6 @@ let Property = Property_1 = class Property {
     _set(value) {
         if (value === this._value)
             return;
-        if (this._value instanceof Collection) {
-            // If we do replace Collections, we need to consider all the event listeners attached to it
-            log.error("Collections cannot be replaced.");
-            return;
-        }
         let detach;
         if (this._value instanceof Mozel && !this.isReference) {
             detach = this._value; // keep for later
@@ -252,7 +243,7 @@ let Property = Property_1 = class Property {
         // Set value on parent
         const oldValue = this._value;
         this._value = value;
-        // Validate the new state an revert if invalid.
+        // Validate the new state and revert if invalid.
         if (!this.validateChange()) {
             this._value = oldValue;
         }
@@ -260,24 +251,15 @@ let Property = Property_1 = class Property {
         // Detach after value has been set, to avoid infinite loop between parent.$remove and mozel.$detach.
         if (detach)
             detach.$detach();
-        // If Property is not just a reference but part of a hierarchy, set Parent on Mozels and Collections.
-        if (!this.isReference) {
-            if (value instanceof Mozel) {
-                value.$setParent(this.parent, this.name);
-            }
-            if (value instanceof Collection) {
-                value.setParent(this.parent);
-            }
-        }
-        else {
+        if (this.isReference) {
             this._ref = null;
         }
-        // New value is Mozel or Collection, listen to changes
-        if (value instanceof Collection) {
-            value.events.beforeChange.on(this._collectionBeforeChangeListener);
-            value.events.changed.on(this._collectionChangedListener);
+        // Set parent property on Mozel (if it's a reference the Mozel should keep its original parent property)
+        if (value instanceof Mozel && !this.isReference) {
+            value.$setProperty(this);
         }
-        else if (value instanceof Mozel) {
+        // New value is Mozel, listen to changes
+        if (value instanceof Mozel) {
             value.$events.destroyed.on(this._mozelDestroyedListener);
         }
         this.notifyChange();
@@ -285,7 +267,7 @@ let Property = Property_1 = class Property {
     /**
      * Set value with type checking
      * @param {PropertyInput} value
-     * @param {boolean} init			If set to true, Mozels and Collections may be initialized from objects and arrays, respectively.
+     * @param {boolean} init			If set to true, Mozels may be initialized from objects and arrays, respectively.
      * @param {boolean} merge			If set to true, will set data to existing mozels rather than creating new ones.
      */
     set(value, init = false, merge = false) {
@@ -310,7 +292,7 @@ let Property = Property_1 = class Property {
                 this._ref = gid ? { gid } : undefined;
             }
         }
-        return value;
+        return true;
     }
     notifyBeforeChange(path) {
         if (!this.parent)
@@ -358,16 +340,13 @@ let Property = Property_1 = class Property {
         this._isDefault = true;
     }
     generateDefaultValue() {
-        if (this.type === Collection) {
-            throw new Error(`Cannot generate default value for '${this.name}' Collection. Should be set explicitly.`);
-        }
         if (isNil(this.type))
             return '';
         if (isMozelClass(this.type)) {
             if (this.isReference) {
                 throw new Error(`Cannot generate default value for a reference ('${this.name}').`);
             }
-            return this.parent.$create(this.type);
+            return this.parent.$create(this.type, undefined, this._mozelConfig);
         }
         switch (this.type) {
             case Number: return 0;
@@ -381,14 +360,13 @@ let Property = Property_1 = class Property {
         return isClass(this.type) ? this.type.name : 'a primitive value';
     }
     /**
-     * Try to initialize the value for this property using initialization data. Will only work for Mozels and Collections
-     * with objects or arrays, respectively.
+     * Try to initialize the value for this property using initialization data.
      * @param value
      * @param merge
      */
     tryInit(value, merge = false) {
-        let current = this._value;
-        // Maybe it's an existing Mozel
+        const current = this._value;
+        // Maybe it's an existing Mozel (reference defined only by its gid and no other properties)
         if (isPlainObject(value) && Object.keys(value).length === 1 && !isNil(value.gid)) {
             const mozel = this.parent.$resolveReference(value);
             if (mozel && this.checkType(mozel)) {
@@ -406,22 +384,17 @@ let Property = Property_1 = class Property {
             this.resolveReference(); // it is possible that it is not yet created
             return true;
         }
-        // Init Collection
-        if (this.type === Collection && current instanceof Collection && isArray(value)) {
-            current.setData(value, true, merge);
-            return true;
-        }
         // Init Mozel
-        if (this.type && isMozelClass(this.type) && isPlainObject(value)) {
+        if (this.type && isMozelClass(this.type) && this.type.validateInitData(value)) {
             if (current instanceof Mozel && (value.gid === current.gid // new data has same gid
-                || (merge && !value.gid)) // or new data has no gid and we merge
+                || !value.gid) // or new data has no gid
             ) {
                 // Same Mozel, different data
                 current.$setData(value, merge);
             }
             else {
-                // Create mozel and try to set again, without type check
-                let mozel = this.parent.$create(this.type, value);
+                // Create Mozel and set without validation
+                let mozel = this.parent.$create(this.type, value, this._mozelConfig);
                 this._set(mozel);
             }
             return true;
@@ -443,7 +416,6 @@ let Property = Property_1 = class Property {
         return [...this.parent.$getPathArrayFrom(mozel), this.name].join('.');
     }
 };
-Property.AcceptedNonComplexTypes = [Number, String, Alphanumeric, Boolean];
 Property = Property_1 = __decorate([
     injectable()
 ], Property);

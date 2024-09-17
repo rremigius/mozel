@@ -1,5 +1,4 @@
-import { isPlainObject } from "lodash";
-export { get, set, isPlainObject, isArray, isString, isBoolean, isNil, isFunction, isEmpty, uniqueId, debounce, has, includes, forEach, remove, mapValues, values, omit, isNumber, throttle, isEqual, find } from "lodash";
+import { isPlainObject } from 'lodash';
 export function interval(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);

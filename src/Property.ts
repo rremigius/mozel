@@ -1,21 +1,19 @@
 import {
 	find,
 	includes,
-	isArray,
 	isBoolean,
 	isFunction,
 	isNil,
 	isNumber,
-	isObject,
 	isPlainObject,
-	isString
+	isString,
+	get
 } from 'lodash';
 
 import {alphanumeric, Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
 import Mozel, {DestroyedEvent, MozelConfig} from "./Mozel";
 import {injectable} from "inversify";
 import logRoot from "./log";
-import {get} from "./utils";
 
 const log = logRoot.instance("property");
 

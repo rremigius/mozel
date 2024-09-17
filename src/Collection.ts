@@ -24,10 +24,9 @@ export class CollectionEvents extends MozelEvents {
  * Defines a runtime type-safe Property instance for this property and overrides the current property
  * with a getter/setter to access the Property.
  * @param {PropertyType} runtimeType
- * @param itemPropertyOptions
+ * @param itemPropertyOptions								Options applied to the Collection itself
  * @param collectionPropertyOptions
- * @param collectionPropertyOptions.collection			Options for the Collection
- * @param collectionPropertyOptions.items					Options applied to all Collection items
+ * @param collectionPropertyOptions.itemPropertyOptions		Options applied to all Collection items
  */
 export function collection<T extends PropertyType>(runtimeType?: T, itemPropertyOptions?:PropertyOptions<T>, collectionPropertyOptions?:PropertyOptions<Collection<T>>) {
 	collectionPropertyOptions = collectionPropertyOptions || {};
@@ -35,8 +34,8 @@ export function collection<T extends PropertyType>(runtimeType?: T, itemProperty
 	// Transalte to standard @property decorator
 	return property<Collection<T>>(Collection as any, {
 		...collectionPropertyOptions,
-		config: {
-			...collectionPropertyOptions.config,
+		typeOptions: {
+			...collectionPropertyOptions.typeOptions,
 			itemType: runtimeType,
 			itemPropertyOptions: itemPropertyOptions
 		}

@@ -7,6 +7,14 @@ import {alphanumeric} from "validation-kit";
 import {MozelFactory} from "../src";
 
 describe("Collection", () => {
+	it("can be defined from plain Javascript", () => {
+		class FooMozel extends Mozel {}
+		FooMozel.property("bars", Collection, {typeOptions: {itemType: String}});
+
+		const factory = new MozelFactory();
+		const mozel = factory.create(FooMozel, {bars: ["a", "b", "c"]} as any);
+		assert.deepEqual((mozel.bars as Collection<String>).$toArray(), ["a", "b", "c"]);
+	});
 	it("changed event is fired when any of its indexes change", () => {
 		const collection = Collection.create<Collection<number>>([1,2,3,4]);
 		let count = 0;

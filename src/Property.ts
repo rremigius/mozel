@@ -38,7 +38,7 @@ export type PropertyOptions<T> = {
 	default?:PropertyInput|PropertyInputFactory,
 	required?:boolean,
 	reference?:boolean,
-	config?:T extends Mozel ? MozelConfig<T> : unknown
+	typeOptions?:T extends Mozel ? MozelConfig<T> : unknown
 };
 
 /**
@@ -158,7 +158,7 @@ export default class Property {
 			this._required = options.required === true;
 			this._default = options.default;
 			this._reference = options.reference === true;
-			this._mozelConfig = options.config;
+			this._mozelConfig = options.typeOptions;
 
 			if(this._required && this._reference && !this._default) {
 				// References cannot be auto-generated, so they should not be set to required without default

@@ -46,7 +46,7 @@ import Mozel, {required} from "mozel";
 
 class Person extends Mozel {}
 Person.property('name', String, {required});
-Person.collection('nicknames', String);
+Person.property('nicknames', Collection, {typeOptions: {itemType: String}});
 ```
 
 To set a default, use `{default: ...}` in the property options, instead of `myProperty:string = 'myDefault'`.
@@ -63,7 +63,7 @@ let person = Person.create({
 });
 
 console.log(person.name); // James
-console.log(person.nicknames.toArray()); // ['Johnny', 'Jack']
+console.log(person.nicknames.$toArray()); // ['Johnny', 'Jack']
 ```
 
 Only valid values will be accepted:
@@ -86,14 +86,13 @@ match for the mozel to be considered type-safe.
 | `@property(Number)`                             | `foo?:number`              | Optional number                                                               |
 | `@property(Alphanumeric)`                       | `foo?:alphanumeric`        | Optional string or number                                                     |
 | `@property(MyMozel)`                            | `foo?:MyMozel`             | Optional instance of MyMozel                                                  |
-| `@collection(String)`                           | `foo!:Collection<string>`  | Collection of strings*                                                        |
-| `@collection(MyMozel)`                          | `foo!:Collection<MyMozel>` | Collection of MyMozels*                                                       |
+| `@collection(String)`                           | `foo?:Collection<string>`  | Collection of strings                                                         |
+| `@collection(MyMozel, {required})`              | `foo!:Collection<MyMozel>` | Collection of MyMozels                                                        |
+| `@collection(MyMozel, undefined, {reference})`  | `foo?:Collection<MyMozel>` | Collection of MyMozels references                                             |
 | `@property(String, {required})`                 | `foo!:string`              | Required string, defaults to emtpy string                                     |
 | `@property(MyMozel, {required})`                | `foo!:MyMozel`             | Required instsance of MyMozel, generates a default MyMozel if empty.          |
 | `@property(String, {required, default: "foo"})` | `foo!:string`              | Required string, defaults to `"foo"`                                          |
 | `@property(String, {required, default: ()=>bar` | `foo!:string`              | Required string, defaults to the return value of the given function if empty. |
-
-\* Collections are always defined at initialization, even if empty. It is therefore safe to place the `!` in the Typescript definition.
 
 ### Nested Mozels
 

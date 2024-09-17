@@ -121,7 +121,7 @@ describe('Mozel', () => {
 					super.$define();
 					this.$defineProperty('foo', FooMozel);
 					this.$defineProperty('qux');
-					this.$defineProperty('bars', Collection, {config: {itemType: BarMozel}});
+					this.$defineProperty('bars', Collection, {typeOptions: {itemType: BarMozel}});
 				}
 			}
 
@@ -157,7 +157,7 @@ describe('Mozel', () => {
 			class FooMozel extends Mozel {
 				$define() {
 					super.$define();
-					this.$defineProperty('bars', Collection, {required, config: {itemType: BarMozel}});
+					this.$defineProperty('bars', Collection, {required, typeOptions: {itemType: BarMozel}});
 				}
 			}
 

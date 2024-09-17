@@ -4,6 +4,7 @@ import {describe, it} from 'mocha';
 import Mozel, {property, reference, required, string} from "../src/Mozel";
 import Collection, {collection} from "../src/Collection";
 import {alphanumeric} from "validation-kit";
+import {MozelFactory} from "../src";
 
 describe("Collection", () => {
 	it("changed event is fired when any of its indexes change", () => {
@@ -23,7 +24,7 @@ describe("Collection", () => {
 				@collection(FooMozel, undefined, {required})
 				items!:Collection<FooMozel>;
 			}
-			let foo = FooMozel.createFactory().create(FooMozel, {
+			let foo = (new MozelFactory()).create(FooMozel, {
 				gid: 'root',
 				items: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}, {gid: 3, foo: 'c'}]
 			});
@@ -69,7 +70,8 @@ describe("Collection", () => {
 				@collection(Foo, undefined, {required})
 				foos!:Collection<Foo>
 			}
-			const model = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const model = factory.create(Foo, {
 				foos: [{gid: 1, foo: 'a'}, {gid: 2, foo: 'b'}]
 			});
 			model.foos.$setData([{gid:2}]);

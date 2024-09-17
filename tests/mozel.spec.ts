@@ -13,6 +13,7 @@ import Collection, {collection} from '../src/Collection';
 import {forEach, get, includes, set, toNumber} from 'lodash';
 import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";
+import {MozelFactory} from "../src";
 
 const VALUES = {
 	string: 'abc',
@@ -171,7 +172,8 @@ describe('Mozel', () => {
 			foo.bars.$add(bar1);
 			foo.bars.$add(bar2);
 
-			let clone = <{[key:string]:any}>FooMozel.create(foo.$export());
+			const factory = new MozelFactory();
+			let clone = <{[key:string]:any}>factory.create(FooMozel, foo.$export());
 
 			assert.instanceOf(clone.bars, Collection, "Cloned instance has initialized 'bars' collection");
 			assert.equal(clone.bars.$length(), 2, "'bars' collection of cloned instance has 2 items");
@@ -315,7 +317,8 @@ describe('Mozel', () => {
 				foo: 'foo',
 				bar: [1,2,3]
 			});
-			const reconstructed = FooMozel.create<FooMozel>(foo.$export());
+			const factory = new MozelFactory();
+			const reconstructed = factory.create<FooMozel>(FooMozel, foo.$export());
 			assert.equal(reconstructed.foo, foo.foo);
 			assert.deepEqual(reconstructed.bar.$toArray(), foo.bar.$toArray());
 		});
@@ -359,7 +362,8 @@ describe('Mozel', () => {
 				@property(Bar)
 				bar?:Bar;
 			}
-			const foo = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const foo = factory.create(Foo,{
 				gid: 'foo',
 				bar: {
 					gid: 'bar',
@@ -833,7 +837,7 @@ describe('Mozel', () => {
 				@property(Foo)
 				foo?:Foo;
 			}
-			const factory = Foo.createFactory();
+			const factory = new MozelFactory();
 			const subfoo = factory.create(Foo);
 			const foo1 = factory.create(Foo, {
 				foo: subfoo
@@ -886,7 +890,8 @@ describe('Mozel', () => {
 				otherFoo?:Foo;
 			}
 
-			const foo = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const foo = factory.create(Foo,{
 				gid: 1,
 				oneFoo: {gid: 11},
 				otherFoo: {gid: 12}
@@ -907,7 +912,8 @@ describe('Mozel', () => {
 				@property(Foo)
 				other?:Foo;
 			}
-			const foo = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const foo = factory.create(Foo, {
 				gid: 'foo',
 				foo: 'foo.foo',
 				bar: 'foo.bar',
@@ -1014,7 +1020,7 @@ describe('Mozel', () => {
 				@property(Foo, {reference})
 				ref?:Foo;
 			}
-			const factory = Foo.createFactory();
+			const factory = new MozelFactory();
 			const root = factory.create(Foo, {
 				name: 'root',
 				extra: 'ROOT_EXTRA',
@@ -1057,7 +1063,8 @@ describe('Mozel', () => {
 				@property(Foo)
 				foo?:Foo;
 			}
-			const model = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const model = factory.create(Foo,{
 				foo: {gid: 1, name: 'foo'}
 			});
 			model.$setData({foo: {gid: 1}}, true);
@@ -1149,7 +1156,8 @@ describe('Mozel', () => {
 				@collection(Foo, {reference})
 				refs!:Collection<Foo>;
 			}
-			const foo = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const foo = factory.create(Foo, {
 				foo: {gid: 1},
 				foos: [{gid: 2}, {gid: 3}],
 				ref: {gid: 3},
@@ -1187,7 +1195,8 @@ describe('Mozel', () => {
 				@property(Foo, {reference})
 				ref?:Foo;
 			}
-			const root = Foo.create<Foo>({
+			const factory = new MozelFactory();
+			const root = factory.create(Foo, {
 				gid: 'root',
 				foo: {gid: 'foo'},
 				bar: {gid: 'bar'},
@@ -1277,5 +1286,15 @@ describe('Mozel', () => {
 			assert.equal(james.name, "James Smith");
 			assert.equal(james.child!.name, "Fred Smith");
 		});
+	});
+
+	describe("$clone", () => {
+		it("Clones the Mozel recursively, keeping references to existing Mozels, within the current Registry.", () => {
+
+		});
+	});
+
+	describe("$cloneDeep", () => {
+		it("Clones the Mozel recursively, including its references.")
 	});
 });

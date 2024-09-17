@@ -1,5 +1,5 @@
 import {assert} from "chai";
-import Mozel, {Collection, property, required} from "../src";
+import Mozel, {Collection, MozelFactory, property, required} from "../src";
 import {describe} from "mocha";
 import {collection} from "../src/Collection";
 
@@ -92,7 +92,7 @@ describe("Performance", () => {
 					@collection(Foo)
 					foos!:Collection<Foo>;
 				}
-				const factory = Foo.createFactory();
+				const factory = new MozelFactory();
 				const nTimes = 1000;
 				const duration = time(nTimes, i =>
 					factory.create(Foo, {name: i.toString(), foo: {}, foos: [{}]})

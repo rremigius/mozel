@@ -10,6 +10,10 @@ const log = logRoot.instance("factory");
 
 @injectable()
 export default class MozelFactory implements MozelFactoryInterface {
+	private static defaultInstance = new MozelFactory();
+	public static default() {
+		return this.defaultInstance;
+	}
 
 	static createDependencyContainer() {
 		return new Container({autoBindInjectable:true});

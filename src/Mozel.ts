@@ -153,10 +153,6 @@ export default class Mozel {
 		return new ExpectedClass() as T;
 	}
 
-	static createFactory() {
-		return new MozelFactory();
-	}
-
 	/**
 	 * Access to the logging utility of Mozel, which allows to set log levels and drivers for different components.
 	 */
@@ -283,7 +279,7 @@ export default class Mozel {
 	 * @param config
 	 */
 	static create<T extends Mozel>(data?: MozelData<T>, config?:MozelConfig<T>):T {
-		const factory = this.createFactory();
+		const factory = MozelFactory.default();
 		return <T>factory.createRoot(this, data as any, config);
 	}
 
@@ -305,7 +301,7 @@ export default class Mozel {
 	constructor(
 		@inject(MozelFactoryType) @optional() mozelFactory?: MozelFactoryInterface
 	) {
-		this.$factory = mozelFactory || this.$static.createFactory();
+		this.$factory = mozelFactory || MozelFactory.default();
 		this.$registry = this.$factory.registry;
 		this._watchers = [];
 
@@ -940,7 +936,8 @@ export default class Mozel {
 	}
 
 	/**
-	 * Creates a deep clone of the mozel.
+	 * Clones the Mozel recursively. GIDs will remain the same.
+	 * A new Factory/Registry will be created to avoid gid conflicts.
 	 */
 	$cloneDeep<T extends Mozel>():T {
 		// Use new factory with same dependencies but different Registry.

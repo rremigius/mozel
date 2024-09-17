@@ -10,7 +10,7 @@ import Mozel, {
 	reference, Data, trackOld, string, MozelData
 } from '../src/Mozel';
 import Collection, {collection} from '../src/Collection';
-import {forEach, get, includes, set, toNumber} from 'lodash';
+import {forEach, get, includes, set, toNumber} from "lodash-es";
 import {injectable} from "inversify";
 import {check, instanceOf} from "validation-kit";
 import {MozelFactory} from "../src";
@@ -608,10 +608,10 @@ describe('Mozel', () => {
 
 			let count = 0;
 			foo.$watch('bars', ({newValue, oldValue}) => {
-				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "oldValue");
-				assert.deepEqual(value.$toArray(), [4,5,6]);
-				assert.deepEqual(old.$toArray(), [1,2,3]);
+				assert.instanceOf(newValue, Collection, "New value is a Collection");
+				assert.instanceOf(oldValue, Collection, "Old value is a Collection");
+				assert.deepEqual((newValue as Collection<number>).$toArray(), [4,5,6]);
+				assert.deepEqual((oldValue as Collection<number>).$toArray(), [1,2,3]);
 				count++;
 			}, { deep, trackOld });
 			foo.bars.$setData([4,5,6]);
@@ -629,10 +629,10 @@ describe('Mozel', () => {
 			let count = 0;
 			foo.$watch('bars',
 			({newValue, oldValue}) => {
-				const value = check<Collection<number>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<number>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				assert.deepEqual(value.$toArray(), [1,2,3,4]);
-				assert.deepEqual(old.$toArray(), [1,2,3]);
+				assert.instanceOf(newValue, Collection, "New value is a Collection");
+				assert.instanceOf(oldValue, Collection, "Old value is a Collection");
+				assert.deepEqual((newValue as Collection<number>).$toArray(), [1,2,3,4]);
+				assert.deepEqual((oldValue as Collection<number>).$toArray(), [1,2,3]);
 				count++;
 			}, {
 				deep, trackOld // is necessary to keep a clone of the old value
@@ -655,10 +655,10 @@ describe('Mozel', () => {
 
 			let count = 0;
 			foo.$watch('bars', ({newValue, oldValue}) => {
-				const value = check<Collection<Bar>>(newValue, instanceOf(Collection), "Collection", "newValue");
-				const old = check<Collection<Bar>>(oldValue, instanceOf(Collection), "Collection", "newValue");
-				const newBar = value.$at(1);
-				const oldBar = old.$at(1);
+				assert.instanceOf(newValue, Collection, "New value is a Collection");
+				assert.instanceOf(oldValue, Collection, "Old value is a Collection");
+				const newBar = (newValue as Collection<Bar>).$at(1);
+				const oldBar = (oldValue as Collection<Bar>).$at(1);
 				assert.exists(newBar);
 				assert.exists(oldBar);
 				if(newBar && oldBar) {

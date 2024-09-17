@@ -3,7 +3,7 @@ import Mozel, {property, reference} from "../src/Mozel";
 import MozelFactory from "../src/MozelFactory";
 import {it} from "mocha";
 import {assert} from "chai";
-import {uniq} from "lodash";
+import {uniq} from "lodash-es";
 
 describe("MozelFactory", () => {
 	describe("createSet", () => {

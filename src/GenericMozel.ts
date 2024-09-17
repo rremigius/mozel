@@ -1,6 +1,6 @@
 import Mozel, {Data, MozelData} from './Mozel';
 import Property from "./Property";
-import {forEach, mapValues} from 'lodash';
+import {forEach, mapValues} from "lodash-es";
 import {inject, optional} from "inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 

@@ -1,4 +1,4 @@
-import {isPlainObject} from 'lodash';
+import {isPlainObject} from "lodash-es";
 
 export function interval(ms:number) {
 	return new Promise(resolve => {

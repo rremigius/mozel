@@ -1,4 +1,4 @@
-import { isString, isPlainObject, isArray, forEach, extend } from 'lodash';
+import { isString, isPlainObject, isArray, forEach, extend } from "lodash-es";
 import format from 'string-format';
 import logRoot from "./log";
 

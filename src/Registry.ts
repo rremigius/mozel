@@ -1,7 +1,7 @@
 import {Class, alphanumeric} from "validation-kit";
 import logRoot from "./log";
-import {isNil} from 'lodash';
-import {mapValues, uniqueId, values} from "lodash";
+import {isNil} from "lodash-es";
+import {mapValues, uniqueId, values} from "lodash-es";
 import EventInterface, {EventEmitter} from "event-interface-mixin";
 
 const log = logRoot.instance("registry");

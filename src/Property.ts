@@ -8,7 +8,7 @@ import {
 	isPlainObject,
 	isString,
 	get
-} from 'lodash';
+} from "lodash-es";
 
 import {alphanumeric, Class, isAlphanumeric, isClass, isPrimitive, isSubClass, primitive} from "validation-kit"
 import Mozel, {DestroyedEvent, MozelConfig} from "./Mozel";

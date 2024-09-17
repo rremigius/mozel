@@ -1,6 +1,6 @@
 import {isComplexValue, PropertyValue} from "./Property";
 import Mozel from "./Mozel";
-import {debounce, isNumber, includes} from "lodash";
+import {debounce, isNumber, includes} from "lodash-es";
 
 export type WatcherDebounceOptions = {
 	wait?:number,

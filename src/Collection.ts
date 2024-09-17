@@ -1,7 +1,7 @@
 import {PropertyInput, PropertyOptions, PropertyType, PropertyValue} from "./Property";
 import Mozel, {Data, MozelEvents, PropertyData, property, ExportOptions, MozelConfig, MozelData} from "./Mozel";
 import {alphanumeric} from "validation-kit";
-import {isArray, isPlainObject, isString} from "lodash";
+import {isArray, isPlainObject, isString} from "lodash-es";
 
 export type CollectionDataType<T> = ((PropertyData<Mozel>) & {'$items'?: PropertyData<T>[]}) | PropertyData<T>[]
 

@@ -13,7 +13,7 @@ import Property, {
 } from './Property';
 
 import Templater from './Templater';
-import {Container, inject, injectable, optional} from "inversify";
+import {inject, injectable, optional} from "inversify";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import Registry from "./Registry";
 import {alphanumeric, isSubClass, primitive} from 'validation-kit';
@@ -26,7 +26,7 @@ import PropertyWatcher, {
 } from "./PropertyWatcher";
 import MozelFactory from "./MozelFactory";
 import EventInterface from "event-interface-mixin";
-import {includes, isArray, omit, isPlainObject, get, forEach, isString, remove, find, map, concat} from "lodash";
+import {includes, isArray, omit, isPlainObject, get, forEach, isString, remove, find, map, concat} from "lodash-es";
 import {v4 as uuid} from "uuid";
 
 // TYPES

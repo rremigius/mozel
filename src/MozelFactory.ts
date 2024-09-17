@@ -4,7 +4,7 @@ import Registry from "./Registry";
 import Mozel, {MozelClass, MozelConfig, MozelConstructor, MozelData} from "./Mozel";
 import MozelFactoryInterface, {MozelFactoryType} from "./MozelFactoryInterface";
 import logRoot from "./log";
-import {isArray} from "lodash";
+import {isArray} from "lodash-es";
 
 const log = logRoot.instance("factory");
 

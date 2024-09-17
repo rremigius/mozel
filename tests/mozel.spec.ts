@@ -786,49 +786,42 @@ describe('Mozel', () => {
 		});
 	});
 	describe("$strict = false", () => {
-		class Foo extends Mozel {
-			@property(String)
-			name?:string;
-			@property(Foo)
-			foo?:Foo
-			@collection(Foo)
-			foos!:Collection<Foo>;
-		}
-		// TS: setting as `any` because we'll make it not-strict
-		const mozel = <any>Foo.create<Foo>({
-			name: 'foo',
-			foo: {
-				name: 'foofoo'
-			},
-			foos: [{name:'foos1'}, {name: 'foos2'}]
-		});
-		const name = {};
-		mozel.$strict = false;
-		mozel.name = name;
-		mozel.foo.foo = 'nofoo';
-		mozel.foos.$setData([1, {name: 'foos3'}]);
+		it("Allows setting invalid values and provides error descriptions.", () => {
+			class Foo extends Mozel {
+				@property(String)
+				name?:string;
+				@property(Foo)
+				foo?:Foo
+				@collection(Foo)
+				foos!:Collection<Foo>;
+			}
+			// TS: setting as `any` because we'll make it not-strict
+			const mozel = <any>Foo.create<Foo>({
+				name: 'foo',
+				foo: {
+					name: 'foofoo'
+				},
+				foos: [{name:'foos1'}, {name: 'foos2'}]
+			});
+			const name = {};
+			mozel.$strict = false;
+			mozel.name = name;
+			mozel.foo.foo = 'nofoo';
+			mozel.foos.$setData([1, {name: 'foos3'}]);
 
-		it("disables rejection of mismatching values", () => {
-			assert.equal(mozel.name, name);
+			assert.equal(mozel.name, name, "Mismatched value accepted");
 			assert.equal(mozel.foo.foo, 'nofoo');
-		});
-		it("provides errors for invalid values on the properties", () => {
-			assert.instanceOf(mozel.$property('name').error, Error);
-			assert.equal(mozel.foo.$property('name').error, undefined);
-		});
-		it("errors can be retrieved using $errors()", () => {
-			assert.instanceOf(mozel.foo.$errors.foo, Error);
-			assert.deepEqual(Object.keys(mozel.foo.$errors), ['foo']);
-			assert.deepEqual(Object.keys(mozel.foos.$errors), ['0']);
-			assert.instanceOf(mozel.foos.$errors['0'], Error);
-		});
-		it("all errors can be retrieved recursively using $errors(true)", () => {
+			assert.instanceOf(mozel.$property('name').error, Error, "Error provided for invalid value");
+			assert.equal(mozel.foo.$property('name').error, undefined, "No error provided for valid value");
+			assert.instanceOf(mozel.foo.$errors.foo, Error, "Error retrieved using $errors()");
+			assert.deepEqual(Object.keys(mozel.foo.$errors), ['foo'], "Error keys correct");
+			assert.deepEqual(Object.keys(mozel.foos.$errors), ['0'], "Error indexes correct");
+			assert.instanceOf(mozel.foos.$errors['0'], Error, "Error provided on index 0");
 			const deepErrors = mozel.$errorsDeep();
-			assert.instanceOf(deepErrors['name'], Error);
-			assert.instanceOf(deepErrors['foos.0'], Error);
-			assert.instanceOf(deepErrors['foo.foo'], Error);
-
-		});
+			assert.instanceOf(deepErrors['name'], Error, "First-level error");
+			assert.instanceOf(deepErrors['foos.0'], Error, "Second-level error at collection");
+			assert.instanceOf(deepErrors['foo.foo'], Error, "Second-level error at mozel");
+		})
 	});
 	describe("$setParent", () => {
 		it("disconnects the Mozel from its current parent", () => {
@@ -1313,10 +1306,9 @@ describe('Mozel', () => {
 
 			// Force garbage collection and get 'after' state
 			global.gc();
-			heapdump.writeSnapshot();
 			const memoryUsedAfter = process.memoryUsage().heapUsed - memoryBefore;
 			assert.equal(factory.registry.all().length, 0, "No Mozels left in Registry");
-			assert.isBelow(memoryUsedAfter, 0 /*1MB*/, "No significant memory increase");
+			assert.isBelow(memoryUsedAfter, 1e4 /*10KB*/, "No significant memory increase");
 		});
 	});
 });

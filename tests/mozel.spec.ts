@@ -1287,14 +1287,4 @@ describe('Mozel', () => {
 			assert.equal(james.child!.name, "Fred Smith");
 		});
 	});
-
-	describe("$clone", () => {
-		it("Clones the Mozel recursively, keeping references to existing Mozels, within the current Registry.", () => {
-
-		});
-	});
-
-	describe("$cloneDeep", () => {
-		it("Clones the Mozel recursively, including its references.")
-	});
 });
